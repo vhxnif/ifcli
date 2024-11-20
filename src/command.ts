@@ -1,6 +1,7 @@
 import { Command } from '@commander-js/extra-typings'
 import { trans } from './ai/action/trans-action'
 import { improve } from './ai/action/improve-writing'
+import { suggest } from './ai/action/cli-command-suggestion';
 import { blue, error, output, println } from './util/common-utils';
 import type { ChalkInstance } from 'chalk';
 
@@ -23,6 +24,10 @@ program.command('improve')
   .argument('<string>')
   .action(async (content) => await improve(content.trim()))
 
+program.command('suggest')
+.description('suggestion cli command')
+.argument('<string>')
+.action(async (content) => await suggest(content.trim()))
 const wt = (str: string, color: ChalkInstance) => {
     output(str, ['<lang>'], color)
 }
