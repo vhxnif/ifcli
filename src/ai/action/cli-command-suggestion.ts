@@ -1,6 +1,5 @@
 import { input } from '@inquirer/prompts'
 import { call, coderModel, user, system } from '../open-ai-client'
-import { sourceText, text, print, println } from '../../util/common-utils'
 import { $ } from "bun"
 
 const sysPrompt = `
