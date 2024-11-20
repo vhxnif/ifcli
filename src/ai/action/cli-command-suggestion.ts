@@ -12,6 +12,8 @@ const sysPrompt = `
 
 - 理解用户的描述
 - 参考tldr(https://github.com/tldr-pages/tldr)给出最符合的一条命令
+- 如果有多个符合条件的命令，优先使用不用联网访问的命令
+- 检查给出的命令是否是正确的，确认无误以后再给用户
 
 
 # 输出限制
@@ -20,12 +22,16 @@ const sysPrompt = `
 - 命令中的参数使用<>， 例如 git tag -m <message>
 `
 
-const suggest = async (content: string) => {
+const suggest = async (content: string, exclude?: string[]) => {
     call(
-        [system(sysPrompt), user(content)],
+        [system(sysPrompt), user(exclude ? content + ' 排除下面的命令：' + exclude : content)],
         coderModel,
         async c => {
             const answer = await input({ message: c });
+            if(answer == 'next') {
+                await suggest(content, exclude ? [...exclude, c] : [])
+                return
+            }
             const regex = /<([^>]+)>/g;
             const args = answer.split(' ')
             let idx = 0
