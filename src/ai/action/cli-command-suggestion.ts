@@ -1,6 +1,7 @@
 import { input } from '@inquirer/prompts'
 import { call, coderModel, user, system } from '../open-ai-client'
 import { $ } from "bun"
+import { error } from '../../util/common-utils'
 
 const sysPrompt = `
 # 身份与目的
@@ -38,7 +39,11 @@ const suggest = async (content: string, exclude?: string[]) => {
             const command =  c.replace(regex, function (match, p1) {
                 return args[idx++]
             })
-            await $`${{ raw: command }}`
+            try {
+                await $`${{ raw: command }}`
+            } catch(err) {
+                error(err)
+            }
         }
     )
 }
