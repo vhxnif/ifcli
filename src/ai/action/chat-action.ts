@@ -4,12 +4,14 @@ import {
     addMessage,
     changeWithContext,
     Chat,
+    ChatMessage,
     chats,
     contextMessages,
     deleteChat,
     deleteChatConfig,
     deleteChatMessage,
     getChat,
+    historyMessage,
     modifyContextLimit,
     modifyModel,
     modifySysPrompt,
@@ -21,13 +23,13 @@ import {
     transaction
 } from '../store/chat-store'
 
-import { select, Separator } from '@inquirer/prompts'
 
 import { coderModel, commonModel, roleParam, stream, system, user } from '../open-ai-client'
 import { initTable } from '../store/table-def'
 
 import { isEmpty, toNumber } from 'lodash'
-import { bold, error, green, mauve, pink, print, println, yellow } from '../../util/common-utils'
+import { blue, bold, error, green, mauve, pink, print, println, selectRun, yellow } from '../../util/common-utils'
+import { nanoid } from 'nanoid'
 
 const number = pink
 const keyword = yellow
@@ -96,9 +98,10 @@ const _messages = (content: string, withContext: boolean) => {
 }
 
 const _storeMessage = (userContent: string, assistantContent: string): void => {
+    const pairKey = nanoid()
     addMessage([
-        { role: 'user', content: userContent },
-        { role: 'assistant', content: assistantContent }
+        { role: 'user', content: userContent, pairKey },
+        { role: 'assistant', content: assistantContent, pairKey }
     ])
 }
 
@@ -125,9 +128,14 @@ const _readLine = async (prompt: string, f: (str: string) => Promise<void>): Pro
     }
 }
 
+const _selectChatRun = async (message: string, chats: Chat[], f: (str: string) => void) => selectRun(message, chats.map(it => ({ name: it.name, value: it.name, })), f)
+
 // --- public ---
 const init = (): void => {
     initTable()
+    if (getChat(defaultChatName)) {
+        return
+    }
     _addChat(defaultChatName)
 }
 
@@ -165,7 +173,7 @@ const chatList = async (): Promise<void> => {
 }
 
 const changeChat = async (): Promise<void> => {
-    selectChatRun(
+    _selectChatRun(
         'Select Chat:',
         await _sortedChats(),
         selectChat
@@ -215,7 +223,7 @@ const removeChat = async (): Promise<void> => {
         println(error('A chat must be kept.'))
         return
     }
-    selectChatRun(
+    _selectChatRun(
         'Delete Chat:',
         cts.filter(it => !it.select),
         answer => {
@@ -233,15 +241,25 @@ const cleanMessage = (): void => {
     selectedChatRun(c => deleteChatMessage(c.id))
 }
 
-const selectChatRun = async (message: string, chats: Chat[], f: (str: string) => void) => {
-    const answer = await select({
-        message,
-        choices: chats.map(it => ({ name: it.name, value: it.name, })),
-    })
-    f(answer)
+const history = (): void => {
+    const message = historyMessage(10).reduce((acc: Record<string, ChatMessage[]>, item) => {
+        const key = item.pairKey
+        if (!acc[key]) {
+            acc[key] = []
+        }
+        acc[key].push(item)
+        return acc
+    }, {})
+
+    const choices = Object.keys(message).flatMap(key => message[key].filter(it => it.role === 'user').map(it => ({name: it.content, value: key})))
+    selectRun(
+        'Select Question:',
+        choices,
+        (c) => console.log(blue(message[c].find(it => it.role === 'assistant')?.content))
+    )
+
 }
 
-
-export { ask, changeChat, changeWithContext, chatList, cleanMessage, currConfig, init, models, newChat, removeChat, updateContextSize, updateModel, updateSysPrompt }
+export { ask, changeChat, changeWithContext, chatList, cleanMessage, currConfig, init, models, newChat, removeChat, history, updateContextSize, updateModel, updateSysPrompt }
 
 

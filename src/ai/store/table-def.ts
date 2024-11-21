@@ -19,6 +19,7 @@ const chat_message = `
         chat_id TEXT,
         "role" TEXT,
         content TEXT,
+        pair_key TEXT,
         action_time INTEGER,
         CONSTRAINT chat_message_PK PRIMARY KEY (id)
     );

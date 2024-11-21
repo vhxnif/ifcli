@@ -2,6 +2,7 @@
 
 import moment from "moment"
 import chalk, { type ChalkInstance } from 'chalk';
+import { select } from "@inquirer/prompts";
 
 const hex = (color: string): ChalkInstance => chalk.hex(color)
 const rosewater = hex('#F5E0DC')
@@ -59,6 +60,8 @@ const output = (str: string, opt: string[] = [], text: ChalkInstance) : void => 
     println(text(rStr))
 }
 
+const selectRun = async (message: string, choices: {name: string; value: string}[], f: (str: string) => void) => f(await select({message, choices}))
+
 export {
     getEnv,
     unixnow,
@@ -66,6 +69,7 @@ export {
     println,
     containsChinese,
     output,
+    selectRun,
     error,
     text,
     sourceText,

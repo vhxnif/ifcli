@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Command } from '@commander-js/extra-typings';
-import { ask, changeChat, changeWithContext, chatList, cleanMessage, currConfig, init, models, newChat, removeChat, updateContextSize, updateModel, updateSysPrompt } from './ai/action/chat-action';
+import { ask, changeChat, changeWithContext, chatList, cleanMessage, currConfig, init, models, newChat, removeChat, history, updateContextSize, updateModel, updateSysPrompt } from './ai/action/chat-action';
 import { error, println, output, blue } from './util/common-utils';
 import type { ChalkInstance } from 'chalk';
 
@@ -17,7 +18,8 @@ program.command('new')
     .description('New Chat')
     .argument('<string>')
     .option('-d, --default-prompt', 'Use default system prompt.', false)
-    .action(async (content, option) => await newChat(content, option.defaultPrompt))
+    .option('-c, --copy-chat-prompt <chat>', 'copy system prompt from <chat>.')
+    .action(async (content, option) => await newChat(content, option.defaultPrompt, option.copyChatPrompt))
 
 program.command('ask')
     .description('Talk with Agent.')
@@ -39,6 +41,10 @@ program.command('change')
 program.command('clear')
     .description('Clear current chat message.')
     .action(() => cleanMessage())
+
+program.command('history')
+    .description('History Question')
+    .action(() => history())
 
 program.command('config')
     .description('Manage Current Chat Config.')

@@ -16,6 +16,7 @@ export class ChatMessage {
     chatId!: string
     role!: string
     content!: string
+    pairKey!: string
     actionTime!: bigint
 }
 
@@ -182,15 +183,15 @@ const deleteChatConfig = (chatId: string): void => {
 }
 
 // ---- chat message ---- 
-const chatMessageSelectColumn = 'id, chat_id as chatId, "role", content, action_time as actionTime'
+const chatMessageSelectColumn = 'id, chat_id as chatId, "role", content, pair_key as pairKey, action_time as actionTime'
 
-const addMessage = (messages: { role: string, content: string }[]): void => {
+const addMessage = (messages: { role: string, content: string, pairKey: string }[]): void => {
     selectedChatRun(c => {
-        const statement = db.prepare(`INSERT INTO chat_message (id, chat_id, "role", content, action_time) VALUES (?, ?, ?, ?, ?)`)
+        const statement = db.prepare(`INSERT INTO chat_message (id, chat_id, "role", content, pair_key, action_time) VALUES (?, ?, ?, ?, ?, ?)`)
         transaction(() => {
             messages
                 .filter(it => !isEmpty(it.role) && !isEmpty(it.content))
-                .map(it => [nanoid(), c.id, it.role, it.content, unixnow()])
+                .map(it => [nanoid(), c.id, it.role, it.content, it.pairKey, unixnow()])
                 .forEach(it => statement.run(...it))
         })
     })
@@ -200,12 +201,11 @@ const deleteChatMessage = (chatId: string): void => {
     db.prepare(`DELETE FROM chat_message WHERE chat_id = ?`).run(chatId)
 }
 
+const queryMessage = (chatId: string, count: number) => db.query(`SELECT ${chatMessageSelectColumn} FROM chat_message WHERE chat_id = ? order by action_time desc Limit ?`).as(ChatMessage).all(chatId, count)
 // contextMessages
-const contextMessages = (): ChatMessage[] => {
-    return selectedChatConfigRun((c, cf) => {
-        return db.query(`SELECT ${chatMessageSelectColumn} FROM chat_message WHERE chat_id = ? Limit ?`).as(ChatMessage).all(c.id, cf.contextLimit)
-    })
-}
+const contextMessages = (): ChatMessage[] => selectedChatConfigRun((c, cf) => queryMessage(c.id, cf.contextLimit))
+
+const historyMessage = (count : number) => selectedChatRun(c => queryMessage(c.id, count))
 
 const transaction = (f: () => void) => {
     db.transaction(f)()
@@ -216,7 +216,7 @@ export {
     addMessage, contextMessages, deleteChatMessage, deleteChatConfig,
     modifyChatName, modifyContextLimit, modifySysPrompt, systemDefaultConfig, modifyModel, changeWithContext,
     selectedChat, selectedChatConfigRun, selectedChatRun, queryChatConfigByChatName,
-    transaction,
+    transaction, historyMessage,
 }
 
 

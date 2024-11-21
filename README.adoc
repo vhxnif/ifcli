@@ -42,6 +42,7 @@ Commands:
   remove                  Remove chat by chat number
   change                  Change to another chat by chat number.
   clear                   Clear current chat message.
+  history                 History Question
   config [options]        Manage Current Chat Config.
   help [command]          display help for command
 ----
