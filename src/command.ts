@@ -1,12 +1,11 @@
-import { Command } from '@commander-js/extra-typings'
-import { trans } from './ai/action/trans-action'
-import { improve } from './ai/action/improve-writing'
-import { suggest } from './ai/action/cli-command-suggestion';
-import { blue, error, output, println } from './util/common-utils';
+import { Command } from '@commander-js/extra-typings';
 import type { ChalkInstance } from 'chalk';
+import { suggest } from './ai/action/cli-command-suggestion';
+import { improve } from './ai/action/improve-writing';
+import { trans } from './ai/action/trans-action';
+import { blue, error, output } from './util/common-utils';
 
 const program = new Command();
-
 
 program
   .name('tools')

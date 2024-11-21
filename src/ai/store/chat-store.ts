@@ -173,6 +173,9 @@ const selectedChatConfigRun = <T>(f: (ct: Chat, cf: ChatConfig) => T): T => {
 const queryChatConfigById = (id: string): ChatConfig | null => {
     return db.query(`SELECT ${chatConfigSelectColumn} FROM chat_config WHERE chat_id = ?`).as(ChatConfig).get(id)
 }
+const queryChatConfigByChatName = (chatName: string): ChatConfig | null => {
+    return db.query(`SELECT ${chatConfigSelectColumn} FROM chat_config WHERE chat_id = (SELECT id FROM chat WHERE name = ? Limit 1)`).as(ChatConfig).get(chatName)
+}
 
 const deleteChatConfig = (chatId: string): void => {
     db.prepare(`DELETE FROM chat_config WHERE chat_id = ?`).run(chatId)
@@ -212,7 +215,8 @@ export {
     addChat, deleteChat, chats, getChat, selectChat,
     addMessage, contextMessages, deleteChatMessage, deleteChatConfig,
     modifyChatName, modifyContextLimit, modifySysPrompt, systemDefaultConfig, modifyModel, changeWithContext,
-    selectedChat, selectedChatConfigRun, selectedChatRun,
+    selectedChat, selectedChatConfigRun, selectedChatRun, queryChatConfigByChatName,
     transaction,
 }
+
 

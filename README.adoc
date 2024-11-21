@@ -1,0 +1,69 @@
+= ifcli
+
+== To install dependencies:
+
+[source, bash]
+----
+# install bun
+npm install -g bun
+# install dependencies
+bun install
+----
+
+== Config:
+
+[source, bash]
+----
+export OPENAI_API_KEY=<your_deepseek_key>
+export OPENAI_BASE_URL=https://api.deepseek.com
+export OPENAI_MODEL=deepseek-chat
+export CODER_MODEL=deepseek-coder
+----
+
+== To run:
+
+=== chat 
+[source, bash]
+----
+$ bun run src/chat-command.ts
+Usage: chat [options] [command]
+
+Ask AI.
+
+Options:
+  -V, --version           output the version number
+  -h, --help              display help for command
+
+Commands:
+  init
+  new [options] <string>  New Chat
+  ask <string>            Talk with Agent.
+  list                    List all chats.
+  remove                  Remove chat by chat number
+  change                  Change to another chat by chat number.
+  clear                   Clear current chat message.
+  config [options]        Manage Current Chat Config.
+  help [command]          display help for command
+----
+
+=== tool
+
+[source, bash]
+----
+$ bun run src/command.ts
+Usage: tools [options] [command]
+
+CLI for various AI tools.
+
+Options:
+  -V, --version             output the version number
+  -h, --help                display help for command
+
+Commands:
+  trans [options] <string>  Translation Master
+  improve <string>          Writing Expert
+  suggest <string>          suggestion cli command
+  help [command]            display help for command
+----
+
+This project was created using `bun init` in bun v1.1.27. https://bun.sh[Bun] is a fast all-in-one JavaScript runtime.

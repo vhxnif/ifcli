@@ -8,8 +8,8 @@ const client = new OpenAi({
     apiKey: getEnv('OPENAI_API_KEY'),
 })
 
-const commonModel = getEnv('OPENAI_MODEL')!!
-const coderModel = getEnv('CODER_MODEL')!!
+const commonModel = getEnv('OPENAI_MODEL')
+const coderModel = getEnv('CODER_MODEL')
 
 const system = (prompt: string): ChatCompletionMessageParam => {
     return {
@@ -47,7 +47,7 @@ const call = async (
         messages: messages,
         model: model,
     })
-        .then(it => fun(it.choices[0]?.message?.content!!))
+        .then(it => fun(it.choices[0]?.message?.content ?? ''))
         .catch(err => console.error(err))
 }
 

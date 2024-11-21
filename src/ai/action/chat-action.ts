@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
     addChat,
     addMessage,
+    changeWithContext,
     Chat,
     chats,
     contextMessages,
@@ -11,13 +13,15 @@ import {
     modifyContextLimit,
     modifyModel,
     modifySysPrompt,
-    changeWithContext,
+    queryChatConfigByChatName,
     selectChat,
     selectedChatConfigRun,
     selectedChatRun,
     systemDefaultConfig,
     transaction
 } from '../store/chat-store'
+
+import { select, Separator } from '@inquirer/prompts'
 
 import { coderModel, commonModel, roleParam, stream, system, user } from '../open-ai-client'
 import { initTable } from '../store/table-def'
@@ -104,7 +108,7 @@ const _sortedChats = async (): Promise<Chat[]> => {
         cts.find(it => it.select),
         cts.filter(it => !it.select).sort((a, b) => Number(b.actionTime) - Number(a.actionTime))
     ])
-    return [st!!, ...oths]
+    return [st!, ...oths]
 }
 
 const _printChat = (chats: Chat[]): void => {
@@ -127,10 +131,17 @@ const init = (): void => {
     _addChat(defaultChatName)
 }
 
-const newChat = async (name: string, useDefault: boolean): Promise<void> => {
-    _changeOrCreateChat(name, () => {
-        useDefault ? _addChat(name) : _addChat(name, '')
-    })
+const newChat = async (name: string, useDefault: boolean, copyChat: string | undefined): Promise<void> => {
+    const calPrompt = () => {
+        if (useDefault) {
+            return defaultSysPrompt
+        }
+        if (copyChat) {
+            return queryChatConfigByChatName(copyChat)?.sysPrompt ?? ''
+        }
+        return ''
+    }
+    _changeOrCreateChat(name, () => _addChat(name, calPrompt()))
     await chatList()
 }
 
@@ -154,19 +165,11 @@ const chatList = async (): Promise<void> => {
 }
 
 const changeChat = async (): Promise<void> => {
-    const cts = await _sortedChats()
-    _printChat(cts)
-    await _readLine(notice('Enter the chat No to change: '), async (no) => {
-        const c = cts.find((_, idx) => idx === toNumber(no))
-        if (!c) {
-            println(error('Chat corresponding to the given number not found.'))
-            return
-        }
-        if (!c.select) {
-            selectChat(c.name)
-        }
-        print(`${pink('current chat is ')}${keyword(bold(c.name))}`)
-    })
+    selectChatRun(
+        'Select Chat:',
+        await _sortedChats(),
+        selectChat
+    )
 }
 
 const currConfig = (): void => {
@@ -212,28 +215,33 @@ const removeChat = async (): Promise<void> => {
         println(error('A chat must be kept.'))
         return
     }
-    _printChat(cts)
-    println()
-    await _readLine(notice('Enter the chat Number to delete: '), async (no) => {
-        const c = cts.find((_, idx) => idx === toNumber(no))
-        if (!c) {
-            println(error('Chat corresponding to the given number not found.'))
-            return
+    selectChatRun(
+        'Delete Chat:',
+        cts,
+        answer => {
+            const c = cts.find(it => it.name === answer)!
+            transaction(() => {
+                deleteChatMessage(c.id)
+                deleteChat(c.name)
+                deleteChatConfig(c.id)
+            })
         }
-        transaction(() => {
-            deleteChatMessage(c.id)
-            deleteChat(c.name)
-            deleteChatConfig(c.id)
-        })
-        println(pink(`Chat ${c.name} removed.`))
-    })
+    )
 }
 
 const cleanMessage = (): void => {
-    selectedChatRun(c => {
-        deleteChatMessage(c.id)
-    })
+    selectedChatRun(c => deleteChatMessage(c.id))
 }
 
-export { ask, changeChat, chatList, cleanMessage, currConfig, init, models, newChat, removeChat, updateContextSize, updateModel, updateSysPrompt, changeWithContext }
+const selectChatRun = async (message: string, chats: Chat[], f: (str: string) => void) => {
+    const answer = await select({
+        message,
+        choices: chats.map(it => ({ name: it.name, value: it.name, })),
+    })
+    f(answer)
+}
+
+
+export { ask, changeChat, changeWithContext, chatList, cleanMessage, currConfig, init, models, newChat, removeChat, updateContextSize, updateModel, updateSysPrompt }
+
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 
 import moment from "moment"
 import chalk, { type ChalkInstance } from 'chalk';
@@ -40,7 +41,7 @@ const italic = chalk.italic
 
 const print = (str: string) => process.stdout.write(str)
 const println = console.log
-const getEnv = (key: string): string | undefined => process.env[`${key}`]
+const getEnv = (key: string): string => process.env[`${key}`]!
 const unixnow = (): number => moment().unix()
 const containsChinese = (str: string) : boolean => {
     return /[\u4e00-\u9fa5]/.test(str);
