@@ -217,7 +217,7 @@ const removeChat = async (): Promise<void> => {
     }
     selectChatRun(
         'Delete Chat:',
-        cts,
+        cts.filter(it => !it.select),
         answer => {
             const c = cts.find(it => it.name === answer)!
             transaction(() => {

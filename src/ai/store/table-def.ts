@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { db, tables } from '../sqlite-client'
 
 const chat = `
