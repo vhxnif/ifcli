@@ -36,7 +36,7 @@ export class OpenAiClient implements ILLMClient {
             model: model,
             messages: messages,
             stream: true,
-        });
+        })
         for await (const part of stream) {
             f(part.choices[0]?.delta?.content || '')
         }

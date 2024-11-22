@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Database } from "bun:sqlite";
-import { isEmpty } from "lodash";
-import { nanoid } from "nanoid";
-import { unixnow } from "../util/common-utils";
-import type { IConfig } from "../types/config-types";
-import { Chat, ChatConfig, ChatMessage, type IChatStore, type MessageContent } from "../types/store-types";
-import { table_def } from "./table-def";
+import { Database } from "bun:sqlite"
+import { isEmpty } from "lodash"
+import { nanoid } from "nanoid"
+import { unixnow } from "../util/common-utils"
+import type { IConfig } from "../types/config-types"
+import { Chat, ChatConfig, ChatMessage, type IChatStore, type MessageContent } from "../types/store-types"
+import { table_def } from "./table-def"
 
 class SqliteTable {
     name!: string

@@ -1,15 +1,13 @@
 import { Command } from '@commander-js/extra-typings'
-import { blue, error, output } from './util/common-utils';
-import { toolsAction } from './app-context';
-import type { ChalkInstance } from 'chalk';
+import { toolsAction } from './app-context'
+import { error, textColor } from './util/common-utils'
 
-const program = new Command();
-
+const program = new Command()
 
 program
   .name('tools')
   .description('CLI for various AI tools.')
-  .version('0.1.0');
+  .version('0.1.0')
 
 program.command('trans')
   .description('Translation Master')
@@ -27,13 +25,8 @@ program.command('suggest')
 .argument('<string>')
 .action(async (content) => await toolsAction.suggest(content.trim(), []))
 
-
-const wt = (str: string, color: ChalkInstance) => {
-    output(str, ['<lang>'], color)
-}
-
 program.configureOutput({
-    writeOut: str => wt(str, blue),
-    writeErr: str => wt(str, error)
+    writeOut: str => textColor(str),
+    writeErr: str => error(str)
 })
-program.parseAsync();
+program.parseAsync()

@@ -1,10 +1,11 @@
-import { nanoid } from "nanoid";
-import { bold, error, green, mauve, pink, print, println, selectRun, yellow } from '../util/common-utils';
-import { CHAT_DEFAULT_SYSTEM } from "../config/prompt";
-import type { IChatAction } from "../types/action-types";
-import type { ILLMClient } from "../types/llm-types";
-import type { IChatStore, ChatMessage, Chat } from "../types/store-types";
-import { isEmpty } from "lodash";
+import { nanoid } from "nanoid"
+import { error, print, println, selectRun } from '../util/common-utils'
+import { CHAT_DEFAULT_SYSTEM } from "../config/prompt"
+import type { IChatAction } from "../types/action-types"
+import type { ILLMClient } from "../types/llm-types"
+import type { IChatStore, ChatMessage, Chat } from "../types/store-types"
+import { isEmpty } from "lodash"
+import { color, style } from "../util/color-utils"
 
 export class ChatAction implements IChatAction {
 
@@ -15,10 +16,9 @@ export class ChatAction implements IChatAction {
         this.client = client
         this.store = store
     }
-    private number = pink
-    private keyword = yellow
-    private notice = green
-    private text = mauve
+    private number = color.pink
+    private keyword = color.yellow
+    private text = color.mauve
 
     private defaultChatName = 'Default'
     init = () => {
@@ -41,7 +41,7 @@ export class ChatAction implements IChatAction {
     removeChat = () => {
         const cts = this.store.chats()
         if (cts.length == 1) {
-            println(error('A chat must be keept.'))
+            error('A chat must be keept.')
             return
         }
         this.selectChatRun(
@@ -75,7 +75,7 @@ export class ChatAction implements IChatAction {
     printChats = () => {
         this.sortedChats().then(chats =>
             chats.forEach((it, idx) => {
-                println(`[${idx === 0 ? green('*') : this.number(idx)}] ${it.select ? this.keyword(it.name) : this.text(it.name)}`)
+                println(`[${idx === 0 ? color.green('*') : this.number(idx)}] ${it.select ? this.keyword(it.name) : this.text(it.name)}`)
             })
         )
     }
@@ -84,12 +84,12 @@ export class ChatAction implements IChatAction {
 
     printCurrentConfig = () => {
         this.store.contextRun((cf) => {
-            const display = (key: string, vaule: string) => { return `${yellow(bold(key))} ${green(vaule)}` }
+            const display = (key: string, vaule: string) => { return `${color.yellow(style.bold(key))} ${color.green(vaule)}` }
             [
                 display('With Context:', cf.withContext ? 'true' : 'false'),
                 display('Context Size:', cf.contextLimit.toString()),
                 display('Current Model:', cf.model),
-                `${yellow(bold('System Prompt:'))}`,
+                `${color.yellow(style.bold('System Prompt:'))}`,
                 `${this.text(cf.sysPrompt)}`,
             ].forEach(it => println(it))
         })
@@ -121,7 +121,7 @@ export class ChatAction implements IChatAction {
 
     modifyModel = () => selectRun(
         'Select Model:',
-        [this.client.chatModel(), this.client.coderModel()].map(it => ({ name: it, value: it })),
+        this.client.models().map(it => ({ name: it, value: it })),
         answer => this.store.modifyModel(answer)
     )
 

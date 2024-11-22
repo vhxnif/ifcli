@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Command } from '@commander-js/extra-typings';
-import type { ChalkInstance } from 'chalk';
-import { chatAction } from './app-context';
-import { blue, error, output, println } from './util/common-utils';
+import { Command } from '@commander-js/extra-typings'
+import { chatAction } from './app-context'
+import { error, println, textColor } from './util/common-utils'
 
-const program = new Command();
+const program = new Command()
 
 program
     .name('chat')
     .description('Ask AI.')
-    .version('0.1.0');
+    .version('0.1.0')
 
 program.command('init')
     .action(() => chatAction.init())
@@ -73,12 +72,9 @@ program.command('clear')
     .description('Clear current chat message.')
     .action(() => chatAction.clearChatMessage())
 
-const wt = (str: string, color: ChalkInstance) => {
-    output(str, ['<sysPrompt>', '<contextSize>', '<model>'], color)
-}
-
 program.configureOutput({
-    writeOut: str => wt(str, blue),
-    writeErr: str => wt(str, error)
+    writeOut: str => textColor(str),
+    writeErr: str => error(str)
 })
-program.parseAsync();
+
+program.parseAsync()

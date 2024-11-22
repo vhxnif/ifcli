@@ -1,9 +1,10 @@
-import { input } from "@inquirer/prompts";
-import { TOOLS_IMPROVE_WRITING_SYSTEM, TOOLS_SUGGEST_SYSTEM } from "../config/prompt";
-import type { IToolsAction } from "../types/action-types";
-import type { ILLMClient } from "../types/llm-types";
-import { $ } from "bun";
-import { print, error, println, sourceText, text, containsChinese } from "../util/common-utils";
+import { input } from "@inquirer/prompts"
+import { $ } from "bun"
+import { TOOLS_IMPROVE_WRITING_SYSTEM, TOOLS_SUGGEST_SYSTEM } from "../config/prompt"
+import type { IToolsAction } from "../types/action-types"
+import type { ILLMClient } from "../types/llm-types"
+import { containsChinese, print, println, error } from "../util/common-utils"
+import { display } from "../util/color-utils"
 
 export class ToolsAction implements IToolsAction {
 
@@ -20,17 +21,17 @@ export class ToolsAction implements IToolsAction {
         排除以下命令：
         ${excluded}
         `
-        );
+        )
         await this.client.call(
             [this.client.system(TOOLS_SUGGEST_SYSTEM), userMessage],
             this.client.coderModel(),
             async c => {
-                const answer = await input({ message: c });
+                const answer = await input({ message: c })
                 if (answer === 'next') {
                     await this.suggest(content, [...excluded, c])
                     return
                 }
-                const regex = /<([^>]+)>/g;
+                const regex = /<([^>]+)>/g
                 const args = answer.split(' ')
                 let idx = 0
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -47,11 +48,11 @@ export class ToolsAction implements IToolsAction {
     }
 
     improve = async (content: string) => {
-        println(sourceText(content))
+        println(display.note(content))
         await this.client.stream(
             [this.client.system(TOOLS_IMPROVE_WRITING_SYSTEM), this.client.user(content)],
             this.client.chatModel(),
-            c => print(text(c))
+            c => print(display.note(c))
         )
     }
 
@@ -67,7 +68,7 @@ export class ToolsAction implements IToolsAction {
         await this.client.stream(
             [this.client.system(systemPrompt), this.client.user(userPrompt(content, guessTargetLang(content, lang)))],
             this.client.chatModel(),
-            c => print(text(c))
+            c => print(display.note(c))
         )
     }
 
