@@ -1,11 +1,10 @@
-import { Command } from '@commander-js/extra-typings';
-import type { ChalkInstance } from 'chalk';
-import { suggest } from './ai/action/cli-command-suggestion';
-import { improve } from './ai/action/improve-writing';
-import { trans } from './ai/action/trans-action';
+import { Command } from '@commander-js/extra-typings'
 import { blue, error, output } from './util/common-utils';
+import { toolsAction } from './app-context';
+import type { ChalkInstance } from 'chalk';
 
 const program = new Command();
+
 
 program
   .name('tools')
@@ -16,17 +15,19 @@ program.command('trans')
   .description('Translation Master')
   .argument('<string>')
   .option('-l, --language <lang>', 'target language', 'en')
-  .action(async (content, option) => await trans(content.trim(), option.language))
+  .action(async (content, option) => await toolsAction.trans(content.trim(), option.language))
 
 program.command('improve')
   .description('Writing Expert')
   .argument('<string>')
-  .action(async (content) => await improve(content.trim()))
+  .action(async (content) => await toolsAction.improve(content.trim()))
 
 program.command('suggest')
 .description('suggestion cli command')
 .argument('<string>')
-.action(async (content) => await suggest(content.trim()))
+.action(async (content) => await toolsAction.suggest(content.trim(), []))
+
+
 const wt = (str: string, color: ChalkInstance) => {
     output(str, ['<lang>'], color)
 }

@@ -19,7 +19,6 @@ const sky = hex('#89DCEB')
 const sapphire = hex('#74C7EC')
 const blue = hex('#89B4FA')
 const lavender = hex('#B4BEFE')
-const text = hex('#CDD6F4')
 const subtext1 = hex('#BAC2DE')
 const subtext0 = hex('#A6ADC8')
 const overlay2 = hex('#9399B2')
@@ -35,6 +34,7 @@ const crust = hex('#11111B')
 
 const error = maroon
 const sourceText = peach
+const text = blue
 
 const bold = chalk.bold
 const underline = chalk.underline
@@ -60,7 +60,7 @@ const output = (str: string, opt: string[] = [], text: ChalkInstance) : void => 
     println(text(rStr))
 }
 
-const selectRun = async (message: string, choices: {name: string; value: string}[], f: (str: string) => void) => f(await select({message, choices}))
+const selectRun = async (message: string, choices: {name: string, value: string}[], f: (str: string) => void) => f(await select({ message, choices }))
 
 export {
     getEnv,
