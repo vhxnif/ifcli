@@ -1,7 +1,6 @@
 = ifcli
 
-== To install dependencies:
-
+== Install Dependencies
 [source, bash]
 ----
 # install bun
@@ -10,8 +9,13 @@ npm install -g bun
 bun install
 ----
 
-== Config:
+== From Source Code
+[source, bash]
+----
+bun run build-chat && bun run build-tools && bun link
+----
 
+== Config
 [source, bash]
 ----
 export API_KEY=<your_deepseek_key>
@@ -24,8 +28,7 @@ Default: +
 * CODER_MODEL=deepseek-coder
 
 
-== To run:
-
+== Command
 === chat 
 [source, bash]
 ----
