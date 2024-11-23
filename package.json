@@ -1,7 +1,6 @@
 {
   "name": "ifcli",
   "version": "v0.1.0",
-  "module": "index.ts",
   "description": "ai chat cli & some tools command",
   "keywords": ["deepseek", "ai", "bun", "chat cli"],
   "license": "MIT",
