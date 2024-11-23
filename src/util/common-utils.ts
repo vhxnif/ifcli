@@ -1,5 +1,5 @@
 import { select } from "@inquirer/prompts"
-import { editor } from '@inquirer/prompts'
+import { input } from '@inquirer/prompts'
 import moment from "moment"
 import { display } from "./color-utils"
 
@@ -15,8 +15,7 @@ const textColor = (text: string): void => println(
         .replace(/(\[[^\]]+\])/g, (match) => important(match)) // Apply pink color to []
 )
 const selectRun = async (message: string, choices: { name: string, value: string }[], f: (str: string) => void) => f(await select({ message, choices }))
-const editRun = async (message: string, f: (str: string) => void) => f(await editor({ message }))
-
+const inputRun = async (message: string, f: (str: string) => void) => f(await input({ message }))
 
 export {
     unixnow,
@@ -25,7 +24,7 @@ export {
     println,
     error,
     selectRun,
-    editRun,
+    inputRun,
     textColor,
 }
 

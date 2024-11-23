@@ -14,6 +14,8 @@ export interface IChatAction {
     modifyModel: () => void
     modifySystemPrompt: (prompt: string) => void
     modifyWithContext: () => void
+    publishPrompt: () => void
+    selectPrompt: (name: string) => void
 }
 
 

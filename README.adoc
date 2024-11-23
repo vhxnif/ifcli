@@ -29,44 +29,43 @@ Default: +
 === chat 
 [source, bash]
 ----
-$ bun run src/chat-command.ts
 Usage: chat [options] [command]
 
-Ask AI.
+ask AI
 
 Options:
-  -V, --version           output the version number
-  -h, --help              display help for command
+  -V, --version     output the version number
+  -h, --help        display help for command
 
 Commands:
   init
-  new [options] <string>  New Chat
-  ask <string>            Talk with Agent.
-  list                    List all chats.
-  remove                  Remove chat by chat number
-  change                  Change to another chat by chat number.
-  clear                   Clear current chat message.
-  history                 History Question
-  config [options]        Manage Current Chat Config.
-  help [command]          display help for command
+  new <string>      new chat
+  ask <string>      talk with agent
+  list              list all chats
+  history           history questions
+  remove            remove chat
+  change            change to another chat
+  prompt [options]  prompt manager
+  config [options]  manage current chat configuration.
+  clear             clear the current chat message
+  help [command]    display help for command
 ----
 
 === tool
 
 [source, bash]
 ----
-$ bun run src/command.ts
 Usage: tools [options] [command]
 
-CLI for various AI tools.
+CLI for various AI tools
 
 Options:
   -V, --version             output the version number
   -h, --help                display help for command
 
 Commands:
-  trans [options] <string>  Translation Master
-  improve <string>          Writing Expert
+  trans [options] <string>  translation master
+  improve <string>          writing expert
   suggest <string>          suggestion cli command
   help [command]            display help for command
 ----

@@ -1,10 +1,9 @@
-import { input } from "@inquirer/prompts"
 import { $ } from "bun"
 import { TOOLS_IMPROVE_WRITING_SYSTEM, TOOLS_SUGGEST_SYSTEM } from "../config/prompt"
 import type { IToolsAction } from "../types/action-types"
 import type { ILLMClient } from "../types/llm-types"
-import { containsChinese, print, println, error } from "../util/common-utils"
 import { display } from "../util/color-utils"
+import { containsChinese, error, inputRun, print, println } from "../util/common-utils"
 
 export class ToolsAction implements IToolsAction {
 
@@ -26,23 +25,24 @@ export class ToolsAction implements IToolsAction {
             [this.client.system(TOOLS_SUGGEST_SYSTEM), userMessage],
             this.client.coderModel(),
             async c => {
-                const answer = await input({ message: c })
-                if (answer === 'next') {
-                    await this.suggest(content, [...excluded, c])
-                    return
-                }
-                const regex = /<([^>]+)>/g
-                const args = answer.split(' ')
-                let idx = 0
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const command = c.replace(regex, function (match, p1) {
-                    return args[idx++]
+                inputRun(c, async answer => {
+                    if (answer === 'next') {
+                        await this.suggest(content, [...excluded, c])
+                        return
+                    }
+                    const regex = /<([^>]+)>/g
+                    const args = answer.split(' ')
+                    let idx = 0
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const command = c.replace(regex, function (match, p1) {
+                        return args[idx++]
+                    })
+                    try {
+                        await $`${{ raw: command }}`
+                    } catch (err) {
+                        error(err)
+                    }
                 })
-                try {
-                    await $`${{ raw: command }}`
-                } catch (err) {
-                    error(err)
-                }
             }
         )
     }

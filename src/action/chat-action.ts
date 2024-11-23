@@ -1,3 +1,4 @@
+import { input } from "@inquirer/prompts"
 import { isEmpty } from "lodash"
 import { nanoid } from "nanoid"
 import { table } from "table"
@@ -18,7 +19,7 @@ export class ChatAction implements IChatAction {
     constructor(client: ILLMClient, store: IChatStore, config: IConfig) {
         this.client = client
         this.store = store
-        this.config = config 
+        this.config = config
     }
     private text = color.mauve
 
@@ -88,7 +89,7 @@ export class ChatAction implements IChatAction {
         this.store.contextRun((cf) => {
             println(table(
                 [
-                    [display.caution('WithContext:'), display.important(cf.withContext? 'true' : 'false')],
+                    [display.caution('WithContext:'), display.important(cf.withContext ? 'true' : 'false')],
                     [display.caution('ContextSize:'), display.warning(cf.contextLimit)],
                     [display.caution('CurrentModle:'), display.tip(cf.model)],
                     [display.note(cf.sysPrompt), '']
@@ -104,7 +105,7 @@ export class ChatAction implements IChatAction {
                         { alignment: 'right' },
                     ],
                     spanningCells: [
-                        {col: 0, row: 3, colSpan: 2, alignment: 'left'},
+                        { col: 0, row: 3, colSpan: 2, alignment: 'left' },
                     ]
                 }
             ))
@@ -143,9 +144,48 @@ export class ChatAction implements IChatAction {
 
     modifySystemPrompt = (prompt: string) => {
         this.store.modifySystemPrompt(prompt)
+        this.printChatConfig()
     }
 
     modifyWithContext = () => this.store.modifyWithContext()
+
+    publishPrompt = async () => {
+        this.store.contextRun(async cf => {
+            const prompt = cf.sysPrompt
+            if (!prompt) {
+                error('Current Chat Prompt Missing.')
+                return
+            }
+            this.getPublishPromptInput(prompt)
+        })
+    }
+
+    selectPrompt = (name: string) => {
+        const prompts = this.store.searchPrompt(name)
+        if (isEmpty(prompts)) {
+            error('No Match Prompts.')
+            return
+        }
+        selectRun(
+            'Select Prompt:',
+            prompts.map(it => ({ name: it.name, value: it.content})),
+            v => {
+                this.modifySystemPrompt(v)
+                this.printChatConfig()
+            }
+        )
+    }
+
+    private getPublishPromptInput = async (prompt: string) => {
+        const name = await input({ message: 'Prompt Name : ' })
+        const version = await input({ message: 'Prompt Version: ' })
+        const existsPrompt = this.store.searchPrompt(name, version)
+        if (isEmpty(existsPrompt)) {
+            this.store.publishPrompt(name, version, prompt)
+            return
+        }
+        this.getPublishPromptInput(prompt)
+    }
 
     private selectChatRun = async (message: string, chats: Chat[], f: (str: string) => void) => selectRun(message, chats.map(it => ({ name: it.name, value: it.name, })), f)
 

@@ -2,55 +2,67 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Command } from '@commander-js/extra-typings'
 import { chatAction } from './app-context'
-import { editRun, error, println, textColor } from './util/common-utils'
 
 const program = new Command()
 
 program
     .name('chat')
-    .description('Ask AI.')
+    .description('ask AI')
     .version('0.1.0')
 
 program.command('init')
     .action(() => chatAction.init())
 
 program.command('new')
-    .description('New Chat')
+    .description('new chat')
     .argument('<string>')
     .action((content) => chatAction.newChat(content))
 
 program.command('ask')
-    .description('Talk with Agent.')
+    .description('talk with agent')
     .argument('<string>')
     .action(async (content) => await chatAction.ask(content))
 
 program.command('list')
-    .description('List all chats.')
+    .description('list all chats')
     .action(() => chatAction.printChats())
 
 program.command('history')
-    .description('History Questions.')
+    .description('history questions')
     .action(() => chatAction.printChatHistory())
 
 program.command('remove')
-    .description('Remove chat by chat number')
+    .description('remove chat')
     .action(() => chatAction.removeChat())
 
 program.command('change')
-    .description('Change to another chat by chat number.')
+    .description('change to another chat')
     .action(() => chatAction.changeChat())
 
 program.command('prompt')
     .description('prompt manager')
-    .action(() => {
-
+    .option('-s, --select <name>', 'select a prompt for the current chat')
+    .option('-m, --modify <prompt>', 'modify the current chat\'s prompt')
+    .option('-p, --publish', 'publish the current chat prompt')
+    .action((option) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const optFun: Record<string, (str: any) => void> = {
+            'select': chatAction.selectPrompt,
+            'modify': chatAction.modifySystemPrompt,
+            'publish': chatAction.publishPrompt,
+        }
+        const opt = Object.entries(option).find(([_, v]) => v)
+        if (opt) {
+            const [key, value] = opt
+            optFun[`${key}`]?.(value)
+        }
     })
 
 program.command('config')
-    .description('Manage Current Chat Config.')
-    .option('-c, --context-size <contextSize>', 'update context size.')
-    .option('-m, --model', `change chat model.`)
-    .option('-w, --with-context', 'change with context', false)
+    .description('manage current chat configuration.')
+    .option('-c, --context-size <contextSize>', 'update context size')
+    .option('-m, --model', `change chat model`)
+    .option('-w, --with-context', 'change with-context', false)
     .action(async (option) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const optFun: Record<string, (str: any) => void> = {
@@ -67,12 +79,7 @@ program.command('config')
     })
 
 program.command('clear')
-    .description('Clear current chat message.')
+    .description('clear the current chat message')
     .action(() => chatAction.clearChatMessage())
-
-program.configureOutput({
-    writeOut: str => textColor(str),
-    writeErr: str => error(str)
-})
 
 program.parseAsync()
