@@ -1,23 +1,25 @@
+import { isEmpty } from "lodash"
 import { nanoid } from "nanoid"
-import { error, print, println, selectRun } from '../util/common-utils'
+import { table } from "table"
 import { CHAT_DEFAULT_SYSTEM } from "../config/prompt"
 import type { IChatAction } from "../types/action-types"
+import type { IConfig } from "../types/config-types"
 import type { ILLMClient } from "../types/llm-types"
-import type { IChatStore, ChatMessage, Chat } from "../types/store-types"
-import { isEmpty } from "lodash"
-import { color, style } from "../util/color-utils"
+import type { Chat, ChatMessage, IChatStore } from "../types/store-types"
+import { color, display } from "../util/color-utils"
+import { error, print, println, selectRun } from '../util/common-utils'
 
 export class ChatAction implements IChatAction {
 
     client: ILLMClient
     store: IChatStore
+    config: IConfig
 
-    constructor(client: ILLMClient, store: IChatStore) {
+    constructor(client: ILLMClient, store: IChatStore, config: IConfig) {
         this.client = client
         this.store = store
+        this.config = config 
     }
-    private number = color.pink
-    private keyword = color.yellow
     private text = color.mauve
 
     private defaultChatName = 'Default'
@@ -75,27 +77,41 @@ export class ChatAction implements IChatAction {
     printChats = () => {
         this.sortedChats().then(chats =>
             chats.forEach((it, idx) => {
-                println(`[${idx === 0 ? color.green('*') : this.number(idx)}] ${it.select ? this.keyword(it.name) : this.text(it.name)}`)
+                println(`[${idx === 0 ? color.green('*') : color.pink(idx)}] ${it.select ? color.yellow(it.name) : this.text(it.name)}`)
             })
         )
     }
 
     clearChatMessage = () => this.store.clearMessage()
 
-    printCurrentConfig = () => {
+    printChatConfig = () => {
         this.store.contextRun((cf) => {
-            const display = (key: string, vaule: string) => { return `${color.yellow(style.bold(key))} ${color.green(vaule)}` }
-            [
-                display('With Context:', cf.withContext ? 'true' : 'false'),
-                display('Context Size:', cf.contextLimit.toString()),
-                display('Current Model:', cf.model),
-                `${color.yellow(style.bold('System Prompt:'))}`,
-                `${this.text(cf.sysPrompt)}`,
-            ].forEach(it => println(it))
+            println(table(
+                [
+                    [display.caution('WithContext:'), display.important(cf.withContext? 'true' : 'false')],
+                    [display.caution('ContextSize:'), display.warning(cf.contextLimit)],
+                    [display.caution('CurrentModle:'), display.tip(cf.model)],
+                    [display.note(cf.sysPrompt), '']
+                ],
+                {
+                    columnDefault: {
+                        width: Math.floor(this.config.terminalColumns / 2) - 4
+                    },
+                    columns: [
+                        { alignment: 'center' },
+                        { alignment: 'center' },
+                        { alignment: 'center' },
+                        { alignment: 'right' },
+                    ],
+                    spanningCells: [
+                        {col: 0, row: 3, colSpan: 2, alignment: 'left'},
+                    ]
+                }
+            ))
         })
     }
 
-    printHistory = () => {
+    printChatHistory = () => {
         const msg = this.store.historyMessage(10).reduce((acc: Record<string, ChatMessage[]>, item) => {
             if (!acc[item.pairKey]) {
                 acc[item.pairKey] = []
@@ -104,7 +120,7 @@ export class ChatAction implements IChatAction {
             return acc
         }, {})
         const choices = Object.keys(msg).flatMap(key => msg[key].filter(it => it.role === 'user').map(it => ({ name: it.content, value: key })))
-        if(isEmpty(choices)) {
+        if (isEmpty(choices)) {
             println(error(`History Questions is Empty.`))
             return
         }

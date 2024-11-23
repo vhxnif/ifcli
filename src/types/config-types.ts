@@ -7,5 +7,7 @@ export interface IConfig {
     configPath: () => string | undefined 
     dataPath: string 
     models: string[]
+    terminalColumns: number
+    terminalRows: number
 }
 

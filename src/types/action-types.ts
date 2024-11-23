@@ -8,8 +8,8 @@ export interface IChatAction {
     changeChat: () => void
     printChats: () => void
     clearChatMessage: () => void
-    printCurrentConfig: () => void
-    printHistory: () => void
+    printChatConfig: () => void
+    printChatHistory: () => void
     modifyContextSize: (size: number) => void
     modifyModel: () => void
     modifySystemPrompt: (prompt: string) => void

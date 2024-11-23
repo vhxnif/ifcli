@@ -3,11 +3,11 @@ import { env, platform } from '../util/config-utils'
 import type { IConfig } from '../types/config-types'
 
 export class EnvConfig implements  IConfig {
-    commonModel = env('OPENAI_MODEL')
-    coderModel = env('CODER_MODEL')
-    appName = env('APP_NAME')
-    baseURL = env('OPENAI_BASE_URL')
-    apiKey = env('OPENAI_API_KEY')
+    commonModel = env('CHAT_MODEL') ?? 'deepseek-chat'
+    coderModel = env('CODER_MODEL') ?? 'deepseek-coder'
+    appName = env('APP_NAME') ?? 'ifcli'
+    baseURL = env('BASE_URL') ?? 'https://api.deepseek.com'
+    apiKey = env('API_KEY')!
     configPath = (): string | undefined => {
         if (platform == 'win32') {
             return env('APPDATA')
@@ -19,4 +19,6 @@ export class EnvConfig implements  IConfig {
     }
     dataPath = `${this.configPath()}${path.sep}${this.appName}.sqlite`
     models = [this.coderModel, this.commonModel]
+    terminalColumns = process.stdout.columns
+    terminalRows = process.stdout.rows
 }

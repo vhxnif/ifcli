@@ -4,7 +4,7 @@ import { isEmpty } from "lodash"
 import { nanoid } from "nanoid"
 import { unixnow } from "../util/common-utils"
 import type { IConfig } from "../types/config-types"
-import { Chat, ChatConfig, ChatMessage, type IChatStore, type MessageContent } from "../types/store-types"
+import { Chat, ChatConfig, ChatMessage, ChatPrompt, type IChatStore, type MessageContent } from "../types/store-types"
 import { table_def } from "./table-def"
 
 class SqliteTable {
@@ -37,6 +37,7 @@ export class ChatStore implements IChatStore {
     private chatColumn = 'id, name, "select", action_time as actionTime, select_time as selectTime'
     private chatMessageColumn = 'id, chat_id as chatId, "role", content, pair_key as pairKey, action_time as actionTime'
     private chatConfigColumn = 'id, chat_id as chatId , sys_prompt as sysPrompt, with_context as withContext, context_limit as contextLimit, model, update_time as updateTime'
+    private chatPromptColumn = 'name, version, role, content, modify_time as modifyTime'
 
     chats = () => this.db.query(`SELECT ${this.chatColumn} FROM chat`).as(Chat).all()
 
@@ -101,6 +102,25 @@ export class ChatStore implements IChatStore {
     modifyModel = (model: string) => this.currentChatConfigRun((_, cf) => this.db.prepare(`UPDATE chat_config SET model = ?, update_time = ? where id = ?`).run(model, unixnow(), cf.id))
 
     modifyWithContext = () => this.currentChatConfigRun((_, cf) => this.db.prepare(`UPDATE chat_config SET with_context = ?, update_time = ? where id = ?`).run(!cf.withContext, unixnow(), cf.id))
+
+    publishPrompt = (name: string, version: string, content: string) => {
+        const prompt = this.db.query(`SELECT ${this.chatPromptColumn} FROM chat_prompt WHERE name = ?`).as(ChatPrompt).get(name, version)
+        if (prompt) {
+            this.db.prepare(`UPDATE chat_prompt SET content = ?, modify_time = ${unixnow()} WHERE name = ? and version = ?`).run(content, name, version)
+            return
+        }
+        this.db.prepare(`INSERT INTO chat_prompt (name, version, role, content, modify_time) VALUES (?, ?, ?, ?, ?)`).run(
+            name, version, 'system', content, unixnow()
+        )
+    }
+
+    searchPrompt = (name: string, version?: string) => {
+        const sql = `SELECT ${this.chatPromptColumn} FROM chat_prompt WHERE name = ?`
+        if (version) {
+            return this.db.query(`${sql} and version = ?`).as(ChatPrompt).all(name, version)
+        }
+        return this.db.query(sql).as(ChatPrompt).all(name)
+    }
 
     private chatNotExistsRun = <T>(name: string, f: () => T): T => {
         const c = this.queryChat(name)

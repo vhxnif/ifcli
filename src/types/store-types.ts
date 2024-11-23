@@ -25,6 +25,14 @@ export class ChatConfig {
     updateTime!: bigint
 }
 
+export class ChatPrompt {
+    name!: string
+    version!: string
+    role!: string
+    content!: string
+    modifyTime!: bigint  
+}
+
 export type MessageContent = {
     role: 'user' | 'assistant'
     content: string,
@@ -52,6 +60,10 @@ export interface IChatStore {
     modifyContextLimit: (contextLimit: number) => void
     modifyModel: (model: string) => void
     modifyWithContext: () => void
+
+    // ---- prompt ---- //
+    publishPrompt: (name: string, version: string, content: string) => void
+    searchPrompt: (name: string, version?: string) => ChatPrompt[]
 
     // ---- other ---- //
     contextRun: (f: (cf:ChatConfig) => void) => void

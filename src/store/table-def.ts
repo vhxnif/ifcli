@@ -1,5 +1,5 @@
 const chat = `
-    CREATE TABLE chat (
+    CREATE TABLE IF NOT EXISTS chat (
         id TEXT,
         name TEXT,
         "select" INTEGER,
@@ -11,7 +11,7 @@ const chat = `
 `
 
 const chat_message = `
-    CREATE TABLE chat_message (
+    CREATE TABLE IF NOT EXISTS chat_message (
         id TEXT,
         chat_id TEXT,
         "role" TEXT,
@@ -23,7 +23,7 @@ const chat_message = `
 `
 
 const chat_config = `
-    CREATE TABLE chat_config (
+    CREATE TABLE IF NOT EXISTS chat_config (
         id TEXT,
         chat_id TEXT,
         sys_prompt TEXT,
@@ -35,11 +35,23 @@ const chat_config = `
     );
 `
 
+const chat_prompt = `
+     CREATE TABLE IF NOT EXISTS chat_prompt (
+        name TEXT,
+        version TEXT,
+        role TEXT DEFAULT 'system',
+        content TEXT,
+        modify_time INTEGER,
+        CONSTRAINT chat_prompt_PK PRIMARY KEY (name, version)
+    );
+`
+
 // table_name: ddl
 const table_def = {
     "chat": chat,
     "chat_message": chat_message,
     "chat_config": chat_config,
+    "chat_prompt": chat_prompt,
 }
 
 export { table_def }

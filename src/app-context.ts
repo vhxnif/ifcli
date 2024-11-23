@@ -14,7 +14,7 @@ const chatStore: IChatStore = new ChatStore(config)
 
 const client: ILLMClient = new OpenAiClient(config)
 
-const chatAction: IChatAction = new ChatAction(client, chatStore)
+const chatAction: IChatAction = new ChatAction(client, chatStore, config)
 
 const toolsAction: IToolsAction = new ToolsAction(client)
 
