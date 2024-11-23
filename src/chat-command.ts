@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Command } from '@commander-js/extra-typings'
 import { chatAction } from './app-context'
