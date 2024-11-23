@@ -59,7 +59,7 @@ program.command('prompt')
     })
 
 program.command('config')
-    .description('manage current chat configuration.')
+    .description('manage current chat configuration')
     .option('-c, --context-size <contextSize>', 'update context size')
     .option('-m, --model', `change chat model`)
     .option('-w, --with-context', 'change with-context', false)
