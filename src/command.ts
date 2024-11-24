@@ -5,7 +5,7 @@ import { toolsAction } from './app-context'
 const program = new Command()
 
 program
-  .name('tools')
+  .name('ifts')
   .description('CLI for various AI tools')
   .version('0.1.0')
 

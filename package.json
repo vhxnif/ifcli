@@ -23,8 +23,8 @@
     "bun": ">=1.1.36"
   },
   "bin": {
-    "tools": "build/command.js",
-    "chat": "build/chat-command.js"
+    "ifts": "build/command.js",
+    "ifct": "build/chat-command.js"
   },
   "scripts": {
     "build-tools": "bun build ./src/command.ts --outdir ./build --target bun --minify",

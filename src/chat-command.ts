@@ -6,8 +6,8 @@ import { optionFunMapping } from './util/common-utils'
 const program = new Command()
 
 program
-    .name('chat')
-    .description('ask AI')
+    .name('ifct')
+    .description('ifcli chat with LLM')
     .version('0.1.0')
 
 program.command('init')
