@@ -1,18 +1,19 @@
 = ifcli
 
-== Install Dependencies
+== Install 
 [source, bash]
 ----
 # install bun
 npm install -g bun
-# install dependencies
-bun install
 ----
 
 == From Source Code
 [source, bash]
 ----
-bun run build-chat && bun run build-tools && bun link
+bun install && 
+bun run build-chat && 
+bun run build-tools && 
+bun link
 ----
 
 == Config

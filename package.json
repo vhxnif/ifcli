@@ -1,18 +1,34 @@
 {
-  "name": "ifcli",
-  "version": "v0.1.0",
+  "name": "@vhxnif/ifcli",
+  "version": "0.1.0",
   "description": "ai chat cli & some tools command",
-  "keywords": ["deepseek", "ai", "bun", "chat cli"],
+  "keywords": [
+    "deepseek",
+    "ai",
+    "bun",
+    "chat cli"
+  ],
   "license": "MIT",
   "type": "module",
-  "homepage": "https://github.com/vhxnif/ifcli#README.adoc",
+  "author": "vhxnif",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vhxnif/ifcli.git"
+  },
+  "files": [
+    "build",
+    "README.adoc"
+  ],
+  "engines": {
+    "bun": ">=1.1.36"
+  },
   "bin": {
-    "tools": "./build/command.js",
-    "chat": "./build/chat-command.js"
+    "tools": "build/command.js",
+    "chat": "build/chat-command.js"
   },
   "scripts": {
-    "build-tools": "bun build ./src/command.ts --outdir ./build --target bun",
-    "build-chat": "bun build ./src/chat-command.ts --outdir ./build --target bun",
+    "build-tools": "bun build ./src/command.ts --outdir ./build --target bun --minify",
+    "build-chat": "bun build ./src/chat-command.ts --outdir ./build --target bun --minify",
     "tools": "bun run ./src/command.ts --",
     "chat": "bun run ./src/chat-command.ts --"
   },
