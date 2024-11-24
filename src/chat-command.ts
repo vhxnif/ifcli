@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Command } from '@commander-js/extra-typings'
 import { chatAction } from './app-context'
+import { optionFunMapping } from './util/common-utils'
 
 const program = new Command()
 
@@ -44,19 +44,11 @@ program.command('prompt')
     .option('-s, --select <name>', 'select a prompt for the current chat')
     .option('-m, --modify <prompt>', 'modify the current chat\'s prompt')
     .option('-p, --publish', 'publish the current chat prompt')
-    .action((option) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const optFun: Record<string, (str: any) => void> = {
-            'select': chatAction.selectPrompt,
-            'modify': chatAction.modifySystemPrompt,
-            'publish': chatAction.publishPrompt,
-        }
-        const opt = Object.entries(option).find(([_, v]) => v)
-        if (opt) {
-            const [key, value] = opt
-            optFun[`${key}`]?.(value)
-        }
-    })
+    .action((option) => optionFunMapping(option, {
+        'select': v => chatAction.selectPrompt(v as string),
+        'modify': v => chatAction.modifySystemPrompt(v as string),
+        'publish': chatAction.publishPrompt,
+    }))
 
 program.command('config')
     .description('manage current chat configuration')
@@ -64,17 +56,11 @@ program.command('config')
     .option('-m, --model', `change chat model`)
     .option('-w, --with-context', 'change with-context', false)
     .action(async (option) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const optFun: Record<string, (str: any) => void> = {
-            'contextSize': chatAction.modifyContextSize,
+        optionFunMapping(option, {
+            'contextSize': v => chatAction.modifyContextSize(v as number),
             'model': chatAction.modifyModel,
             'withContext': chatAction.modifyWithContext,
-        }
-        const opt = Object.entries(option).find(([_, v]) => v)
-        if (opt) {
-            const [key, value] = opt
-            optFun[`${key}`]?.(value)
-        }
+        })
         chatAction.printChatConfig()
     })
 
