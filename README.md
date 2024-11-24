@@ -1,44 +1,40 @@
-= ifcli
+# ifcli
 
-== Install 
-[source, bash]
-----
+## Install 
+```bash
 # install bun
 npm install -g bun
-----
+```
 
-== From NPM
-[source, bash]
-----
+## From NPM
+```bash
 npm install -g @vhxnif/ifcli
-----
+```
 
-== From Source Code
-[source, bash]
-----
+## From Source Code
+```bash
 bun install && 
 bun run build-chat && 
 bun run build-tools && 
 bun link
-----
+```
 
-== Config
-[source, bash]
-----
+## Config
+```bash
 export API_KEY=<your_deepseek_key>
-----
+```
 
-Default: +
+### Default Config
 
 * BASE_URL=https://api.deepseek.com
 * CHAT_MODEL=deepseek-chat
 * CODER_MODEL=deepseek-coder
 
 
-== Command
-=== chat 
-[source, bash]
-----
+## Command
+### chat 
+> **IMPORTANT:** ``ifct init`` must be run first!
+```bash
 Usage: ifct [options] [command]
 
 ifcli chat with LLM
@@ -48,7 +44,7 @@ Options:
   -h, --help        display help for command
 
 Commands:
-  init
+  init              init chat config
   new <string>      new chat
   ask <string>      talk with agent
   list              list all chats
@@ -59,12 +55,10 @@ Commands:
   config [options]  manage current chat configuration
   clear             clear the current chat message
   help [command]    display help for command
-----
+```
 
-=== tool
-
-[source, bash]
-----
+### tool
+```bash
 Usage: ifts [options] [command]
 
 CLI for various AI tools
@@ -78,6 +72,6 @@ Commands:
   improve <string>          writing expert
   suggest <string>          suggestion cli command
   help [command]            display help for command
-----
+```
 
-This project was created using `bun init` in bun v1.1.36. https://bun.sh[Bun] is a fast all-in-one JavaScript runtime.
+This project was created using `bun init` in [bun v1.1.36.](https://bun.sh) is a fast all-in-one JavaScript runtime.

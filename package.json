@@ -1,6 +1,6 @@
 {
   "name": "@vhxnif/ifcli",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "ai chat cli & some tools command",
   "keywords": [
     "deepseek",
@@ -27,8 +27,9 @@
     "ifct": "build/chat-command.js"
   },
   "scripts": {
-    "build-tools": "bun build ./src/command.ts --outdir ./build --target bun --minify",
-    "build-chat": "bun build ./src/chat-command.ts --outdir ./build --target bun --minify",
+    "build:tools": "bun build ./src/command.ts --outdir ./build --target bun --minify",
+    "build:chat": "bun build ./src/chat-command.ts --outdir ./build --target bun --minify",
+    "build:all": "npm run build:tools && npm run build:chat",
     "tools": "bun run ./src/command.ts --",
     "chat": "bun run ./src/chat-command.ts --"
   },

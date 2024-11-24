@@ -18,12 +18,14 @@ const textColor = (text: string): void => println(
 const selectRun = async (message: string, choices: { name: string, value: string }[], f: (str: string) => void) => f(await select({ message, choices }))
 const inputRun = async (message: string, f: (str: string) => void) => f(await input({ message }))
 
-const optionFunMapping = (options: { [x: string]: unknown}, map: Record<string, (str: unknown) => void>) => {
+const optionFunMapping = (options: { [x: string]: unknown}, map: Record<string, (str: unknown) => void>, df?: () => void) => {
     const opt = Object.entries(options).find(([_, v]) => v)
     if (opt) {
         const [key, value] = opt
         map[`${key}`]?.(value)
+        return
     }
+    df?.()
 }
 
 export {

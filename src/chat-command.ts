@@ -11,6 +11,7 @@ program
     .version('0.1.0')
 
 program.command('init')
+    .description('init chat config')
     .action(() => chatAction.init())
 
 program.command('new')
@@ -60,8 +61,7 @@ program.command('config')
             'contextSize': v => chatAction.modifyContextSize(v as number),
             'model': chatAction.modifyModel,
             'withContext': chatAction.modifyWithContext,
-        })
-        chatAction.printChatConfig()
+        }, chatAction.printChatConfig)
     })
 
 program.command('clear')

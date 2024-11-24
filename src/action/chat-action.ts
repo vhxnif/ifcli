@@ -122,7 +122,7 @@ export class ChatAction implements IChatAction {
         }, {})
         const choices = Object.keys(msg).flatMap(key => msg[key].filter(it => it.role === 'user').map(it => ({ name: it.content, value: key })))
         if (isEmpty(choices)) {
-            println(error(`History Questions is Empty.`))
+            error(`History Questions is Empty.`)
             return
         }
         selectRun(
@@ -134,12 +134,16 @@ export class ChatAction implements IChatAction {
 
     modifyContextSize = (size: number) => {
         this.store.modifyContextLimit(size)
+        this.printChatConfig()
     }
 
     modifyModel = () => selectRun(
         'Select Model:',
         this.client.models().map(it => ({ name: it, value: it })),
-        answer => this.store.modifyModel(answer)
+        answer => { 
+            this.store.modifyModel(answer) 
+            this.printChatConfig()
+        }
     )
 
     modifySystemPrompt = (prompt: string) => {
@@ -147,7 +151,10 @@ export class ChatAction implements IChatAction {
         this.printChatConfig()
     }
 
-    modifyWithContext = () => this.store.modifyWithContext()
+    modifyWithContext = () => {
+        this.store.modifyWithContext()
+        this.printChatConfig()
+    }
 
     publishPrompt = async () => {
         this.store.contextRun(async cf => {
@@ -169,10 +176,7 @@ export class ChatAction implements IChatAction {
         selectRun(
             'Select Prompt:',
             prompts.map(it => ({ name: it.name, value: it.content})),
-            v => {
-                this.modifySystemPrompt(v)
-                this.printChatConfig()
-            }
+            v => this.modifySystemPrompt(v)
         )
     }
 
