@@ -22,6 +22,8 @@ export class ChatConfig {
     withContext!: boolean
     contextLimit!: number
     model!: string
+    scenarioName!: string
+    scenario!: number
     updateTime!: bigint
 }
 
@@ -60,6 +62,7 @@ export interface IChatStore {
     modifyContextLimit: (contextLimit: number) => void
     modifyModel: (model: string) => void
     modifyWithContext: () => void
+    modifyScenario: (sc: [string, number]) => void
 
     // ---- prompt ---- //
     publishPrompt: (name: string, version: string, content: string) => void

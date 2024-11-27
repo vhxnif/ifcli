@@ -9,6 +9,7 @@ import type { ILLMClient } from "../types/llm-types"
 import type { Chat, ChatMessage, IChatStore } from "../types/store-types"
 import { color, display } from "../util/color-utils"
 import { error, print, println, selectRun } from '../util/common-utils'
+import { temperature } from "../types/constant"
 
 export class ChatAction implements IChatAction {
 
@@ -60,6 +61,7 @@ export class ChatAction implements IChatAction {
             await this.client.stream(
                 this.messages(content, cf.sysPrompt, cf.withContext),
                 cf.model,
+                cf.scenario,
                 c => {
                     print(this.text(c))
                     arr.push(c)
@@ -92,6 +94,7 @@ export class ChatAction implements IChatAction {
                     [display.caution('WithContext:'), display.important(cf.withContext ? 'true' : 'false')],
                     [display.caution('ContextSize:'), display.warning(cf.contextLimit)],
                     [display.caution('CurrentModle:'), display.tip(cf.model)],
+                    [display.caution('Scenario:'), display.tip(cf.scenarioName)],
                     [display.note(cf.sysPrompt), '']
                 ],
                 {
@@ -102,10 +105,11 @@ export class ChatAction implements IChatAction {
                         { alignment: 'center' },
                         { alignment: 'center' },
                         { alignment: 'center' },
+                        { alignment: 'center' },
                         { alignment: 'right' },
                     ],
                     spanningCells: [
-                        { col: 0, row: 3, colSpan: 2, alignment: 'left' },
+                        { col: 0, row: 4, colSpan: 2, alignment: 'left' },
                     ]
                 }
             ))
@@ -140,8 +144,8 @@ export class ChatAction implements IChatAction {
     modifyModel = () => selectRun(
         'Select Model:',
         this.client.models().map(it => ({ name: it, value: it })),
-        answer => { 
-            this.store.modifyModel(answer) 
+        answer => {
+            this.store.modifyModel(answer)
             this.printChatConfig()
         }
     )
@@ -154,6 +158,17 @@ export class ChatAction implements IChatAction {
     modifyWithContext = () => {
         this.store.modifyWithContext()
         this.printChatConfig()
+    }
+
+    modifyScenario = () => {
+        selectRun(
+            'Select Scenario:',
+            Object.keys(temperature).map(k => ({ name: temperature[k][0], value: k })),
+            answer => {
+                this.store.modifyScenario(temperature[answer])
+                this.printChatConfig()
+            }
+        )
     }
 
     publishPrompt = async () => {
@@ -175,7 +190,7 @@ export class ChatAction implements IChatAction {
         }
         selectRun(
             'Select Prompt:',
-            prompts.map(it => ({ name: it.name, value: it.content})),
+            prompts.map(it => ({ name: it.name, value: it.content })),
             v => this.modifySystemPrompt(v)
         )
     }

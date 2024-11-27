@@ -30,6 +30,8 @@ const chat_config = `
         with_context INTEGER,
         context_limit INTEGER DEFAULT (30),
         model TEXT,
+        scenario_name TEXT,
+        scenario REAL,
         update_time INTEGER,
         CONSTRAINT chat_config_PK PRIMARY KEY (id)
     );

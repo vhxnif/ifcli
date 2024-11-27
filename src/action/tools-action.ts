@@ -1,9 +1,10 @@
 import { $ } from "bun"
 import { TOOLS_IMPROVE_WRITING_SYSTEM, TOOLS_SUGGEST_SYSTEM } from "../config/prompt"
 import type { IToolsAction } from "../types/action-types"
-import type { ILLMClient } from "../types/llm-types"
 import { display } from "../util/color-utils"
 import { containsChinese, error, inputRun, print, println } from "../util/common-utils"
+import { temperature } from "../types/constant"
+import type { ILLMClient } from "../types/llm-types"
 
 export class ToolsAction implements IToolsAction {
 
@@ -24,6 +25,7 @@ export class ToolsAction implements IToolsAction {
         await this.client.call(
             [this.client.system(TOOLS_SUGGEST_SYSTEM), userMessage],
             this.client.coderModel(),
+            temperature.codeOrMath[1],
             async c => {
                 inputRun(c, async answer => {
                     if (answer === 'next') {
@@ -52,6 +54,7 @@ export class ToolsAction implements IToolsAction {
         await this.client.stream(
             [this.client.system(TOOLS_IMPROVE_WRITING_SYSTEM), this.client.user(content)],
             this.client.chatModel(),
+            temperature.writting[1],
             c => print(display.note(c))
         )
     }
@@ -68,6 +71,7 @@ export class ToolsAction implements IToolsAction {
         await this.client.stream(
             [this.client.system(systemPrompt), this.client.user(userPrompt(content, guessTargetLang(content, lang)))],
             this.client.chatModel(),
+            temperature.translate[1],
             c => print(display.note(c))
         )
     }

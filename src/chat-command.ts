@@ -56,11 +56,13 @@ program.command('config')
     .option('-c, --context-size <contextSize>', 'update context size')
     .option('-m, --model', `change chat model`)
     .option('-w, --with-context', 'change with-context', false)
+    .option('-s, --scenario', 'select scenario')
     .action(async (option) => {
         optionFunMapping(option, {
             'contextSize': v => chatAction.modifyContextSize(v as number),
             'model': chatAction.modifyModel,
             'withContext': chatAction.modifyWithContext,
+            'scenario': chatAction.modifyScenario,
         }, chatAction.printChatConfig)
     })
 
