@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
 import { toolsAction } from './app-context'
 

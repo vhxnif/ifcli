@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
 import { chatAction } from './app-context'
 import { optionFunMapping } from './util/common-utils'
