@@ -18,8 +18,4 @@ const chatAction: IChatAction = new ChatAction(client, chatStore, config)
 
 const toolsAction: IToolsAction = new ToolsAction(client)
 
-export {
-    chatAction,
-    toolsAction,
-}
-
+export { chatAction, toolsAction, client }
