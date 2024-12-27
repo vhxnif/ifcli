@@ -33,6 +33,9 @@
     "tools": "bun run ./src/command.ts --",
     "chat": "bun run ./src/chat-command.ts --"
   },
+  "prettier": {
+    "semi": false
+  },
   "devDependencies": {
     "@commander-js/extra-typings": "^12.1.0",
     "@eslint/js": "^9.15.0",
@@ -48,12 +51,14 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^7.1.0",
+    "@modelcontextprotocol/sdk": "^1.0.4",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
     "lodash": "^4.17.21",
     "moment": "^2.30.1",
     "nanoid": "^5.0.7",
-    "openai": "^4.62.1",
+    "openai": "^4.77.0",
+    "ora": "^8.1.1",
     "table": "^6.8.2"
   }
 }
