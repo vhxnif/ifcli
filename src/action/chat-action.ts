@@ -118,7 +118,7 @@ export class ChatAction implements IChatAction {
           ],
           {
             columnDefault: {
-              width: Math.floor(this.config.terminalColumns / 2) - 4,
+              width: Math.floor(this.config.terminalColumns() / 2) - 4,
             },
             columns: [
               { alignment: "center" },
@@ -285,7 +285,7 @@ export class ChatAction implements IChatAction {
 
   private tools = (): MCPClient[] => {
     try {
-      const mcpPath = this.config.mcpConfig()
+      const mcpPath = this.config.mcpConfigPath()
       if (!mcpPath) {
         return []
       }

@@ -21,14 +21,14 @@ bun link
 
 ## Config
 ```bash
-export API_KEY=<your_deepseek_key>
+export OPENAI_API_KEY=<your_deepseek_key>
 ```
 
 ### Default Config
 
-* BASE_URL=https://api.deepseek.com
-* CHAT_MODEL=deepseek-chat
-* CODER_MODEL=deepseek-coder
+* OPENAI_BASE_URL=https://api.deepseek.com
+* OPENAI_CHAT_MODEL=deepseek-chat
+* OPENAI_CODER_MODEL=deepseek-coder
 
 
 ## Command
@@ -72,6 +72,20 @@ Commands:
   improve <string>          writing expert
   suggest <string>          suggestion cli command
   help [command]            display help for command
+```
+
+### mcp tools support 
+
+```json
+[
+  {
+    "type": ["tools"],
+    "name": "weather",
+    "version": "v1",
+    "command": "node",
+    "args": ["D:\\workspace\\other\\weather\\build\\index.js"]
+  }
+]
 ```
 
 This project was created using `bun init` in [bun v1.1.36.](https://bun.sh) is a fast all-in-one JavaScript runtime.

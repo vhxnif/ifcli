@@ -47,7 +47,7 @@ export class AppConfig implements IConfig {
     `${this.configPath()}${path.sep}${this.appName()}.sqlite`
   mcpConfigPath = (): string | null => {
     let mcp: string | null =
-      `${this.platformConfigPath}${path.sep}${this.appName}${path.sep}mcp.json`
+      `${this.platformConfigPath()}${path.sep}${this.appName()}${path.sep}mcp.json`
     try {
       accessSync(mcp, constants.F_OK)
     } catch (err: any) {

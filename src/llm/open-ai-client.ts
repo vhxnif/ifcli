@@ -130,8 +130,4 @@ export class OpenAiClient implements ILLMClient {
     role,
     content,
   })
-
-  private newMethod() {
-    return this
-  }
 }
