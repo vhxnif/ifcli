@@ -16,16 +16,24 @@ progrem
       name: "mcp",
       version: "v1.0.0",
       command: "node",
-      args: ["D:/workspace/other/weather/build/index.js"],
+      args: ["D:/workspace/other/app-version/build/index.js"],
     })
-    const user = client.user(arg)
-    await client.callWithTools(
-      [mcpClient],
-      [user],
-      client.chatModel(),
-      1.0,
-      print,
-    )
+    await mcpClient.connect()
+    const tools = await mcpClient.listTools()
+    tools.tools.forEach((it) => {
+      console.log(it.name)
+      console.log(it.description)
+      console.log(it.inputSchema)
+    })
+
+    // await mcpClient.close()
+    // await client.callWithTools(
+    //   [mcpClient],
+    //   [client.user(arg)],
+    //   client.chatModel(),
+    //   1.0,
+    //   print,
+    // )
   })
 
 progrem.parseAsync()

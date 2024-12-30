@@ -49,15 +49,14 @@ export class OpenAiClient implements ILLMClient {
     temperature: number,
     f: (res: string) => void,
   ) => {
-    const stream = await this.client.chat.completions.create({
-      model: model,
-      messages: messages,
-      temperature,
-      stream: true,
-    })
-    for await (const part of stream) {
-      f(part.choices[0]?.delta?.content || "")
-    }
+    const runner = this.client.beta.chat.completions
+      .stream({
+        model,
+        messages,
+        temperature,
+      })
+      .on("content", f)
+    await runner.finalChatCompletion()
   }
 
   callWithTools = async (
@@ -86,6 +85,7 @@ export class OpenAiClient implements ILLMClient {
           tools,
           messages,
         })
+        // .on("message", (msg) => console.log(msg))
         .on("functionCall", (it) => {
           spinner.text = `call ${it.name}... args: ${it.arguments}`
         })
@@ -119,7 +119,9 @@ export class OpenAiClient implements ILLMClient {
               parameters: {
                 ...t.inputSchema,
               },
-              function: async (args: any) => await mcp.callTool(t.name, args),
+              function: async (args: any) => {
+                await mcp.callTool(t.name, args)
+              },
               parse: JSON.parse,
             },
           }) as RunnableToolFunction<any>,
