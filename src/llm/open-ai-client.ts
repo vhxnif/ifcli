@@ -5,6 +5,7 @@ import type { ILLMClient, LLMMessage, LLMRole } from "../types/llm-types"
 import MCPClient from "../types/mcp-client"
 import type { RunnableToolFunction } from "openai/lib/RunnableFunction"
 import ora from "ora"
+import { log } from "../util/common-utils"
 
 export class OpenAiClient implements ILLMClient {
   client: OpenAi
@@ -85,11 +86,12 @@ export class OpenAiClient implements ILLMClient {
           tools,
           messages,
         })
-        // .on("message", (msg) => console.log(msg))
+        .on("message", (msg) => log(`msg -> ${msg}`))
         .on("functionCall", (it) => {
           spinner.text = `call ${it.name}... args: ${it.arguments}`
         })
-        .on("functionCallResult", () => {
+        .on("functionCallResult", (it) => {
+          log(`call res: ${it}`)
           spinner.text = `part result processing...`
         })
         .on("content", (it) => {
@@ -119,9 +121,7 @@ export class OpenAiClient implements ILLMClient {
               parameters: {
                 ...t.inputSchema,
               },
-              function: async (args: any) => {
-                await mcp.callTool(t.name, args)
-              },
+              function: async (args: any) => await mcp.callTool(t.name, args),
               parse: JSON.parse,
             },
           }) as RunnableToolFunction<any>,

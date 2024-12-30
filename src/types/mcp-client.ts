@@ -49,6 +49,5 @@ export default class MCPClient {
       { name, arguments: { ...args } },
       CallToolResultSchema,
     )
-
   close = async () => await this.client.close()
 }
