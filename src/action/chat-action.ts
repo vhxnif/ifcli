@@ -108,6 +108,10 @@ export class ChatAction implements IChatAction {
         }))
         await checkbox({ message: "Select Tools:", choices }).then(
           async (answer) => {
+            if (isEmpty(answer)) {
+              error(`Tools Not Selected`)
+              return
+            }
             await toolsRun(answer.map((it) => tools[it]))
           },
         )
