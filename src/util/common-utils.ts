@@ -3,8 +3,16 @@ import { select } from "@inquirer/prompts"
 import { input } from "@inquirer/prompts"
 import moment from "moment"
 import { display } from "./color-utils"
+import { table } from "table"
+import type { TableUserConfig } from "table"
 
 const debug = false
+
+const terminal: Record<string, number> = {
+  column: process.stdout.columns,
+  row: process.stdout.rows,
+}
+
 const { tip, important } = display
 const print = (str: string) => process.stdout.write(str)
 const log = (str: string) => {
@@ -43,6 +51,52 @@ const optionFunMapping = (
   }
   df?.()
 }
+const sum = (numbers: number[]) => numbers.reduce((sum, it) => (sum += it), 0)
+const tableDefaultConfig: TableUserConfig = {
+  border: {
+    topBody: `─`,
+    topJoin: `┬`,
+    topLeft: `┌`,
+    topRight: `┐`,
+
+    bottomBody: `─`,
+    bottomJoin: `┴`,
+    bottomLeft: `└`,
+    bottomRight: `┘`,
+
+    bodyLeft: `│`,
+    bodyRight: `│`,
+    bodyJoin: `│`,
+
+    joinBody: `─`,
+    joinLeft: `├`,
+    joinRight: `┤`,
+    joinJoin: `┼`,
+  },
+}
+
+const tableConfig = ({
+  cols,
+  maxColumn = 70,
+}: {
+  cols: number[]
+  maxColumn?: number
+}): TableUserConfig => {
+  const allPart = sum(cols)
+  const curCol = terminal.column - 4 * cols.length
+  const colNum = curCol > maxColumn ? maxColumn : curCol
+  const calWidth = cols.map((it) => Math.floor(colNum * (it / allPart)))
+  return {
+    ...tableDefaultConfig,
+    columns: calWidth.map((it) => ({
+      alignment: "center",
+      width: it,
+    })),
+  }
+}
+
+const printTable = (data: unknown[][], userConfig?: TableUserConfig) =>
+  console.log(table(data, userConfig))
 
 export {
   unixnow,
@@ -55,4 +109,7 @@ export {
   selectRun,
   inputRun,
   textColor,
+  tableConfig,
+  printTable,
+  tableDefaultConfig,
 }

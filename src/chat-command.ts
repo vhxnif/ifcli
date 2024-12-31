@@ -67,6 +67,7 @@ program
   .option("-m, --model", `change chat model`)
   .option("-w, --with-context", "change with-context", false)
   .option("-s, --scenario", "select scenario")
+  .option("-t, --tools", "list useful tools")
   .action(async (option) => {
     optionFunMapping(
       option,
@@ -75,6 +76,7 @@ program
         model: chatAction.modifyModel,
         withContext: chatAction.modifyWithContext,
         scenario: chatAction.modifyScenario,
+        tools: chatAction.usefulTools,
       },
       chatAction.printChatConfig,
     )

@@ -1,17 +1,21 @@
-import { input } from "@inquirer/prompts"
+import { checkbox, input } from "@inquirer/prompts"
 import { isEmpty } from "lodash"
 import { nanoid } from "nanoid"
-import { table } from "table"
 import { CHAT_DEFAULT_SYSTEM } from "../config/prompt"
 import type { IChatAction } from "../types/action-types"
 import type { IConfig } from "../types/config-types"
-import type { ILLMClient } from "../types/llm-types"
+import type { ILLMClient, LLMMessage } from "../types/llm-types"
 import type { Chat, ChatMessage, IChatStore } from "../types/store-types"
 import { color, display } from "../util/color-utils"
-import { error, log, print, println, selectRun } from "../util/common-utils"
+import {
+  error,
+  print,
+  println,
+  printTable,
+  selectRun,
+  tableConfig,
+} from "../util/common-utils"
 import { temperature } from "../types/constant"
-import { accessSync, constants, readFileSync } from "node:fs"
-import type { MCPConfig } from "../types/mcp-client"
 import MCPClient from "../types/mcp-client"
 
 export class ChatAction implements IChatAction {
@@ -59,27 +63,57 @@ export class ChatAction implements IChatAction {
 
   ask = async (content: string, withTools: boolean = false) => {
     this.store.contextRun(async (cf) => {
-      const arr: string[] = []
-      const f = (c: string) => {
-        print(this.text(c))
-        arr.push(c)
+      type FType = {
+        f: (c: string) => void
+        m: LLMMessage[]
       }
-      const messages = this.messages(content, cf.sysPrompt, cf.withContext)
-      const dfRun = async () => {
-        await this.client.stream(messages, cf.model, cf.scenario, f)
-        this.storeMessage(content, arr.join(""))
+      const callAndStore = async () => {
+        const arr: string[] = []
+        const f = (c: string) => {
+          print(this.text(c))
+          arr.push(c)
+        }
+        const messages = this.messages(content, cf.sysPrompt, cf.withContext)
+        return async (fun: (p: FType) => Promise<void>) => {
+          await fun({ f, m: messages }).then(() =>
+            this.storeMessage(content, arr.join("")),
+          )
+        }
       }
-      if (!withTools) {
-        dfRun()
+      const streamRun = async () =>
+        await callAndStore().then((it) =>
+          it(
+            async (p: FType) =>
+              await this.client.stream(p.m, cf.model, cf.scenario, p.f),
+          ),
+        )
+      const toolsRun = async (t: MCPClient[]) =>
+        await callAndStore().then((it) =>
+          it(
+            async (p: FType) =>
+              await this.client.callWithTools(
+                t,
+                p.m,
+                cf.model,
+                cf.scenario,
+                p.f,
+              ),
+          ),
+        )
+      if (withTools) {
+        const tools = this.client.tools()
+        const choices = Object.values(tools).map((it) => ({
+          name: `${it.name}:${it.version}`,
+          value: it.name,
+        }))
+        await checkbox({ message: "Select Tools:", choices }).then(
+          async (answer) => {
+            await toolsRun(answer.map((it) => tools[it]))
+          },
+        )
         return
       }
-      const tools = this.tools()
-      if (isEmpty(tools)) {
-        dfRun()
-        return
-      }
-      await this.client.callWithTools(tools, messages, cf.model, cf.scenario, f)
-      this.storeMessage(content, arr.join(""))
+      await streamRun()
     })
   }
 
@@ -104,33 +138,20 @@ export class ChatAction implements IChatAction {
 
   printChatConfig = () => {
     this.store.contextRun((cf) => {
-      println(
-        table(
-          [
-            [
-              display.caution("WithContext:"),
-              display.important(cf.withContext ? "true" : "false"),
-            ],
-            [display.caution("ContextSize:"), display.warning(cf.contextLimit)],
-            [display.caution("CurrentModle:"), display.tip(cf.model)],
-            [display.caution("Scenario:"), display.tip(cf.scenarioName)],
-            [display.note(cf.sysPrompt), ""],
-          ],
-          {
-            columnDefault: {
-              width: Math.floor(this.config.terminalColumns() / 2) - 4,
-            },
-            columns: [
-              { alignment: "center" },
-              { alignment: "center" },
-              { alignment: "center" },
-              { alignment: "center" },
-              { alignment: "right" },
-            ],
-            spanningCells: [{ col: 0, row: 4, colSpan: 2, alignment: "left" }],
-          },
-        ),
-      )
+      const data = [
+        [
+          display.caution("WithContext:"),
+          display.important(cf.withContext ? "true" : "false"),
+        ],
+        [display.caution("ContextSize:"), display.warning(cf.contextLimit)],
+        [display.caution("CurrentModle:"), display.tip(cf.model)],
+        [display.caution("Scenario:"), display.tip(cf.scenarioName)],
+        [display.note(cf.sysPrompt), ""],
+      ]
+      printTable(data, {
+        ...tableConfig({ cols: [1, 1] }),
+        spanningCells: [{ col: 0, row: 4, colSpan: 2, alignment: "left" }],
+      })
     })
   }
 
@@ -223,6 +244,16 @@ export class ChatAction implements IChatAction {
     )
   }
 
+  usefulTools = () => {
+    const tools = Object.values(this.client.tools()).reduce(
+      (arr, it) => {
+        return [...arr, [it.name, it.version].map((s) => display.tip(s))]
+      },
+      [["Name", "Version"].map((it) => display.caution(it))],
+    )
+    printTable(tools, tableConfig({ cols: [1, 1] }))
+  }
+
   private getPublishPromptInput = async (prompt: string) => {
     const name = await input({ message: "Prompt Name : " })
     const version = await input({ message: "Prompt Version: " })
@@ -281,21 +312,5 @@ export class ChatAction implements IChatAction {
         .sort((a, b) => Number(b.actionTime) - Number(a.actionTime)),
     ])
     return [st!, ...oths]
-  }
-
-  private tools = (): MCPClient[] => {
-    try {
-      const mcpPath = this.config.mcpConfigPath()
-      if (!mcpPath) {
-        return []
-      }
-      accessSync(mcpPath, constants.F_OK)
-      const data = readFileSync(mcpPath, "utf-8")
-      const mcpConfigs = JSON.parse(data) as MCPConfig[]
-      return mcpConfigs.map((it) => new MCPClient(it))
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (err: unknown) {
-      return []
-    }
   }
 }

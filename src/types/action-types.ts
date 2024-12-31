@@ -15,6 +15,7 @@ export interface IChatAction {
   modifyScenario: () => void
   publishPrompt: () => void
   selectPrompt: (name: string) => void
+  usefulTools: () => void
 }
 
 export interface IToolsAction {

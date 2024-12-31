@@ -1,22 +1,51 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import OpenAi from "openai"
 import type { IConfig } from "../types/config-types"
 import type { ILLMClient, LLMMessage, LLMRole } from "../types/llm-types"
 import MCPClient from "../types/mcp-client"
+import type { MCPConfig } from "../types/mcp-client"
 import type { RunnableToolFunction } from "openai/lib/RunnableFunction"
 import ora from "ora"
 import { log } from "../util/common-utils"
+import { accessSync, constants, readFileSync } from "node:fs"
 
 export class OpenAiClient implements ILLMClient {
   client: OpenAi
   private config: IConfig
+  private usefulTools: Record<string, MCPClient>
   constructor(config: IConfig) {
     this.config = config
     this.client = new OpenAi({
       baseURL: config.baseURL(),
       apiKey: config.apiKey(),
     })
+    const tools = () => {
+      try {
+        const mcpPath = this.config.mcpConfigPath()
+        if (!mcpPath) {
+          return {}
+        }
+        accessSync(mcpPath, constants.F_OK)
+        const data = readFileSync(mcpPath, "utf-8")
+        const mcpConfigs = JSON.parse(data) as MCPConfig[]
+        return mcpConfigs
+          .map((it) => new MCPClient(it))
+          .reduce(
+            (res, it) => {
+              res[it.name] = it
+              return res
+            },
+            {} as Record<string, MCPClient>,
+          )
+      } catch (err: unknown) {
+        return {} as Record<string, MCPClient>
+      }
+    }
+    this.usefulTools = tools()
   }
+
+  tools = () => this.usefulTools
 
   coderModel = () => this.config.coderModel()
   chatModel = () => this.config.commonModel()
