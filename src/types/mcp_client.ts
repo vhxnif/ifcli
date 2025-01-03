@@ -1,8 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
-import type { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
+
+export type MCPClientType = "tools" | "prompt" | "resource"
 
 export type MCPConfig = {
+  type: MCPClientType[]
   name: string
   version: string
   command: string
@@ -11,12 +14,14 @@ export type MCPConfig = {
 }
 
 export default class MCPClient {
-  private name: string
-  private version: string
+  type: MCPClientType[]
+  name: string
+  version: string
   private client: Client
   private transport: StdioClientTransport
 
   constructor(cf: MCPConfig) {
+    this.type = cf.type
     this.name = cf.name
     this.version = cf.version
     this.client = new Client(

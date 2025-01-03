@@ -7,6 +7,7 @@ export type LLMMessage = {
 }
 
 export interface ILLMClient {
+  tools: () => Record<string, MCPClient>
   coderModel: () => string
   chatModel: () => string
   models: () => string[]

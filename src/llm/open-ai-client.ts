@@ -1,9 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import OpenAi from "openai"
 import type { IConfig } from "../types/config-types"
 import type { ILLMClient, LLMMessage, LLMRole } from "../types/llm-types"
-import type MCPClient from "../types/mcp_client"
+import type { MCPConfig } from "../types/mcp_client"
 import type { RunnableToolFunction } from "openai/lib/RunnableFunction"
 import ora from "ora"
+import { accessSync, constants, readFileSync } from "node:fs"
+import MCPClient from "../types/mcp_client"
 
 export class OpenAiClient implements ILLMClient {
   client: OpenAi
@@ -11,13 +15,36 @@ export class OpenAiClient implements ILLMClient {
   constructor(config: IConfig) {
     this.config = config
     this.client = new OpenAi({
-      baseURL: config.baseURL,
-      apiKey: config.apiKey,
+      baseURL: config.baseURL(),
+      apiKey: config.apiKey(),
     })
   }
-  coderModel = () => this.config.coderModel
-  chatModel = () => this.config.commonModel
-  models = () => this.config.models
+
+  tools = (): Record<string, MCPClient> => {
+    const mcpConfig = this.config.mcpConfigPath()
+    if (!mcpConfig) {
+      return {}
+    }
+    try {
+      accessSync(mcpConfig, constants.F_OK)
+      const data = readFileSync(mcpConfig, "utf8")
+      const mcpConfigs = JSON.parse(data) as MCPConfig[]
+      return mcpConfigs
+        .map((it) => new MCPClient(it))
+        .reduce(
+          (res, it) => {
+            res[it.name] = it
+            return res
+          },
+          {} as Record<string, MCPClient>,
+        )
+    } catch (err: any) {
+      return {} as Record<string, MCPClient>
+    }
+  }
+  coderModel = () => this.config.coderModel()
+  chatModel = () => this.config.commonModel()
+  models = () => this.config.models()
 
   user = (content: string): LLMMessage => this.message("user", content)
 
@@ -83,7 +110,7 @@ export class OpenAiClient implements ILLMClient {
         .on("functionCall", (functionCall) => {
           sp.text = `call ${functionCall.name} args: ${functionCall.arguments}`
         })
-        .on("functionCallResult", (functionCallResult) => {
+        .on("functionCallResult", () => {
           sp.text = `call result process...`
         })
         .on("content", (it) => {
