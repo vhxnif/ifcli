@@ -28,7 +28,7 @@ export class AppConfig implements IConfig {
       return appConfig
     }
   }
-  dataPath = () => `${this.configPath()}${path.sep}${this.appName}.sqlite`
+  dataPath = () => `${this.configPath()}${path.sep}${this.appName()}.sqlite`
   models = () => [this.coderModel(), this.commonModel()]
   terminalColumns = () => process.stdout.columns
   terminalRows = () => process.stdout.rows
@@ -43,8 +43,7 @@ export class AppConfig implements IConfig {
     return pt
   }
   mcpConfigPath = () => {
-    let mcp: string | null =
-      `${this.platformConfigPath()}${path.sep}${this.appName()}.sqlite`
+    let mcp: string | null = `${this.configPath()}${path.sep}mcp.json`
     try {
       accessSync(mcp, constants.F_OK)
     } catch (err: any) {
