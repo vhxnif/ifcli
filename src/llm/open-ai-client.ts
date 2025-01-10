@@ -97,7 +97,7 @@ export class OpenAiClient implements ILLMClient {
                     sp.text = `call ${functionCall.name} args: ${functionCall.arguments}`
                 })
                 .on('functionCallResult', (it) => {
-                    sp.text = `call result: ${it}`
+                    sp.text = `call result: ${it.substring(0, 50)}...`
                 })
                 .on('content', (it) => {
                     if (!isStop) {
