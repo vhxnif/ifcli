@@ -2,7 +2,7 @@ export interface IChatAction {
   init: () => void
   newChat: (name: string) => void
   removeChat: () => void
-  ask: (content: string, withTools: boolean) => Promise<void>
+  ask: (content: string) => Promise<void>
   changeChat: () => void
   printChats: () => void
   clearChatMessage: () => void

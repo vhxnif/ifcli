@@ -13,7 +13,7 @@ import { accessSync, constants, readFileSync } from "node:fs"
 export class OpenAiClient implements ILLMClient {
   client: OpenAi
   private config: IConfig
-  private usefulTools: Record<string, MCPClient>
+  private usefulTools: MCPClient[]
   constructor(config: IConfig) {
     this.config = config
     this.client = new OpenAi({
@@ -24,22 +24,14 @@ export class OpenAiClient implements ILLMClient {
       try {
         const mcpPath = this.config.mcpConfigPath()
         if (!mcpPath) {
-          return {}
+          return []
         }
         accessSync(mcpPath, constants.F_OK)
         const data = readFileSync(mcpPath, "utf-8")
         const mcpConfigs = JSON.parse(data) as MCPConfig[]
-        return mcpConfigs
-          .map((it) => new MCPClient(it))
-          .reduce(
-            (res, it) => {
-              res[it.name] = it
-              return res
-            },
-            {} as Record<string, MCPClient>,
-          )
+        return mcpConfigs.map((it) => new MCPClient(it))
       } catch (err: unknown) {
-        return {} as Record<string, MCPClient>
+        return []
       }
     }
     this.usefulTools = tools()
@@ -115,13 +107,11 @@ export class OpenAiClient implements ILLMClient {
           tools,
           messages,
         })
-        .on("message", (msg) => log(`msg -> ${msg}`))
         .on("functionCall", (it) => {
           spinner.text = `call ${it.name}... args: ${it.arguments}`
         })
         .on("functionCallResult", (it) => {
-          log(`call res: ${it}`)
-          spinner.text = `part result processing...`
+          spinner.text = `part result ${it} processing...`
         })
         .on("content", (it) => {
           if (!isStop) {

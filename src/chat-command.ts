@@ -21,10 +21,7 @@ program
   .command("ask")
   .description("talk with agent")
   .argument("<string>")
-  .option("-t, --tools", "with mcp tools", false)
-  .action(
-    async (content, option) => await chatAction.ask(content, option.tools),
-  )
+  .action(async (content) => await chatAction.ask(content))
 
 program
   .command("list")

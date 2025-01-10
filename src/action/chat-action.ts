@@ -1,4 +1,4 @@
-import { checkbox, input } from "@inquirer/prompts"
+import { input } from "@inquirer/prompts"
 import { isEmpty } from "lodash"
 import { nanoid } from "nanoid"
 import { CHAT_DEFAULT_SYSTEM } from "../config/prompt"
@@ -61,19 +61,24 @@ export class ChatAction implements IChatAction {
     )
   }
 
-  ask = async (content: string, withTools: boolean = false) => {
+  ask = async (content: string) => {
     this.store.contextRun(async (cf) => {
       type FType = {
         f: (c: string) => void
         m: LLMMessage[]
       }
+      const { tools, userMessage } = this.extractTools(content)
       const callAndStore = async () => {
         const arr: string[] = []
         const f = (c: string) => {
           print(this.text(c))
           arr.push(c)
         }
-        const messages = this.messages(content, cf.sysPrompt, cf.withContext)
+        const messages = this.messages(
+          userMessage,
+          cf.sysPrompt,
+          cf.withContext,
+        )
         return async (fun: (p: FType) => Promise<void>) => {
           await fun({ f, m: messages }).then(() =>
             this.storeMessage(content, arr.join("")),
@@ -100,24 +105,28 @@ export class ChatAction implements IChatAction {
               ),
           ),
         )
-      if (withTools) {
-        const tools = this.client.tools()
-        const choices = Object.values(tools).map((it) => ({
-          name: `${it.name}:${it.version}`,
-          value: it.name,
-        }))
-        await checkbox({ message: "Select Tools:", choices }).then(
-          async (answer) => {
-            if (isEmpty(answer)) {
-              error(`Tools Not Selected`)
-              return
-            }
-            await toolsRun(answer.map((it) => tools[it]))
-          },
-        )
+      if (isEmpty(tools)) {
+        await streamRun()
+      }
+      const clients = this.client.tools()
+      const usefulTools = tools.reduce((arr, it) => {
+        const clientMatch = (mcp: string) => {
+          if (mcp.includes(":")) {
+            return (c: MCPClient) => mcp === `${c.name}:${c.version}`
+          }
+          return (c: MCPClient) => mcp === c.name
+        }
+        const client = clients.find(clientMatch(it))
+        if (client) {
+          arr.push(client)
+        }
+        return arr
+      }, [] as MCPClient[])
+      if (isEmpty(usefulTools)) {
+        await streamRun()
         return
       }
-      await streamRun()
+      await toolsRun(usefulTools)
     })
   }
 
@@ -249,13 +258,34 @@ export class ChatAction implements IChatAction {
   }
 
   usefulTools = () => {
-    const tools = Object.values(this.client.tools()).reduce(
+    const tools = this.client.tools().reduce(
       (arr, it) => {
         return [...arr, [it.name, it.version].map((s) => display.tip(s))]
       },
       [["Name", "Version"].map((it) => display.caution(it))],
     )
     printTable(tools, tableConfig({ cols: [1, 1] }))
+  }
+
+  private extractTools = (
+    userMessage: string,
+  ): { tools: string[]; userMessage: string } => {
+    const regex = /@[^\s]+/g
+    const matches = userMessage.match(regex)
+    if (matches) {
+      const tools = matches.map((it) => it.replace("@", ""))
+      return {
+        tools: tools,
+        userMessage: tools.reduce(
+          (str, it) => str.replace(it, ""),
+          userMessage,
+        ),
+      }
+    }
+    return {
+      tools: [],
+      userMessage: userMessage,
+    }
   }
 
   private getPublishPromptInput = async (prompt: string) => {
