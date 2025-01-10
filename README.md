@@ -26,9 +26,9 @@ export OPENAI_API_KEY=<your_deepseek_key>
 
 | Key                 | Value                    | 
 |:--------------------|:-------------------------|
-| OPENAI_API_KEY      | <your_deepseek_key>      |
+| OPENAI_API_KEY      | \<your_deepseek_key\>    |
 | OPENAI_BASE_URL     | https://api.deepseek.com |
-| IFCLI_CUSTOM_MODELS | <model1>,<model2>        | 
+| IFCLI_CUSTOM_MODELS | \<model1\>,\<model2\>    | 
 | IFCLI_DEFAULT_MODEL | deepseek-chat            |
 
 
