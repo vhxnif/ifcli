@@ -7,7 +7,6 @@ import MCPClient from "../types/mcp-client"
 import type { MCPConfig } from "../types/mcp-client"
 import type { RunnableToolFunction } from "openai/lib/RunnableFunction"
 import ora from "ora"
-import { log } from "../util/common-utils"
 import { accessSync, constants, readFileSync } from "node:fs"
 
 export class OpenAiClient implements ILLMClient {
@@ -39,8 +38,8 @@ export class OpenAiClient implements ILLMClient {
 
   tools = () => this.usefulTools
 
-  coderModel = () => this.config.coderModel()
-  chatModel = () => this.config.commonModel()
+  defaultModel = () => this.config.defaultModel()
+
   models = () => this.config.models()
 
   user = (content: string): LLMMessage => this.message("user", content)

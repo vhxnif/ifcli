@@ -24,11 +24,12 @@ bun link
 export OPENAI_API_KEY=<your_deepseek_key>
 ```
 
-### Default Config
-
-* OPENAI_BASE_URL=https://api.deepseek.com
-* OPENAI_CHAT_MODEL=deepseek-chat
-* OPENAI_CODER_MODEL=deepseek-coder
+| Key                 | Value                    | 
+|:--------------------|:-------------------------|
+| OPENAI_API_KEY      | <your_deepseek_key>      |
+| OPENAI_BASE_URL     | https://api.deepseek.com |
+| IFCLI_CUSTOM_MODELS | <model1>,<model2>        | 
+| IFCLI_DEFAULT_MODEL | deepseek-chat            |
 
 
 ## Command

@@ -51,7 +51,7 @@ export class ChatAction implements IChatAction {
   removeChat = () => {
     const cts = this.store.chats()
     if (cts.length == 1) {
-      error("A chat must be keept.")
+      error("One chat must be keept.")
       return
     }
     this.selectChatRun(

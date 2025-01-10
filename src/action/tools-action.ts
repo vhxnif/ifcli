@@ -32,7 +32,7 @@ export class ToolsAction implements IToolsAction {
     )
     await this.client.call(
       [this.client.system(TOOLS_SUGGEST_SYSTEM), userMessage],
-      this.client.coderModel(),
+      this.client.defaultModel(),
       temperature.codeOrMath[1],
       async (c) => {
         inputRun(c, async (answer) => {
@@ -44,7 +44,7 @@ export class ToolsAction implements IToolsAction {
           const args = answer.split(" ")
           let idx = 0
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const command = c.replace(regex, function (match, _) {
+          const command = c.replace(regex, function (_match, _p1) {
             return args[idx++]
           })
           try {
@@ -64,7 +64,7 @@ export class ToolsAction implements IToolsAction {
         this.client.system(TOOLS_IMPROVE_WRITING_SYSTEM),
         this.client.user(content),
       ],
-      this.client.chatModel(),
+      this.client.defaultModel(),
       temperature.writting[1],
       (c) => print(display.note(c)),
     )
@@ -85,7 +85,7 @@ export class ToolsAction implements IToolsAction {
         this.client.system(systemPrompt),
         this.client.user(userPrompt(content, guessTargetLang(content, lang))),
       ],
-      this.client.chatModel(),
+      this.client.defaultModel(),
       temperature.translate[1],
       (c) => print(display.note(c)),
     )

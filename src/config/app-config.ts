@@ -6,9 +6,15 @@ import type { IConfig } from "../types/config-types"
 import { accessSync, constants, mkdirSync } from "node:fs"
 
 export class AppConfig implements IConfig {
-  commonModel = (): string => env("OPENAI_CHAT_MODEL") ?? "deepseek-chat"
-  coderModel = (): string => env("OPENAI_CODER_MODEL") ?? "deepseek-coder"
-  appName = (): string => env("APP_NAME") ?? "ifcli"
+  defaultModel = (): string => env("IFCLI_DEFAULT_MODEL") ?? "deepseek-chat"
+  customeModels = () => {
+    const customModels = env("IFCLI_CUSTOM_MODELS")
+    if (customModels) {
+      return customModels?.split(",")
+    }
+    return []
+  }
+  appName = (): string => env("IFCLI_APP_NAME") ?? "ifcli"
   baseURL = (): string => env("OPENAI_BASE_URL") ?? "https://api.deepseek.com"
   apiKey = (): string => env("OPENAI_API_KEY")!
   configPath = (): string | undefined => {
@@ -30,7 +36,13 @@ export class AppConfig implements IConfig {
       return appConfig
     }
   }
-  models = (): string[] => [this.commonModel(), this.coderModel()]
+  models = (): string[] =>
+    [...this.customeModels(), this.defaultModel()].reduce((arr, it) => {
+      if (!arr.includes(it)) {
+        arr.push(it)
+      }
+      return arr
+    }, [] as string[])
   terminalColumns = (): number => process.stdout.columns
   terminalRows = (): number => process.stdout.rows
   platformConfigPath = (): string => {
