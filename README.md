@@ -33,8 +33,10 @@ export OPENAI_API_KEY=<your_deepseek_key>
 
 
 ## Command
+
 ### chat 
 > **IMPORTANT:** ``ifct init`` must be run first!
+
 ```bash
 Usage: ifct [options] [command]
 
