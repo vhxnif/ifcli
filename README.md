@@ -81,7 +81,7 @@ Commands:
   }
 ]
 ```
-##### MCP Useing Example
+##### MCP Using Example
 
 ```bash
 # Single Version
