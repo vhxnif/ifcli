@@ -2,7 +2,7 @@
     "name": "@vhxnif/ifcli",
     "version": "0.1.4",
     "description": "ai chat cli & some tools command",
-    "keywords": ["deepseek", "ai", "bun", "chat cli"],
+    "keywords": ["deepseek", "ai", "bun", "chat cli", "mcp"],
     "license": "MIT",
     "type": "module",
     "author": "vhxnif",
