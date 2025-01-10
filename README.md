@@ -60,6 +60,37 @@ Commands:
   help [command]    display help for command
 ```
 
+
+#### mcp tools support 
+
+| Config Path | Platform                     |
+|:------------|:-----------------------------|
+| Windows     | $APPDATA/ifcli/mcp.json      |
+| Mac         | $HOME/.config/ifcli/mcp.json |
+| Linux       | $HOME/.config/ifcli/mcp.json |
+
+
+```json
+[
+  {
+    "type": ["tools"],
+    "name": "weather",
+    "version": "v1",
+    "command": "node",
+    "args": ["D:\\workspace\\other\\weather\\build\\index.js"]
+  }
+]
+```
+##### MCP Useing Example
+
+```bash
+# Single Version
+ifct ask "@weather What's the weather today?"
+
+# Multi Version
+ifct ask "@weather:v1 What's the weather today?"
+```
+
 ### tool
 ```bash
 Usage: ifts [options] [command]
@@ -75,20 +106,6 @@ Commands:
   improve <string>          writing expert
   suggest <string>          suggestion cli command
   help [command]            display help for command
-```
-
-### mcp tools support 
-
-```json
-[
-  {
-    "type": ["tools"],
-    "name": "weather",
-    "version": "v1",
-    "command": "node",
-    "args": ["D:\\workspace\\other\\weather\\build\\index.js"]
-  }
-]
 ```
 
 This project was created using `bun init` in [bun v1.1.36.](https://bun.sh) is a fast all-in-one JavaScript runtime.
