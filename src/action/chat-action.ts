@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid'
 import { CHAT_DEFAULT_SYSTEM } from '../config/prompt'
 import type { IChatAction } from '../types/action-types'
 import type { IConfig } from '../types/config-types'
-import type { CallParam, ILLMClient } from '../types/llm-types'
+import type { LLMCallParam, ILLMClient } from '../types/llm-types'
 import type {
     Chat,
     ChatConfig,
@@ -354,7 +354,7 @@ export class ChatAction implements IChatAction {
         }
         const messages = this.messages(userMessage, sysPrompt, withContext)
         return async (
-            f: (param: CallParam) => Promise<void>,
+            f: (param: LLMCallParam) => Promise<void>,
             mcpClients?: MCPClient[]
         ) => {
             await f({

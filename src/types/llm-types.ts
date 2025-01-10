@@ -6,7 +6,7 @@ export type LLMMessage = {
     content: string
 }
 
-export type CallParam = {
+export type LLMCallParam = {
     messages: LLMMessage[]
     model: string
     temperature: number
@@ -21,7 +21,7 @@ export interface ILLMClient {
     user: (content: string) => LLMMessage
     system: (content: string) => LLMMessage
     assistant: (content: string) => LLMMessage
-    call: (param: CallParam) => Promise<void>
-    stream: (param: CallParam) => Promise<void>
-    callWithTools: (param: CallParam) => Promise<void>
+    call: (param: LLMCallParam) => Promise<void>
+    stream: (param: LLMCallParam) => Promise<void>
+    callWithTools: (param: LLMCallParam) => Promise<void>
 }

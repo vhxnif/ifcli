@@ -3,7 +3,7 @@
 import OpenAi from 'openai'
 import type { IConfig } from '../types/config-types'
 import type {
-    CallParam,
+    LLMCallParam,
     ILLMClient,
     LLMMessage,
     LLMRole,
@@ -54,7 +54,7 @@ export class OpenAiClient implements ILLMClient {
     assistant = (content: string): LLMMessage =>
         this.message('assistant', content)
 
-    call = async (param: CallParam) => {
+    call = async (param: LLMCallParam) => {
         const { messages, model, temperature, f } = param
         await this.client.chat.completions
             .create({
@@ -65,7 +65,7 @@ export class OpenAiClient implements ILLMClient {
             .then((it) => f(it.choices[0]?.message?.content ?? ''))
             .catch((err) => console.error(err))
     }
-    stream = async (param: CallParam) => {
+    stream = async (param: LLMCallParam) => {
         const { messages, model, temperature, f } = param
         const runner = this.client.beta.chat.completions
             .stream({
@@ -77,7 +77,7 @@ export class OpenAiClient implements ILLMClient {
         await runner.finalChatCompletion()
     }
 
-    callWithTools = async (param: CallParam) => {
+    callWithTools = async (param: LLMCallParam) => {
         const { messages, model, temperature, f, mcpClients } = param
         // support tools mcp server now
         const actMcpClients = mcpClients!.filter((it) =>
