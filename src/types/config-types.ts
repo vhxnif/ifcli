@@ -1,6 +1,6 @@
 export interface IConfig {
-  commonModel: () => string
-  coderModel: () => string
+  defaultModel: () => string
+  models: () => string[]
   appName: () => string
   baseURL: () => string
   apiKey: () => string

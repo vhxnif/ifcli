@@ -1,36 +1,27 @@
-import type MCPClient from "./mcp_client"
+import type MCPClient from './mcp_client'
 
-export type LLMRole = "system" | "user" | "assistant"
+export type LLMRole = 'system' | 'user' | 'assistant'
 export type LLMMessage = {
-  role: LLMRole
-  content: string
+    role: LLMRole
+    content: string
+}
+
+export type LLMCallParam = {
+    messages: LLMMessage[]
+    model: string
+    temperature: number
+    f: (res: string) => void
+    mcpClients?: MCPClient[]
 }
 
 export interface ILLMClient {
-  tools: () => Record<string, MCPClient>
-  coderModel: () => string
-  chatModel: () => string
-  models: () => string[]
-  user: (content: string) => LLMMessage
-  system: (content: string) => LLMMessage
-  assistant: (content: string) => LLMMessage
-  call: (
-    messages: LLMMessage[],
-    model: string,
-    temperature: number,
-    f: (res: string) => void,
-  ) => Promise<void>
-  stream: (
-    messages: LLMMessage[],
-    model: string,
-    temperature: number,
-    f: (res: string) => void,
-  ) => Promise<void>
-  callWithTools: (
-    mcpClients: MCPClient[],
-    messages: LLMMessage[],
-    model: string,
-    temperature: number,
-    f: (res: string) => void,
-  ) => Promise<void>
+    tools: () => MCPClient[]
+    defaultModel: () => string
+    models: () => string[]
+    user: (content: string) => LLMMessage
+    system: (content: string) => LLMMessage
+    assistant: (content: string) => LLMMessage
+    call: (param: LLMCallParam) => Promise<void>
+    stream: (param: LLMCallParam) => Promise<void>
+    callWithTools: (param: LLMCallParam) => Promise<void>
 }
