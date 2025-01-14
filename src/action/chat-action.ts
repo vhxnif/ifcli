@@ -5,11 +5,11 @@ import { CHAT_DEFAULT_SYSTEM } from '../config/prompt'
 import type { IChatAction } from '../types/action-types'
 import type { IConfig } from '../types/config-types'
 import type { LLMCallParam, ILLMClient } from '../types/llm-types'
-import type {
+import {
     Chat,
-    ChatConfig,
-    ChatMessage,
-    IChatStore,
+    type ChatConfig,
+    type ChatMessage,
+    type IChatStore,
 } from '../types/store-types'
 import { color, display } from '../util/color-utils'
 import {
