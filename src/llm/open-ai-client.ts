@@ -58,8 +58,8 @@ export class OpenAiClient implements ILLMClient {
         const { messages, model, temperature, f } = param
         await this.client.chat.completions
             .create({
-                messages: messages,
-                model: model,
+                messages,
+                model,
                 temperature,
             })
             .then((it) => f(it.choices[0]?.message?.content ?? ''))

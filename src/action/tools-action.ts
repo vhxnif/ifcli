@@ -72,20 +72,17 @@ export class ToolsAction implements IToolsAction {
 
     trans = async (content: string, lang: string) => {
         const systemPrompt = `You are a professional, authentic machine translation engine. You only return the translated text, without any explanations.`
-        const userPrompt = (text: string, lang: string): string =>
-            `Translate the following text into ${lang}, output translation text directly without any extra information: \n ${text}`
-        const guessTargetLang = (content: string, lang: string): string => {
+        const userPrompt = (text: string, lang: string): string => {
+            let guessLang = lang
             if (!containsChinese(content) && lang === 'en') {
-                return 'zh'
+                guessLang = 'zh'
             }
-            return lang
+            return `Translate the following text into ${guessLang}, output translation text directly without any extra information: \n ${text}`
         }
         await this.client.stream({
             messages: [
                 this.client.system(systemPrompt),
-                this.client.user(
-                    userPrompt(content, guessTargetLang(content, lang))
-                ),
+                this.client.user(userPrompt(content, lang)),
             ],
             model: this.client.defaultModel(),
             temperature: temperature.translate[1],
