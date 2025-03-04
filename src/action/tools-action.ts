@@ -34,7 +34,7 @@ export class ToolsAction implements IToolsAction {
             messages: [this.client.system(TOOLS_SUGGEST_SYSTEM), userMessage],
             model: this.client.defaultModel(),
             temperature: temperature.codeOrMath[1],
-            f: async (c) => {
+            contentConsumer: async (c) => {
                 inputRun(c, async (answer) => {
                     if (answer === 'next') {
                         await this.suggest(content, [...excluded, c])
@@ -66,7 +66,7 @@ export class ToolsAction implements IToolsAction {
             ],
             model: this.client.defaultModel(),
             temperature: temperature.writting[1],
-            f: (c) => print(display.note(c)),
+            contentConsumer: (c) => print(display.note(c)),
         })
     }
 
@@ -86,7 +86,7 @@ export class ToolsAction implements IToolsAction {
             ],
             model: this.client.defaultModel(),
             temperature: temperature.translate[1],
-            f: (c) => print(display.note(c)),
+            contentConsumer: (c) => print(display.note(c)),
         })
     }
 }

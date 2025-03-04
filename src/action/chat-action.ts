@@ -83,6 +83,7 @@ export class ChatAction implements IChatAction {
                 )
             if (isEmpty(tools)) {
                 await streamRun()
+                return
             }
             const usefulTools = this.userUseTools(tools)
             if (isEmpty(usefulTools)) {
@@ -361,7 +362,7 @@ export class ChatAction implements IChatAction {
                 messages,
                 model,
                 temperature: scenario,
-                f: llmResTextProcess,
+                contentConsumer: llmResTextProcess,
                 mcpClients,
             })
             this.storeMessage(userMessage, llmResArr.join(''))

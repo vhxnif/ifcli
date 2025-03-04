@@ -10,7 +10,7 @@ export type LLMCallParam = {
     messages: LLMMessage[]
     model: string
     temperature: number
-    f: (res: string) => void
+    contentConsumer: (res: string) => void
     mcpClients?: MCPClient[]
 }
 

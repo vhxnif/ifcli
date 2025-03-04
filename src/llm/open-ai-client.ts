@@ -13,6 +13,9 @@ import type { MCPConfig } from '../types/mcp-client'
 import type { RunnableToolFunction } from 'openai/lib/RunnableFunction'
 import ora from 'ora'
 import { accessSync, constants, readFileSync } from 'node:fs'
+import { color } from '../util/color-utils'
+import { println } from '../util/common-utils'
+import { StreamDisplay } from './stream-display'
 
 export class OpenAiClient implements ILLMClient {
     client: OpenAi
@@ -55,7 +58,7 @@ export class OpenAiClient implements ILLMClient {
         this.message('assistant', content)
 
     call = async (param: LLMCallParam) => {
-        const { messages, model, temperature, f } = param
+        const { messages, model, temperature, contentConsumer: f } = param
         await this.client.chat.completions
             .create({
                 messages,
@@ -65,20 +68,29 @@ export class OpenAiClient implements ILLMClient {
             .then((it) => f(it.choices[0]?.message?.content ?? ''))
             .catch((err) => console.error(err))
     }
+
     stream = async (param: LLMCallParam) => {
-        const { messages, model, temperature, f } = param
-        const runner = this.client.beta.chat.completions
-            .stream({
-                model,
-                messages,
-                temperature,
-            })
-            .on('content', f)
-        await runner.finalChatCompletion()
+        const { messages, model, temperature, contentConsumer: f } = param
+        const stream = await this.client.chat.completions.create({
+            model,
+            messages,
+            temperature,
+            stream: true,
+        })
+        const display = new StreamDisplay(f)
+        for await (const chunk of stream) {
+            display.process(chunk)
+        }
     }
 
     callWithTools = async (param: LLMCallParam) => {
-        const { messages, model, temperature, f, mcpClients } = param
+        const {
+            messages,
+            model,
+            temperature,
+            contentConsumer: f,
+            mcpClients,
+        } = param
         // support tools mcp server now
         const actMcpClients = mcpClients!.filter((it) =>
             it.type.includes('tools')
