@@ -16,6 +16,7 @@ import type {
 import type { MCPConfig } from '../types/mcp-client'
 import MCPClient from '../types/mcp-client'
 import { StreamDisplay } from './stream-display'
+import { llmNotifyMessage } from './llm-utils'
 
 export class OpenAiClient implements ILLMClient {
     client: OpenAi
@@ -99,7 +100,7 @@ export class OpenAiClient implements ILLMClient {
         try {
             const display = new StreamDisplay({ userMessage: this.userMessage(messages), messageStore })
             await Promise.all(actMcpClients.map((it) => it.connect()))
-            const spinner = ora('thinking...').start()
+            const spinner = ora(llmNotifyMessage.waiting).start()
             // map to openai tools
             const tools = (
                 await Promise.all(
@@ -117,10 +118,10 @@ export class OpenAiClient implements ILLMClient {
                     messages,
                 })
                 .on('functionCall', (it) => {
-                    spinner.text = `call ${it.name}... args: ${it.arguments}`
+                    spinner.text = llmNotifyMessage.analyzing 
                 })
                 .on('functionCallResult', (it) => {
-                    spinner.text = `part result ${it} processing...`
+                    spinner.text = llmNotifyMessage.thinking
                 })
                 .on('content', (it) => {
                     if (!isStop) {

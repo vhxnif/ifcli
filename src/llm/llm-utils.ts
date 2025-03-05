@@ -22,8 +22,18 @@ const llmResultPageShow = async (assistantContent: string[], thinkingContent?: s
         await page({ content: contentPageShow } )
 }
 
+const llmNotifyMessage = {
+    waiting: color.green("🌌 「量子信道开启中，正在折叠时空距离...」"),
+    analyzing: color.green("🛸 「语义引力阱已捕获请求，正在解压超弦信号...」"),
+    thinking: color.green("🧠 「核心矩阵激活，正在遍历知识星云...」"),
+    rendering: color.green("💫 「全息投影就绪，正在渲染多维信息流——*"),
+    error: color.green("🔴 「遭遇未知粒子风暴，正在重新校准频率...」"),
+    completed: color.green("✅ 「认知模块已同步，思维链路无延迟——*"),
+}
+
 export {
     llmTableConfig,
+    llmNotifyMessage,
     llmTableConfigWithHeader,
-    llmResultPageShow
+    llmResultPageShow,
 }
