@@ -1,4 +1,5 @@
 import stringWidth from "string-width"
+import { llmTableConfig } from "./llm-utils"
 
 export class ShowWin {
 
@@ -6,11 +7,13 @@ export class ShowWin {
     private winIdx: number = 0
     private winSize: number = 0
     private maxSize: number
-    private cellSize: number
+    private cellSize: number = llmTableConfig.columns?.[0].width ?? 70 
 
-    constructor(cellSize: number, rowSize: number) {
-        this.cellSize = cellSize
-        this.maxSize = cellSize * rowSize
+    constructor(rowSize: number = 20, cellSize?: number) {
+        if(cellSize) {
+            this.cellSize = cellSize
+        }
+        this.maxSize = this.cellSize * rowSize
     }
 
     push = (str: string) => {
@@ -46,6 +49,12 @@ export class ShowWin {
     isEmpty = () => this.arr.length === 0
 
     pageContent = () => {
+        return this.pageSplit(this.arr)
+    }
+
+    content = () => this.arr.join('')
+
+    pageSplit = (strArr: string[]) => {
         const res: string[] = []
         const tmp: string[] = []
         let size = 0
@@ -54,8 +63,8 @@ export class ShowWin {
             res.push(tmp.join(''))
             tmp.length = 0
         }
-        for (let index = 0; index < this.arr.length; index++) {
-            const str = this.arr[index]
+        for (let index = 0; index < strArr.length; index++) {
+            const str = strArr[index]
             tmp.push(str)
             const strSize = this.strWidth(str)
             size += strSize
@@ -67,7 +76,6 @@ export class ShowWin {
             reset()
         }
         return res
-    }
 
-    consent = () => this.arr.join('')
+    }
 }

@@ -3,32 +3,28 @@ import type OpenAI from "openai"
 import { table } from "table"
 import type { LLMMessage, LLMResult } from "../types/llm-types"
 import { color } from "../util/color-utils"
-import { tableConfig } from "../util/common-utils"
-import { default as page } from "./llm-res-prompt"
+import { llmResultPageShow, llmTableConfig } from "./llm-utils"
 import { ShowWin } from "./show-win"
 
 export class StreamDisplay {
 
-    private winRowLimit: number = 20
     private previousOutputLineCount: number = 0
     private hasReasoningContent: boolean = false
     private lastChunk: string = ''
     private thinkStopFlag: boolean = false
-    private tableConfig = tableConfig({ cols: [1], celConfig: [{ alignment: 'left' }] })
-    private thinkReasoning: ShowWin 
-    private contentColl: ShowWin 
+    private tableConfig = llmTableConfig 
+    private thinkReasoning: ShowWin = new ShowWin()
+    private contentColl: ShowWin = new ShowWin() 
     private messageStore: (result: LLMResult) => void
     private userMessage: LLMMessage 
 
     constructor({ userMessage, messageStore, thinkWinRowLinit } :{ userMessage: LLMMessage, messageStore: (result: LLMResult) => void, thinkWinRowLinit?: number}) {
         this.userMessage = userMessage
         this.messageStore = messageStore 
-        if (thinkWinRowLinit) {
-            this.winRowLimit = thinkWinRowLinit
+        if(thinkWinRowLinit) {
+            this.thinkReasoning = new ShowWin(thinkWinRowLinit)
+            this.contentColl = new ShowWin(thinkWinRowLinit)
         }
-        const width = this.tableConfig?.columns?.[0].width ?? 70
-        this.thinkReasoning = new ShowWin(width, this.winRowLimit)
-        this.contentColl = new ShowWin(width, this.winRowLimit)
     }
 
     thinkingShow = (chunk: OpenAI.Chat.Completions.ChatCompletionChunk) => {
@@ -63,7 +59,7 @@ export class StreamDisplay {
     }
 
     private think = (reasoning: string) => {
-        this.tableShow(reasoning, this.thinkReasoning, color.flamingo)
+        this.tableShow(reasoning, this.thinkReasoning, color.green)
     }
 
     private tableShow = (content: string,  contentArray: ShowWin, colorShow: ChalkInstance) => {
@@ -99,23 +95,18 @@ export class StreamDisplay {
     pageShow = async () => {
         this.doStoreMessage()
         this.clearScreen()
-        const tableShow = (str: string[], colorShow: ChalkInstance): string[] => {
-            return str.map(it => table([[colorShow(it)]], this.tableConfig))
-        }
-        const contentPageShow = tableShow(this.contentColl.pageContent(), color.mauve)
-        if(!this.thinkReasoning.isEmpty()) {
-            const thinkPageShow = this.thinkReasoning.pageContent()
-            await page({ content: contentPageShow, think: tableShow(thinkPageShow, color.flamingo) } )
+        if (!this.thinkReasoning.isEmpty()) {
+            await llmResultPageShow(this.contentColl.pageContent(), this.thinkReasoning.pageContent())
             return
         }
-        await page({ content: contentPageShow } )
+        await llmResultPageShow(this.contentColl.pageContent(),)
     }
 
     private doStoreMessage() {
         this.messageStore({
             userContent: this.userMessage.content,
-            assistantContent: this.contentColl.consent(),
-            thinkingReasoning: this.thinkReasoning.consent(), 
+            assistantContent: this.contentColl.content(),
+            thinkingReasoning: this.thinkReasoning.content(), 
         })
     }
 }

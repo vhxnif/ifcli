@@ -2,9 +2,13 @@ import { input } from '@inquirer/prompts'
 import { isEmpty } from 'lodash'
 import { nanoid } from 'nanoid'
 import { CHAT_DEFAULT_SYSTEM } from '../config/prompt'
+import { llmResultPageShow } from '../llm/llm-utils'
+import { ShowWin } from '../llm/show-win'
 import type { IChatAction } from '../types/action-types'
 import type { IConfig } from '../types/config-types'
-import type { ILLMClient, LLMResult, LLMStreamParam, LLMParam } from '../types/llm-types'
+import { temperature } from '../types/constant'
+import type { ILLMClient, LLMParam, LLMResult, LLMStreamParam } from '../types/llm-types'
+import MCPClient from '../types/mcp-client'
 import {
     Chat,
     type ChatConfig,
@@ -15,14 +19,11 @@ import {
 import { color, display } from '../util/color-utils'
 import {
     error,
-    print,
     println,
     printTable,
     selectRun,
-    tableConfig,
+    tableConfig
 } from '../util/common-utils'
-import { temperature } from '../types/constant'
-import MCPClient from '../types/mcp-client'
 
 export class ChatAction implements IChatAction {
     client: ILLMClient
@@ -153,13 +154,34 @@ export class ChatAction implements IChatAction {
             error(`History Questions is Empty.`)
             return
         }
-        selectRun('History Questions:', choices, (answer) =>
-            print(
-                this.text(
-                    msg[answer].find((it) => it.role === 'assistant')?.content
-                )
-            )
+        selectRun('History Questions:', choices, async (answer) =>
+            await this.historyMessageShow(msg[answer])
         )
+    }
+
+    private historyMessageShow = async (messages: ChatMessage[]) => {
+        const assistant = messages.find(it => it.role === 'assistant')
+        const config = tableConfig({ cols: [1]})
+        if (!assistant) {
+            printTable([['empty']], config)
+            return
+        }
+        const showWin = new ShowWin()
+        const assistantPageContent = showWin.pageSplit(this.stringSplit(assistant.content))
+        const thinking = messages.find(it => it.role === 'reasoning')
+        if(thinking) {
+            await llmResultPageShow(assistantPageContent, showWin.pageSplit(this.stringSplit(thinking.content)))
+            return
+        }
+        await llmResultPageShow(assistantPageContent)
+    }
+
+    private stringSplit = (str: string) => {
+        return str.split('\n').reduce((arr, cur) => {
+            arr.push('\n')
+            arr.push(cur)
+            return arr
+        }, [] as string[])
     }
 
     modifyContextSize = (size: number) => {

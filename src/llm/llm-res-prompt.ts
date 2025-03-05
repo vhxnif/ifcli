@@ -95,6 +95,6 @@ export default createPrompt<number, ConfirmConfig>((config, done) => {
     const currPageNumber = `${idx + 1}/${data.length}`
     const currContent = data[idx]
     const key = (str: string) => theme.style.key(str)
-    const message = `PrevTab ${key("h")}, NextPage ${key("j")}, PrevPage ${key("k")}, NextTab ${key("l")}\nTab: ${color.maroon(tab.name)}, Page ${key(currPageNumber)}, Exit ${key("q")} `
+    const message = `PrevTab ${key("h")}, NextTab ${key("l")}, NextPage ${key("j")}, PrevPage ${key("k")}, \nTab: ${color.maroon(tab.name)}, Page ${key(currPageNumber)}, Exit ${key("q")} `
     return `${currContent}${message}`
 })

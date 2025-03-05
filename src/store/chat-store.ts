@@ -284,7 +284,11 @@ export class ChatStore implements IChatStore {
     private queryMessage = (chatId: string, count: number) =>
         this.db
             .query(
-                `SELECT ${this.chatMessageColumn} FROM chat_message WHERE chat_id = ? order by action_time desc Limit ? `
+                `
+                select ${this.chatMessageColumn } from chat_message where chat_id = ? and pair_key in (
+                    select pair_key from chat_message group by pair_key order by max(action_time) desc limit ?
+                ) order by action_time desc
+                `
             )
             .as(ChatMessage)
             .all(chatId, count)
