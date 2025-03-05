@@ -1,20 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { accessSync, constants, readFileSync } from 'node:fs'
 import OpenAi from 'openai'
-import type { IConfig } from '../types/config-types'
-import type {
-    LLMCallParam,
-    ILLMClient,
-    LLMMessage,
-    LLMRole,
-} from '../types/llm-types'
-import MCPClient from '../types/mcp-client'
-import type { MCPConfig } from '../types/mcp-client'
 import type { RunnableToolFunction } from 'openai/lib/RunnableFunction'
 import ora from 'ora'
-import { accessSync, constants, readFileSync } from 'node:fs'
-import { color } from '../util/color-utils'
-import { println } from '../util/common-utils'
+import type { IConfig } from '../types/config-types'
+import type {
+    ILLMClient,
+    LLMCallParam,
+    LLMMessage,
+    LLMRole,
+    LLMStreamMCPParam,
+    LLMStreamParam,
+} from '../types/llm-types'
+import type { MCPConfig } from '../types/mcp-client'
+import MCPClient from '../types/mcp-client'
 import { StreamDisplay } from './stream-display'
 
 export class OpenAiClient implements ILLMClient {
@@ -58,37 +58,38 @@ export class OpenAiClient implements ILLMClient {
         this.message('assistant', content)
 
     call = async (param: LLMCallParam) => {
-        const { messages, model, temperature, contentConsumer: f } = param
+        const { messages, model, temperature, contentConsumer } = param
         await this.client.chat.completions
             .create({
                 messages,
                 model,
                 temperature,
             })
-            .then((it) => f(it.choices[0]?.message?.content ?? ''))
+            .then((it) => contentConsumer(it.choices[0]?.message?.content ?? ''))
             .catch((err) => console.error(err))
     }
 
-    stream = async (param: LLMCallParam) => {
-        const { messages, model, temperature, contentConsumer: f } = param
+    stream = async (param: LLMStreamParam) => {
+        const { messages, model, temperature, messageStore } = param
         const stream = await this.client.chat.completions.create({
             model,
             messages,
             temperature,
             stream: true,
         })
-        const display = new StreamDisplay(f)
+        const display = new StreamDisplay({ userMessage: this.userMessage(messages), messageStore })
         for await (const chunk of stream) {
-            display.process(chunk)
+            display.thinkingShow(chunk)
         }
+        await display.pageShow()
     }
 
-    callWithTools = async (param: LLMCallParam) => {
+    callWithTools = async (param: LLMStreamMCPParam) => {
         const {
             messages,
             model,
             temperature,
-            contentConsumer: f,
+            messageStore,
             mcpClients,
         } = param
         // support tools mcp server now
@@ -96,6 +97,7 @@ export class OpenAiClient implements ILLMClient {
             it.type.includes('tools')
         )
         try {
+            const display = new StreamDisplay({ userMessage: this.userMessage(messages), messageStore })
             await Promise.all(actMcpClients.map((it) => it.connect()))
             const spinner = ora('thinking...').start()
             // map to openai tools
@@ -125,9 +127,10 @@ export class OpenAiClient implements ILLMClient {
                         spinner.stop()
                         isStop = true
                     }
-                    f(it)
+                    display.contentShow(it)
                 })
             await runner.finalChatCompletion()
+            await display.pageShow()
         } catch (err: unknown) {
             console.error(err)
             await Promise.all(actMcpClients.map((it) => it.close()))
@@ -159,4 +162,8 @@ export class OpenAiClient implements ILLMClient {
         role,
         content,
     })
+
+    private userMessage = (messages: LLMMessage[]) => {
+        return messages[messages.length - 1]
+    }
 }

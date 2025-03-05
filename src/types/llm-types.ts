@@ -6,12 +6,29 @@ export type LLMMessage = {
     content: string
 }
 
-export type LLMCallParam = {
+export type LLMResult = {
+    userContent: string,
+    assistantContent: string,
+    thinkingReasoning? :string
+}
+
+export type LLMParam = {
     messages: LLMMessage[]
     model: string
     temperature: number
-    contentConsumer: (res: string) => void
-    mcpClients?: MCPClient[]
+}
+
+export type LLMCallParam = LLMParam & {
+    contentConsumer: (str: string) => void
+}
+
+
+export type LLMStreamParam = LLMParam & {
+    messageStore: (result: LLMResult) => void
+}
+
+export type LLMStreamMCPParam = LLMStreamParam & {
+    mcpClients: MCPClient[]
 }
 
 export interface ILLMClient {
@@ -22,6 +39,6 @@ export interface ILLMClient {
     system: (content: string) => LLMMessage
     assistant: (content: string) => LLMMessage
     call: (param: LLMCallParam) => Promise<void>
-    stream: (param: LLMCallParam) => Promise<void>
-    callWithTools: (param: LLMCallParam) => Promise<void>
+    stream: (param: LLMStreamParam) => Promise<void>
+    callWithTools: (param: LLMStreamMCPParam) => Promise<void>
 }

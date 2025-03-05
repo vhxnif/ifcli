@@ -17,11 +17,3 @@ export interface IChatAction {
   selectPrompt: (name: string) => void
   usefulTools: () => void
 }
-
-export interface IToolsAction {
-  suggest: (content: string, excluded: string[]) => Promise<void>
-
-  improve: (content: string) => Promise<void>
-
-  trans: (content: string, lang: string) => Promise<void>
-}

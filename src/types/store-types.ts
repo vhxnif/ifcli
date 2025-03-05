@@ -36,7 +36,7 @@ export class ChatPrompt {
 }
 
 export type MessageContent = {
-    role: 'user' | 'assistant'
+    role: 'user' | 'assistant' | 'reasoning'
     content: string,
     pairKey: string,
 }
@@ -56,6 +56,7 @@ export interface IChatStore {
     clearMessage: () => void
     contextMessage: () => ChatMessage[]
     historyMessage: (count: number) => ChatMessage[]
+    selectMessage: (messageId: string) => ChatMessage
 
     // ---- config ---- //
     modifySystemPrompt: (prompt: string) => void

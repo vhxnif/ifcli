@@ -156,6 +156,14 @@ export class ChatStore implements IChatStore {
     historyMessage = (count: number) =>
         this.currentChatRun((c) => this.queryMessage(c.id, count))
 
+    selectMessage = (messageId: string) => 
+        this.db
+            .query(
+                `SELECT ${this.chatMessageColumn} FROM chat_message WHERE id= ?`
+            )
+            .as(ChatMessage)
+            .get(messageId)!
+
     modifySystemPrompt = (prompt: string) =>
         this.currentChatConfigRun((_, cf) =>
             this.db
@@ -276,7 +284,7 @@ export class ChatStore implements IChatStore {
     private queryMessage = (chatId: string, count: number) =>
         this.db
             .query(
-                `SELECT ${this.chatMessageColumn} FROM chat_message WHERE chat_id = ? order by action_time Limit ? `
+                `SELECT ${this.chatMessageColumn} FROM chat_message WHERE chat_id = ? order by action_time desc Limit ? `
             )
             .as(ChatMessage)
             .all(chatId, count)
