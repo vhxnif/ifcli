@@ -9,7 +9,7 @@ export class ShowWin {
     private maxSize: number
     private cellSize: number = llmTableConfig.columns?.[0].width ?? 70 
 
-    constructor(rowSize: number = 20, cellSize?: number) {
+    constructor(rowSize: number = 25, cellSize?: number) {
         if(cellSize) {
             this.cellSize = cellSize
         }

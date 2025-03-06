@@ -3,12 +3,12 @@ import type OpenAI from "openai"
 import { table } from "table"
 import type { LLMMessage, LLMResult } from "../types/llm-types"
 import { color } from "../util/color-utils"
-import { llmResultPageShow, llmTableConfig } from "./llm-utils"
+import { llmNotifyMessage, llmResultPageShow, llmTableConfig, type LLMResultPageShow } from "./llm-utils"
 import { ShowWin } from "./show-win"
+import ora, { type Ora } from "ora"
 
 export class StreamDisplay {
 
-    private previousOutputLineCount: number = 0
     private hasReasoningContent: boolean = false
     private lastChunk: string = ''
     private thinkStopFlag: boolean = false
@@ -17,6 +17,7 @@ export class StreamDisplay {
     private contentColl: ShowWin = new ShowWin() 
     private messageStore: (result: LLMResult) => void
     private userMessage: LLMMessage 
+    private spinner: Ora = ora(llmNotifyMessage.waiting)
 
     constructor({ userMessage, messageStore, thinkWinRowLinit } :{ userMessage: LLMMessage, messageStore: (result: LLMResult) => void, thinkWinRowLinit?: number}) {
         this.userMessage = userMessage
@@ -25,6 +26,7 @@ export class StreamDisplay {
             this.thinkReasoning = new ShowWin(thinkWinRowLinit)
             this.contentColl = new ShowWin(thinkWinRowLinit)
         }
+        this.spinner.start()
     }
 
     thinkingShow = (chunk: OpenAI.Chat.Completions.ChatCompletionChunk) => {
@@ -58,25 +60,39 @@ export class StreamDisplay {
             }
     }
 
-    private think = (reasoning: string) => {
-        this.tableShow(reasoning, this.thinkReasoning, color.green)
+    contentShow = (content: string ) => {
+        this.tableShow(content, this.contentColl, color.mauve, llmNotifyMessage.rendering)
     }
 
-    private tableShow = (content: string,  contentArray: ShowWin, colorShow: ChalkInstance) => {
-        contentArray.push(content)
-        this.clearScreen()
-        const tableStr = table([[colorShow(contentArray.show())]], this.tableConfig)
-        this.previousOutputLineCount = tableStr.split('\n').length - 1
-        process.stdout.write(`${tableStr}`)
-    }
-
-    private clearScreen = () => {
-        if (this.previousOutputLineCount > 0) {
-            // 光标上移 N 行（回到表格起始位置）
-            process.stdout.write(`\x1B[${this.previousOutputLineCount}A`)
-            // 清除从光标到屏幕结束的内容
-            process.stdout.write('\x1B[0J')
+    pageShow = async () => {
+        this.spinner.stop()
+        this.doStoreMessage()
+        const showParam: LLMResultPageShow = {
+            assistantContent: this.contentColl.pageContent(), 
+            notifyInfo: llmNotifyMessage.completed
         }
+        if (!this.thinkReasoning.isEmpty()) {
+            showParam.thinkingContent = this.thinkReasoning.pageContent()
+        }
+        await llmResultPageShow(showParam)
+    }
+
+    change = (str: string) => {
+        this.spinner.text = str
+    }
+
+    error = () => {
+        this.spinner.fail(llmNotifyMessage.error)
+    }
+
+    private think = (reasoning: string) => {
+        this.tableShow(reasoning, this.thinkReasoning, color.green, llmNotifyMessage.thinking)
+    }
+
+    private tableShow = (content: string,  contentArray: ShowWin, colorShow: ChalkInstance, notice: string) => {
+        contentArray.push(content)
+        const tableStr = table([[colorShow(contentArray.show())]], this.tableConfig)
+        this.spinner.text = `${notice}\n${tableStr}`
     }
 
     private stopThink = () => {
@@ -84,22 +100,6 @@ export class StreamDisplay {
             return
         }
         this.thinkStopFlag = true
-        this.clearScreen()
-        this.previousOutputLineCount = 0
-    }
-
-    contentShow = (content: string ) => {
-        this.tableShow(content, this.contentColl, color.mauve)
-    }
-
-    pageShow = async () => {
-        this.doStoreMessage()
-        this.clearScreen()
-        if (!this.thinkReasoning.isEmpty()) {
-            await llmResultPageShow(this.contentColl.pageContent(), this.thinkReasoning.pageContent())
-            return
-        }
-        await llmResultPageShow(this.contentColl.pageContent(),)
     }
 
     private doStoreMessage() {

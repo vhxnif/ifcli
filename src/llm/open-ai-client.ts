@@ -3,7 +3,6 @@
 import { accessSync, constants, readFileSync } from 'node:fs'
 import OpenAi from 'openai'
 import type { RunnableToolFunction } from 'openai/lib/RunnableFunction'
-import ora from 'ora'
 import type { IConfig } from '../types/config-types'
 import type {
     ILLMClient,
@@ -15,8 +14,8 @@ import type {
 } from '../types/llm-types'
 import type { MCPConfig } from '../types/mcp-client'
 import MCPClient from '../types/mcp-client'
-import { StreamDisplay } from './stream-display'
 import { llmNotifyMessage } from './llm-utils'
+import { StreamDisplay } from './stream-display'
 
 export class OpenAiClient implements ILLMClient {
     client: OpenAi
@@ -72,17 +71,21 @@ export class OpenAiClient implements ILLMClient {
 
     stream = async (param: LLMStreamParam) => {
         const { messages, model, temperature, messageStore } = param
-        const stream = await this.client.chat.completions.create({
-            model,
-            messages,
-            temperature,
-            stream: true,
-        })
         const display = new StreamDisplay({ userMessage: this.userMessage(messages), messageStore })
-        for await (const chunk of stream) {
-            display.thinkingShow(chunk)
+        try {
+            const stream = await this.client.chat.completions.create({
+                model,
+                messages,
+                temperature,
+                stream: true,
+            })
+            for await (const chunk of stream) {
+                display.thinkingShow(chunk)
+            }
+            await display.pageShow()
+        } catch(e: unknown) {
+            display.error()
         }
-        await display.pageShow()
     }
 
     callWithTools = async (param: LLMStreamMCPParam) => {
@@ -97,17 +100,15 @@ export class OpenAiClient implements ILLMClient {
         const actMcpClients = mcpClients!.filter((it) =>
             it.type.includes('tools')
         )
+        const display = new StreamDisplay({ userMessage: this.userMessage(messages), messageStore })
         try {
-            const display = new StreamDisplay({ userMessage: this.userMessage(messages), messageStore })
             await Promise.all(actMcpClients.map((it) => it.connect()))
-            const spinner = ora(llmNotifyMessage.waiting).start()
             // map to openai tools
             const tools = (
                 await Promise.all(
                     actMcpClients.flatMap((it) => this.mapToTools(it))
                 )
             ).flat()
-            let isStop = false
             // call llm
             const runner = this.client.beta.chat.completions
                 .runTools({
@@ -118,23 +119,19 @@ export class OpenAiClient implements ILLMClient {
                     messages,
                 })
                 .on('functionCall', (it) => {
-                    spinner.text = llmNotifyMessage.analyzing 
+                    display.change(llmNotifyMessage.analyzing)
                 })
                 .on('functionCallResult', (it) => {
-                    spinner.text = llmNotifyMessage.thinking
+                    display.change(llmNotifyMessage.thinking)
                 })
                 .on('content', (it) => {
-                    if (!isStop) {
-                        spinner.stop()
-                        isStop = true
-                    }
                     display.contentShow(it)
                 })
             await runner.finalChatCompletion()
             await display.pageShow()
         } catch (err: unknown) {
-            console.error(err)
             await Promise.all(actMcpClients.map((it) => it.close()))
+            display.error()
         }
         await Promise.all(actMcpClients.map((it) => it.close()))
     }
