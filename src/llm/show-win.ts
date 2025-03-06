@@ -1,5 +1,6 @@
 import stringWidth from "string-width"
 import { llmTableConfig } from "./llm-utils"
+import wrapAnsi from "wrap-ansi"
 
 export class ShowWin {
 
@@ -34,7 +35,7 @@ export class ShowWin {
     }
 
     show = () => {
-        return this.arr.slice(this.winIdx).join('')
+        return wrapAnsi(this.arr.slice(this.winIdx).join(''), this.cellSize)
     }
 
     private strWidth = (str: string) => {
@@ -60,7 +61,7 @@ export class ShowWin {
         let size = 0
         const reset = () => {
             size = 0
-            res.push(tmp.join(''))
+            res.push(wrapAnsi(tmp.join(''), this.cellSize))
             tmp.length = 0
         }
         for (let index = 0; index < strArr.length; index++) {
