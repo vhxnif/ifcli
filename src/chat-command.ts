@@ -7,11 +7,6 @@ const program = new Command()
 program.name('ifct').description('ifcli chat with LLM').version('0.1.0')
 
 program
-    .command('init')
-    .description('init chat config')
-    .action(() => chatAction.init())
-
-program
     .command('new')
     .description('new chat')
     .argument('<string>')

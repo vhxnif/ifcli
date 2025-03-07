@@ -35,7 +35,6 @@ export OPENAI_API_KEY=<your_deepseek_key>
 ## Command
 
 ### chat 
-> **IMPORTANT:** ``ifct init`` must be run first!
 
 ```bash
 Usage: ifct [options] [command]
@@ -47,7 +46,6 @@ Options:
   -h, --help        display help for command
 
 Commands:
-  init              init chat config
   new <string>      new chat
   ask <string>      talk with agent
   list              list all chats
@@ -89,23 +87,6 @@ ifct ask "@weather What's the weather today?"
 
 # Multi Version
 ifct ask "@weather:v1 What's the weather today?"
-```
-
-### tool
-```bash
-Usage: ifts [options] [command]
-
-CLI for various AI tools
-
-Options:
-  -V, --version             output the version number
-  -h, --help                display help for command
-
-Commands:
-  trans [options] <string>  translation master
-  improve <string>          writing expert
-  suggest <string>          suggestion cli command
-  help [command]            display help for command
 ```
 
 This project was created using `bun init` in [bun v1.1.36.](https://bun.sh) is a fast all-in-one JavaScript runtime.

@@ -15,5 +15,7 @@ const client: ILLMClient = new OpenAiClient(config)
 
 const chatAction: IChatAction = new ChatAction(client, chatStore, config)
 
+chatAction.init()
+
 export { chatAction, chatStore, client }
 
