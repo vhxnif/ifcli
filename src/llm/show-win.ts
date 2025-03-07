@@ -1,6 +1,10 @@
+import type { ChalkInstance } from "chalk"
+import { marked, type MarkedExtension } from "marked"
+import { markedTerminal } from "marked-terminal"
 import stringWidth from "string-width"
-import { llmTableConfig } from "./llm-utils"
 import wrapAnsi from "wrap-ansi"
+import { llmTableConfig } from "./llm-utils"
+import { color } from "../util/color-utils"
 
 export class ShowWin {
 
@@ -34,34 +38,22 @@ export class ShowWin {
         this.arr.push(str)
     }
 
-    show = () => {
-        return wrapAnsi(this.arr.slice(this.winIdx).join(''), this.cellSize)
-    }
-
-    private strWidth = (str: string) => {
-        let size = stringWidth(str)
-        const s = str.split('\n')
-        if (s.length > 1) {
-            size += (s.length - 1) * this.cellSize
-        }
-        return size
-    }
+    show = (color: ChalkInstance) => wrapAnsi(color(this.arr.slice(this.winIdx).join('')), this.cellSize)
 
     isEmpty = () => this.arr.length === 0
 
-    pageContent = () => {
-        return this.pageSplit(this.arr)
-    }
+    pageContent = () => this.pageSplit(this.content())
 
     content = () => this.arr.join('')
 
-    pageSplit = (strArr: string[]) => {
+    pageSplit = (str: string) => {
+        const strArr: string[] = this.contentSplit(str)
         const res: string[] = []
         const tmp: string[] = []
         let size = 0
         const reset = () => {
             size = 0
-            res.push(wrapAnsi(tmp.join(''), this.cellSize))
+            res.push(tmp.join(''))
             tmp.length = 0
         }
         for (let index = 0; index < strArr.length; index++) {
@@ -78,5 +70,30 @@ export class ShowWin {
         }
         return res
 
+    }
+
+    private strWidth = (str: string) => {
+        let size = stringWidth(str)
+        const s = str.split('\n')
+        if (s.length > 1) {
+            size += (s.length - 1) * this.cellSize
+        }
+        return size
+    }
+
+    private contentSplit = (str: string) => {
+        marked.use(markedTerminal({
+            listitem: color.sapphire,
+            hr: color.pink.bold,
+            width: this.cellSize,
+            reflowText: true,
+            tab: 2,
+        }) as MarkedExtension)
+        const mkd = wrapAnsi(marked.parse(str) as string, this.cellSize)
+        return mkd.split('\n').reduce((arr, cur) => {
+            arr.push('\n')
+            arr.push(cur)
+            return arr
+        }, [] as string[])
     }
 }

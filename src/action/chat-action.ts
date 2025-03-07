@@ -9,8 +9,6 @@ import type { IConfig } from '../types/config-types'
 import { temperature } from '../types/constant'
 import type { ILLMClient, LLMParam, LLMResult, LLMStreamParam } from '../types/llm-types'
 import MCPClient from '../types/mcp-client'
-import { marked, type MarkedExtension } from 'marked'
-import { markedTerminal } from 'marked-terminal'
 
 import {
     Chat,
@@ -170,25 +168,15 @@ export class ChatAction implements IChatAction {
             return
         }
         const showWin = new ShowWin()
-        const assistantPageContent = showWin.pageSplit(this.stringSplit(assistant.content))
+        const assistantPageContent = showWin.pageSplit(assistant.content)
         const thinking = messages.find(it => it.role === 'reasoning')
         const showParam: LLMResultPageShow = {
             assistantContent: assistantPageContent
         }
         if(thinking) {
-            showParam.thinkingContent = showWin.pageSplit(this.stringSplit(thinking.content))
+            showParam.thinkingContent = showWin.pageSplit(thinking.content)
         }
         await llmResultPageShow(showParam)
-    }
-
-    private stringSplit = (str: string) => {
-        marked.use(markedTerminal() as MarkedExtension)
-        const mkd = marked.parse(str) as string
-        return mkd.split('\n').reduce((arr, cur) => {
-            arr.push('\n')
-            arr.push(cur)
-            return arr
-        }, [] as string[])
     }
 
     modifyContextSize = (size: number) => {

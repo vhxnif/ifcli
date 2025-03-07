@@ -91,7 +91,7 @@ export class StreamDisplay {
 
     private tableShow = (content: string,  contentArray: ShowWin, colorShow: ChalkInstance, notice: string) => {
         contentArray.push(content)
-        const tableStr = table([[colorShow(contentArray.show())]], this.tableConfig)
+        const tableStr = table([[contentArray.show(colorShow)]], this.tableConfig)
         this.spinner.text = `${notice}\n${tableStr}`
     }
 
