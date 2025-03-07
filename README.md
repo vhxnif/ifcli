@@ -14,8 +14,7 @@ npm install -g @vhxnif/ifcli
 ## From Source Code
 ```bash
 bun install && 
-bun run build-chat && 
-bun run build-tools && 
+bun run build && 
 bun link
 ```
 

@@ -1,12 +1,15 @@
 {
     "name": "@vhxnif/ifcli",
-    "version": "0.1.3",
-    "description": "ai chat cli & some tools command",
+    "version": "0.1.5",
+    "description": "chat with ai from cli",
     "keywords": [
         "deepseek",
+        "deepseek-reasoner",
+        "openai",
+        "mcp",
         "ai",
         "bun",
-        "chat cli"
+        "chat"
     ],
     "license": "MIT",
     "type": "module",
@@ -23,14 +26,10 @@
         "bun": ">=1.1.36"
     },
     "bin": {
-        "ifts": "build/command.js",
         "ifct": "build/chat-command.js"
     },
     "scripts": {
-        "build:tools": "bun build ./src/command.ts --outdir ./build --target bun --minify",
-        "build:chat": "bun build ./src/chat-command.ts --outdir ./build --target bun --minify",
-        "build:all": "npm run build:tools && npm run build:chat",
-        "tools": "bun run ./src/command.ts --",
+        "build": "bun build ./src/chat-command.ts --outdir ./build --target bun --minify",
         "chat": "bun run ./src/chat-command.ts --"
     },
     "devDependencies": {

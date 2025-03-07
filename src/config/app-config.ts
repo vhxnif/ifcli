@@ -10,7 +10,7 @@ export class AppConfig implements IConfig {
     customeModels = () => {
         const customModels = env('IFCLI_CUSTOM_MODELS')
         if (customModels) {
-            return customModels?.split(',')
+            return customModels?.split(',').map(it => it.trim())
         }
         return []
     }
