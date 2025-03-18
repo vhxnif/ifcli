@@ -2,18 +2,21 @@ import { input } from '@inquirer/prompts'
 import { isEmpty } from 'lodash'
 import { nanoid } from 'nanoid'
 import { CHAT_DEFAULT_SYSTEM } from '../config/prompt'
-import { llmResultPageShow, type LLMResultPageShow } from '../llm/llm-utils'
-import { ShowWin } from '../llm/show-win'
 import type { IChatAction } from '../types/action-types'
 import type { IConfig } from '../types/config-types'
 import { temperature } from '../types/constant'
-import type { ILLMClient, LLMParam, LLMResult, LLMStreamParam } from '../types/llm-types'
+import type {
+    ILLMClient,
+    LLMParam,
+    LLMResult,
+    LLMStreamParam,
+} from '../types/llm-types'
 import MCPClient from '../types/mcp-client'
+import { default as hisMsgDisplay } from '../llm/llm-his-msg-prompt'
 
 import {
     Chat,
     type ChatConfig,
-    type ChatMessage,
     type IChatStore,
     type MessageContent,
 } from '../types/store-types'
@@ -23,7 +26,7 @@ import {
     println,
     printTable,
     selectRun,
-    tableConfig
+    tableConfig,
 } from '../util/common-utils'
 
 export class ChatAction implements IChatAction {
@@ -77,9 +80,16 @@ export class ChatAction implements IChatAction {
         this.store.contextRun(async (cf) => {
             const { tools, userMessage } = this.extractTools(content)
             const llmParam = this.llmParam(userMessage, cf)
-            const streamParam = {...llmParam, messageStore: this.storeMessage } as LLMStreamParam
+            const streamParam = {
+                ...llmParam,
+                messageStore: this.storeMessage,
+            } as LLMStreamParam
             const streamRun = () => this.client.stream(streamParam)
-            const toolsRun = (mcpClients: MCPClient[]) => this.client.callWithTools({ ...streamParam, mcpClients: mcpClients})
+            const toolsRun = (mcpClients: MCPClient[]) =>
+                this.client.callWithTools({
+                    ...streamParam,
+                    mcpClients: mcpClients,
+                })
             if (isEmpty(tools)) {
                 await streamRun()
                 return
@@ -136,47 +146,10 @@ export class ChatAction implements IChatAction {
         })
     }
 
-    printChatHistory = () => {
-        const msg = this.store
-            .historyMessage(10)
-            .reduce((acc: Record<string, ChatMessage[]>, item) => {
-                if (!acc[item.pairKey]) {
-                    acc[item.pairKey] = []
-                }
-                acc[item.pairKey].push(item)
-                return acc
-            }, {})
-        const choices = Object.keys(msg).flatMap((key) =>
-            msg[key]
-                .filter((it) => it.role === 'user')
-                .map((it) => ({ name: it.content, value: key }))
-        )
-        if (isEmpty(choices)) {
-            error(`History Questions is Empty.`)
-            return
-        }
-        selectRun('History Questions:', choices, async (answer) =>
-            await this.historyMessageShow(msg[answer])
-        )
-    }
-
-    private historyMessageShow = async (messages: ChatMessage[]) => {
-        const assistant = messages.find(it => it.role === 'assistant')
-        const config = tableConfig({ cols: [1]})
-        if (!assistant) {
-            printTable([['empty']], config)
-            return
-        }
-        const showWin = new ShowWin()
-        const assistantPageContent = showWin.pageSplit(assistant.content)
-        const thinking = messages.find(it => it.role === 'reasoning')
-        const showParam: LLMResultPageShow = {
-            assistantContent: assistantPageContent
-        }
-        if(thinking) {
-            showParam.thinkingContent = showWin.pageSplit(thinking.content)
-        }
-        await llmResultPageShow(showParam)
+    printChatHistory = async (limit: number) => {
+        await hisMsgDisplay({
+            messages: this.store.historyMessage(limit),
+        })
     }
 
     modifyContextSize = (size: number) => {
@@ -318,17 +291,19 @@ export class ChatAction implements IChatAction {
         ]
     }
 
-    private storeMessage = (
-        result: LLMResult
-    ): void => {
-        const {userContent, assistantContent, thinkingReasoning } = result
+    private storeMessage = (result: LLMResult): void => {
+        const { userContent, assistantContent, thinkingReasoning } = result
         const pairKey = nanoid()
         const messages: MessageContent[] = [
             { role: 'user', content: userContent, pairKey },
             { role: 'assistant', content: assistantContent, pairKey },
         ]
-        if(thinkingReasoning) {
-            messages.push({ role: 'reasoning', content: thinkingReasoning, pairKey })
+        if (thinkingReasoning) {
+            messages.push({
+                role: 'reasoning',
+                content: thinkingReasoning,
+                pairKey,
+            })
         }
         this.store.saveMessage(messages)
     }
@@ -361,10 +336,7 @@ export class ChatAction implements IChatAction {
         }, [] as MCPClient[])
     }
 
-    private llmParam = (
-        userMessage: string,
-        config: ChatConfig,
-    ) => {
+    private llmParam = (userMessage: string, config: ChatConfig) => {
         const { sysPrompt, withContext, model, scenario } = config
         const messages = this.messages(userMessage, sysPrompt, withContext)
         return {

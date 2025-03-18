@@ -4,7 +4,7 @@ import { input } from '@inquirer/prompts'
 import moment from 'moment'
 import { display } from './color-utils'
 import { table } from 'table'
-import type { ColumnUserConfig, TableUserConfig } from 'table'
+import type { Alignment, ColumnUserConfig, TableUserConfig } from 'table'
 
 const debug = false
 
@@ -53,36 +53,38 @@ const optionFunMapping = (
 }
 const sum = (numbers: number[]) => numbers.reduce((sum, it) => (sum += it), 0)
 const tableDefaultConfig: TableUserConfig = {
-  border: {
-    topBody: `─`,
-    topJoin: `┬`,
-    topLeft: `╭`,
-    topRight: `╮`,
+    border: {
+        topBody: `─`,
+        topJoin: `┬`,
+        topLeft: `╭`,
+        topRight: `╮`,
 
-    bottomBody: `─`,
-    bottomJoin: `┴`,
-    bottomLeft: `╰`,
-    bottomRight: `╯`,
+        bottomBody: `─`,
+        bottomJoin: `┴`,
+        bottomLeft: `╰`,
+        bottomRight: `╯`,
 
-    bodyLeft: `│`,
-    bodyRight: `│`,
-    bodyJoin: `│`,
+        bodyLeft: `│`,
+        bodyRight: `│`,
+        bodyJoin: `│`,
 
-    joinBody: `─`,
-    joinLeft: `├`,
-    joinRight: `┤`,
-    joinJoin: `┼`,
-  },
+        joinBody: `─`,
+        joinLeft: `├`,
+        joinRight: `┤`,
+        joinJoin: `┼`,
+    },
 }
 
 const tableConfig = ({
     cols,
     celConfig = [],
     maxColumn = 70,
+    alignment = 'center',
 }: {
     cols: number[]
     celConfig?: ColumnUserConfig[]
     maxColumn?: number
+    alignment?: Alignment
 }): TableUserConfig => {
     const allPart = sum(cols)
     const curCol = terminal.column - 4 * cols.length
@@ -93,7 +95,7 @@ const tableConfig = ({
         columns: calWidth.map((it, idx) => {
             if (celConfig.length === 0) {
                 return {
-                    alignment: 'center',
+                    alignment,
                     width: it,
                 }
             }

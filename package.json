@@ -1,6 +1,6 @@
 {
     "name": "@vhxnif/ifcli",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "description": "chat with ai from cli",
     "keywords": [
         "deepseek",
@@ -18,10 +18,7 @@
         "type": "git",
         "url": "git+https://github.com/vhxnif/ifcli.git"
     },
-    "files": [
-        "build",
-        "README.adoc"
-    ],
+    "files": ["build", "README.adoc"],
     "engines": {
         "bun": ">=1.1.36"
     },

@@ -27,7 +27,8 @@ program
 program
     .command('history')
     .description('history questions')
-    .action(() => chatAction.printChatHistory())
+    .option('-l, --limit <limit>', 'history message limit', '100')
+    .action(async (option) => chatAction.printChatHistory(Number(option.limit)))
 
 program
     .command('remove')
