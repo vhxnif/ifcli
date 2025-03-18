@@ -1,5 +1,7 @@
 # ifcli
 
+https://github.com/user-attachments/assets/e59f68ca-85f6-49fd-aabd-b2d076423841
+
 ## Install 
 ```bash
 # install bun
