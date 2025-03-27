@@ -1,8 +1,8 @@
 import type { TableUserConfig } from 'table'
-import { tableConfig } from '../util/common-utils'
 import { table } from 'table'
 import { color } from '../util/color-utils'
-import { default as page } from './llm-res-prompt'
+import { default as page } from '../component/llm-res-prompt'
+import { tableConfig } from '../util/table-util'
 
 const thinkTableHeader = color.sky('Thinking Content')
 const contentTableHeader = color.sky('Assistant Content')

@@ -44,13 +44,19 @@ program
     .command('prompt')
     .description('prompt manager')
     .option('-s, --select <name>', 'select a prompt for the current chat')
-    .option('-m, --modify <prompt>', "modify the current chat's prompt")
+    .option('-m, --modify [prompt]', "modify the current chat's prompt")
     .option('-p, --publish', 'publish the current chat prompt')
     .action((option) => {
         optionFunMapping(option, {
             select: (v) => chatAction.selectPrompt(v as string),
             modify: (v) => {
-                chatAction.modifySystemPrompt(v as string)
+                if (typeof v === 'boolean') {
+                    // editor
+                    // return
+                }
+                if (typeof v === 'string') {
+                    chatAction.modifySystemPrompt(v as string)
+                }
             },
             publish: chatAction.publishPrompt,
         })

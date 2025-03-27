@@ -1,10 +1,10 @@
 import type { ChalkInstance } from "chalk"
 import { marked, type MarkedExtension } from "marked"
 import { markedTerminal } from "marked-terminal"
-import stringWidth from "string-width"
 import wrapAnsi from "wrap-ansi"
 import { llmTableConfig } from "./llm-utils"
 import { color } from "../util/color-utils"
+import { stringWidth } from "../util/common-utils"
 
 export class ShowWin {
 

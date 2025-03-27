@@ -65,13 +65,18 @@ export class OpenAiClient implements ILLMClient {
                 model,
                 temperature,
             })
-            .then((it) => contentConsumer(it.choices[0]?.message?.content ?? ''))
+            .then((it) =>
+                contentConsumer(it.choices[0]?.message?.content ?? '')
+            )
             .catch((err) => console.error(err))
     }
 
     stream = async (param: LLMStreamParam) => {
         const { messages, model, temperature, messageStore } = param
-        const display = new StreamDisplay({ userMessage: this.userMessage(messages), messageStore })
+        const display = new StreamDisplay({
+            userMessage: this.userMessage(messages),
+            messageStore,
+        })
         try {
             const stream = await this.client.chat.completions.create({
                 model,
@@ -83,24 +88,21 @@ export class OpenAiClient implements ILLMClient {
                 display.thinkingShow(chunk)
             }
             await display.pageShow()
-        } catch(e: unknown) {
+        } catch (e: unknown) {
             display.error()
         }
     }
 
     callWithTools = async (param: LLMStreamMCPParam) => {
-        const {
-            messages,
-            model,
-            temperature,
-            messageStore,
-            mcpClients,
-        } = param
+        const { messages, model, temperature, messageStore, mcpClients } = param
         // support tools mcp server now
         const actMcpClients = mcpClients!.filter((it) =>
             it.type.includes('tools')
         )
-        const display = new StreamDisplay({ userMessage: this.userMessage(messages), messageStore })
+        const display = new StreamDisplay({
+            userMessage: this.userMessage(messages),
+            messageStore,
+        })
         try {
             await Promise.all(actMcpClients.map((it) => it.connect()))
             // map to openai tools
@@ -118,10 +120,10 @@ export class OpenAiClient implements ILLMClient {
                     tools,
                     messages,
                 })
-                .on('functionCall', (it) => {
+                .on('functionCall', () => {
                     display.change(llmNotifyMessage.analyzing)
                 })
-                .on('functionCallResult', (it) => {
+                .on('functionCallResult', () => {
                     display.change(llmNotifyMessage.thinking)
                 })
                 .on('content', (it) => {

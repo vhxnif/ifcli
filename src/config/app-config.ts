@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import path from 'path'
-import { env, platform } from '../util/config-utils'
 import type { IConfig } from '../types/config-types'
 import { accessSync, constants, mkdirSync } from 'node:fs'
+import { env, platform } from '../util/platform-utils'
 
 export class AppConfig implements IConfig {
     defaultModel = (): string => env('IFCLI_DEFAULT_MODEL') ?? 'deepseek-chat'

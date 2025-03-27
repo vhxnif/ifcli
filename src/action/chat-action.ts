@@ -1,6 +1,4 @@
-import { input } from '@inquirer/prompts'
 import { isEmpty } from 'lodash'
-import { nanoid } from 'nanoid'
 import { CHAT_DEFAULT_SYSTEM } from '../config/prompt'
 import type { IChatAction } from '../types/action-types'
 import type { IConfig } from '../types/config-types'
@@ -12,7 +10,7 @@ import type {
     LLMStreamParam,
 } from '../types/llm-types'
 import MCPClient from '../types/mcp-client'
-import { default as hisMsgDisplay } from '../llm/llm-his-msg-prompt'
+import { default as hisMsgDisplay } from '../component/llm-his-msg-prompt'
 
 import {
     Chat,
@@ -24,10 +22,10 @@ import { color, display } from '../util/color-utils'
 import {
     error,
     println,
-    printTable,
-    selectRun,
-    tableConfig,
+    uuid,
 } from '../util/common-utils'
+import { printTable, tableConfig } from '../util/table-util'
+import { input, selectRun } from '../util/inquirer-utils'
 
 export class ChatAction implements IChatAction {
     client: ILLMClient
@@ -293,7 +291,7 @@ export class ChatAction implements IChatAction {
 
     private storeMessage = (result: LLMResult): void => {
         const { userContent, assistantContent, thinkingReasoning } = result
-        const pairKey = nanoid()
+        const pairKey = uuid()
         const messages: MessageContent[] = [
             { role: 'user', content: userContent, pairKey },
             { role: 'assistant', content: assistantContent, pairKey },

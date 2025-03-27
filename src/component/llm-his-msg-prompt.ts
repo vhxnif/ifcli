@@ -10,9 +10,9 @@ import type { PartialDeep } from '@inquirer/type'
 import { table } from 'table'
 import type { ChatMessage } from '../types/store-types'
 import { color } from '../util/color-utils'
-import { tableConfig } from '../util/common-utils'
-import { contentTableHeader, llmTableShow, thinkTableHeader } from './llm-utils'
-import { ShowWin } from './show-win'
+import { contentTableHeader, llmTableShow, thinkTableHeader } from '../llm/llm-utils'
+import { ShowWin } from '../llm/show-win'
+import { tableConfig } from '../util/table-util'
 
 type MessageConfig = {
     messages: ChatMessage[]

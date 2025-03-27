@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Database } from 'bun:sqlite'
 import { isEmpty } from 'lodash'
-import { nanoid } from 'nanoid'
-import { unixnow } from '../util/common-utils'
+import { unixnow, uuid } from '../util/common-utils'
 import type { IConfig } from '../types/config-types'
 import {
     Chat,
@@ -66,7 +65,7 @@ export class ChatStore implements IChatStore {
     newChat = (name: string, prompt: string, model: string) =>
         this.chatNotExistsRun(name, () => {
             const now = unixnow()
-            const chatId = nanoid()
+            const chatId = uuid()
             const statement = this.db.prepare(
                 `INSERT INTO chat (id, name, "select", action_time, select_time) VALUES (?, ?, ?, ?, ?)`
             )
@@ -81,7 +80,7 @@ export class ChatStore implements IChatStore {
                 }
                 statement.run(chatId, name, true, now, now)
                 configStatement.run(
-                    nanoid(),
+                    uuid(),
                     chatId,
                     prompt,
                     true,
@@ -137,7 +136,7 @@ export class ChatStore implements IChatStore {
                 messages
                     .filter((it) => !isEmpty(it.role) && !isEmpty(it.content))
                     .map((it) => [
-                        nanoid(),
+                        uuid(),
                         c.id,
                         it.role,
                         it.content,
