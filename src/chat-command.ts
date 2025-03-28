@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
 import { chatAction } from './app-context'
-import { optionFunMapping } from './util/common-utils'
+import { editor, optionFunMapping, stdin } from './util/common-utils'
 
 const program = new Command()
 
@@ -44,18 +44,29 @@ program
     .command('prompt')
     .description('prompt manager')
     .option('-s, --select <name>', 'select a prompt for the current chat')
-    .option('-m, --modify [prompt]', "modify the current chat's prompt")
+    .option('-m, --modify', "modify the current chat's prompt")
+    .option('-c, --cover [prompt]', "modify the current chat's prompt")
     .option('-p, --publish', 'publish the current chat prompt')
     .action((option) => {
         optionFunMapping(option, {
             select: (v) => chatAction.selectPrompt(v as string),
-            modify: (v) => {
+            modify: async () => {
+                const text = await editor(chatAction.prompt())
+                if (text) {
+                    chatAction.modifySystemPrompt(text)
+                }
+            },
+            cover: async (v) => {
                 if (typeof v === 'boolean') {
-                    // editor
-                    // return
+                    const str = await stdin()
+                    if (str) {
+                        chatAction.modifySystemPrompt(str)
+                    }
+                    return
                 }
                 if (typeof v === 'string') {
-                    chatAction.modifySystemPrompt(v as string)
+                    chatAction.modifySystemPrompt(v)
+                    return
                 }
             },
             publish: chatAction.publishPrompt,

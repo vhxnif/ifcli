@@ -32,13 +32,13 @@ export class ChatPrompt {
     version!: string
     role!: string
     content!: string
-    modifyTime!: bigint  
+    modifyTime!: bigint
 }
 
 export type MessageContent = {
     role: 'user' | 'assistant' | 'reasoning'
-    content: string,
-    pairKey: string,
+    content: string
+    pairKey: string
 }
 
 export interface IChatStore {
@@ -59,6 +59,7 @@ export interface IChatStore {
     selectMessage: (messageId: string) => ChatMessage
 
     // ---- config ---- //
+    chatConfig: () => ChatConfig
     modifySystemPrompt: (prompt: string) => void
     modifyContextLimit: (contextLimit: number) => void
     modifyModel: (model: string) => void
@@ -70,7 +71,5 @@ export interface IChatStore {
     searchPrompt: (name: string, version?: string) => ChatPrompt[]
 
     // ---- other ---- //
-    contextRun: (f: (cf:ChatConfig) => void) => void
-
-
+    contextRun: (f: (cf: ChatConfig) => void) => void
 }

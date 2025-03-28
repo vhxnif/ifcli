@@ -16,4 +16,5 @@ export interface IChatAction {
     publishPrompt: () => void
     selectPrompt: (name: string) => void
     usefulTools: () => void
+    prompt: () => string
 }

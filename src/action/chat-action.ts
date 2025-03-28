@@ -19,11 +19,7 @@ import {
     type MessageContent,
 } from '../types/store-types'
 import { color, display } from '../util/color-utils'
-import {
-    error,
-    println,
-    uuid,
-} from '../util/common-utils'
+import { error, println, uuid } from '../util/common-utils'
 import { printTable, tableConfig } from '../util/table-util'
 import { input, selectRun } from '../util/inquirer-utils'
 
@@ -226,6 +222,10 @@ export class ChatAction implements IChatAction {
         printTable(tools, tableConfig({ cols: [1, 1] }))
     }
 
+    prompt = () => {
+        return this.store.chatConfig().sysPrompt
+    }
+
     private extractTools = (
         userMessage: string
     ): { tools: string[]; userMessage: string } => {
@@ -282,11 +282,11 @@ export class ChatAction implements IChatAction {
                   return this.client.assistant(it.content)
               })
             : []
-        return [
-            this.client.system(prompt),
-            ...context,
-            this.client.user(content),
-        ]
+        const msg = [...context, this.client.user(content)]
+        if (isEmpty(prompt)) {
+            return msg
+        }
+        return [this.client.system(prompt), ...msg]
     }
 
     private storeMessage = (result: LLMResult): void => {
