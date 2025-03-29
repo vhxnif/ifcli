@@ -1,6 +1,6 @@
 export interface IChatAction {
     init: () => void
-    newChat: (name: string) => void
+    newChat: (name: string) => Promise<void>
     removeChat: () => void
     ask: (content: string) => Promise<void>
     changeChat: () => void
@@ -9,12 +9,12 @@ export interface IChatAction {
     printChatConfig: () => void
     printChatHistory: (limit: number) => Promise<void>
     modifyContextSize: (size: number) => void
-    modifyModel: () => void
+    modifyModel: () => Promise<void>
     modifySystemPrompt: (prompt: string) => void
     modifyWithContext: () => void
     modifyScenario: () => void
-    publishPrompt: () => void
+    publishPrompt: () => Promise<void>
     selectPrompt: (name: string) => void
-    usefulTools: () => void
+    usefulTools: () => Promise<void>
     prompt: () => string
 }

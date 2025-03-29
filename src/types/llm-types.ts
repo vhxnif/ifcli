@@ -1,3 +1,4 @@
+import type { LLMType } from '../config/app-llm-config'
 import type MCPClient from './mcp-client'
 
 export type LLMRole = 'system' | 'user' | 'assistant'
@@ -32,7 +33,8 @@ export type LLMStreamMCPParam = LLMStreamParam & {
 }
 
 export interface ILLMClient {
-    tools: () => MCPClient[]
+    type: LLMType
+    mcpClients: () => MCPClient[]
     defaultModel: () => string
     models: () => string[]
     user: (content: string) => LLMMessage

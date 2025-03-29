@@ -48,8 +48,10 @@ const editor = async (content: string, fileType: string = 'md') => {
     await Bun.file(tmpFile).delete()
     return editorText
 }
+const exit = () => process.exit()
 
 export {
+    exit,
     editor,
     stringWidth,
     stdin,

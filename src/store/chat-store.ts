@@ -49,7 +49,7 @@ export class ChatStore implements IChatStore {
     private chatMessageColumn =
         'id, chat_id as chatId, "role", content, pair_key as pairKey, action_time as actionTime'
     private chatConfigColumn =
-        'id, chat_id as chatId , sys_prompt as sysPrompt, with_context as withContext, context_limit as contextLimit, model, scenario_name as scenarioName, scenario, update_time as updateTime'
+        'id, chat_id as chatId , sys_prompt as sysPrompt, with_context as withContext, context_limit as contextLimit, llm_type as llmType, model, scenario_name as scenarioName, scenario, update_time as updateTime'
     private chatPromptColumn =
         'name, version, role, content, modify_time as modifyTime'
 
@@ -62,7 +62,7 @@ export class ChatStore implements IChatStore {
             .as(Chat)
             .get(name)
 
-    newChat = (name: string, prompt: string, model: string) =>
+    newChat = (name: string, prompt: string, llmType: string, model: string) =>
         this.chatNotExistsRun(name, () => {
             const now = unixnow()
             const chatId = uuid()
@@ -70,7 +70,7 @@ export class ChatStore implements IChatStore {
                 `INSERT INTO chat (id, name, "select", action_time, select_time) VALUES (?, ?, ?, ?, ?)`
             )
             const configStatement = this.db.prepare(
-                `INSERT INTO chat_config (id, chat_id, sys_prompt, with_context, context_limit, model, scenario_name, scenario, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                `INSERT INTO chat_config (id, chat_id, sys_prompt, with_context, context_limit, llm_type, model, scenario_name, scenario, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             )
             const [scenarioName, scenario] = temperature.general
             this.db.transaction(() => {
@@ -85,6 +85,7 @@ export class ChatStore implements IChatStore {
                     prompt,
                     true,
                     10,
+                    llmType,
                     model,
                     scenarioName,
                     scenario,
@@ -185,13 +186,13 @@ export class ChatStore implements IChatStore {
                 .run(contextLimit, unixnow(), cf.id)
         )
 
-    modifyModel = (model: string) =>
+    modifyModel = (llm: string, model: string) =>
         this.currentChatConfigRun((_, cf) =>
             this.db
                 .prepare(
-                    `UPDATE chat_config SET model = ?, update_time = ? where id = ?`
+                    `UPDATE chat_config SET llm_type = ?, model = ?, update_time = ? where id = ?`
                 )
-                .run(model, unixnow(), cf.id)
+                .run(llm, model, unixnow(), cf.id)
         )
 
     modifyWithContext = () =>

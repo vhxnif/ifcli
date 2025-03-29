@@ -6,17 +6,7 @@ import { accessSync, constants, mkdirSync } from 'node:fs'
 import { env, platform } from '../util/platform-utils'
 
 export class AppConfig implements IConfig {
-    defaultModel = (): string => env('IFCLI_DEFAULT_MODEL') ?? 'deepseek-chat'
-    customeModels = () => {
-        const customModels = env('IFCLI_CUSTOM_MODELS')
-        if (customModels) {
-            return customModels?.split(',').map(it => it.trim())
-        }
-        return []
-    }
-    appName = (): string => env('IFCLI_APP_NAME') ?? 'ifcli'
-    baseURL = (): string => env('OPENAI_BASE_URL') ?? 'https://api.deepseek.com'
-    apiKey = (): string => env('OPENAI_API_KEY')!
+    appName = (): string => 'ifcli'
     configPath = (): string | undefined => {
         const platformConfigPath = this.platformConfigPath()
         const appName = this.appName()
@@ -36,15 +26,6 @@ export class AppConfig implements IConfig {
             return appConfig
         }
     }
-    models = (): string[] =>
-        [...this.customeModels(), this.defaultModel()].reduce((arr, it) => {
-            if (!arr.includes(it)) {
-                arr.push(it)
-            }
-            return arr
-        }, [] as string[])
-    terminalColumns = (): number => process.stdout.columns
-    terminalRows = (): number => process.stdout.rows
     platformConfigPath = (): string => {
         if (!['win32', 'linux', 'darwin'].includes(platform)) {
             throw Error(`${platform} not supported.`)
@@ -57,14 +38,7 @@ export class AppConfig implements IConfig {
     }
     dataPath = (): string =>
         `${this.configPath()}${path.sep}${this.appName()}.sqlite`
-    mcpConfigPath = (): string | null => {
-        let mcp: string | null =
-            `${this.platformConfigPath()}${path.sep}${this.appName()}${path.sep}mcp.json`
-        try {
-            accessSync(mcp, constants.F_OK)
-        } catch (err: any) {
-            mcp = null
-        }
-        return mcp
-    }
+
+    mcpConfigPath = (): string =>
+        path.join(this.platformConfigPath(), this.appName(), 'mcp.json')
 }

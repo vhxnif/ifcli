@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { accessSync, constants, readFileSync } from 'node:fs'
 import OpenAi from 'openai'
 import type { RunnableToolFunction } from 'openai/lib/RunnableFunction'
-import type { IConfig } from '../types/config-types'
+import type { ILLMConfig, LLMType } from '../config/app-llm-config'
 import type {
     ILLMClient,
     LLMCallParam,
@@ -12,43 +11,30 @@ import type {
     LLMStreamMCPParam,
     LLMStreamParam,
 } from '../types/llm-types'
-import type { MCPConfig } from '../types/mcp-client'
 import MCPClient from '../types/mcp-client'
 import { llmNotifyMessage } from './llm-utils'
 import { StreamDisplay } from './stream-display'
 
 export class OpenAiClient implements ILLMClient {
     client: OpenAi
-    private config: IConfig
-    private usefulTools: MCPClient[]
-    constructor(config: IConfig) {
-        this.config = config
+    type: LLMType
+    private config: ILLMConfig 
+    private mcps: MCPClient[]
+    constructor({ llmConfig, mcpClients}: { llmConfig: ILLMConfig, mcpClients: MCPClient[]}) {
+        this.config = llmConfig 
+        this.type = this.config.type
         this.client = new OpenAi({
-            baseURL: config.baseURL(),
-            apiKey: config.apiKey(),
+            baseURL: this.config.baseUrl,
+            apiKey: this.config.apiKey,
         })
-        const tools = () => {
-            try {
-                const mcpPath = this.config.mcpConfigPath()
-                if (!mcpPath) {
-                    return []
-                }
-                accessSync(mcpPath, constants.F_OK)
-                const data = readFileSync(mcpPath, 'utf-8')
-                const mcpConfigs = JSON.parse(data) as MCPConfig[]
-                return mcpConfigs.map((it) => new MCPClient(it))
-            } catch (err: unknown) {
-                return []
-            }
-        }
-        this.usefulTools = tools()
+        this.mcps = mcpClients
     }
 
-    tools = () => this.usefulTools
+    mcpClients = () => this.mcps
 
-    defaultModel = () => this.config.defaultModel()
+    defaultModel = () => this.config.defaultModel
 
-    models = () => this.config.models()
+    models = () => this.config.models
 
     user = (content: string): LLMMessage => this.message('user', content)
 
@@ -89,6 +75,7 @@ export class OpenAiClient implements ILLMClient {
             }
             await display.pageShow()
         } catch (e: unknown) {
+            console.error(e)
             display.error()
         }
     }
