@@ -1,15 +1,17 @@
 {
     "name": "@vhxnif/ifcli",
-    "version": "0.1.6",
-    "description": "chat with ai from cli",
+    "version": "0.1.7",
+    "description": "Chat with AI via CLI",
     "keywords": [
         "deepseek",
+        "ollama",
         "deepseek-reasoner",
         "openai",
         "mcp",
         "ai",
         "bun",
-        "chat"
+        "chat",
+        "cli"
     ],
     "license": "MIT",
     "type": "module",
@@ -20,7 +22,7 @@
     },
     "files": ["build", "README.adoc"],
     "engines": {
-        "bun": ">=1.1.36"
+        "bun": ">=1.2.6"
     },
     "bin": {
         "ifct": "build/chat-command.js"
