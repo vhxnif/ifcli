@@ -35,7 +35,6 @@ export class ChatAction implements IChatAction {
         clients.forEach(it => this.clientMap.set(it.type, it))
     }
     private text = color.mauve
-    private defaultChatName = 'Default'
     private client = async () => {
         const getClient = () => {
             const config = this.store.chatConfig()
@@ -64,10 +63,6 @@ export class ChatAction implements IChatAction {
 
     init = () => {
         this.store.init()
-        if (this.store.queryChat(this.defaultChatName)) {
-            return
-        }
-        this.newChat(this.defaultChatName)
     }
 
     newChat = async (name: string) => {
@@ -170,8 +165,13 @@ export class ChatAction implements IChatAction {
     }
 
     printChatHistory = async (limit: number) => {
+        const messages = this.store.historyMessage(limit)
+        if(isEmpty(messages)) {
+            error('History Message is Empty.')
+            return
+        }
         await hisMsgDisplay({
-            messages: this.store.historyMessage(limit),
+            messages,
         })
     }
 
