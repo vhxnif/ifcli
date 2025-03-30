@@ -1,6 +1,6 @@
 # ifcli
 
-https://github.com/user-attachments/assets/e59f68ca-85f6-49fd-aabd-b2d076423841
+Chat with AI via CLI.
 
 ## Install 
 ```bash
@@ -8,34 +8,48 @@ https://github.com/user-attachments/assets/e59f68ca-85f6-49fd-aabd-b2d076423841
 npm install -g bun
 ```
 
-## From NPM
+### From NPM
 ```bash
 npm install -g @vhxnif/ifcli
 ```
 
-## From Source Code
+### From Source Code
 ```bash
-bun install && 
-bun run build && 
-bun link
+bun install && bun run build && bun link
 ```
 
 ## Config
-```bash
-export OPENAI_API_KEY=<your_deepseek_key>
-```
 
-| Key                 | Value                    | 
-|:--------------------|:-------------------------|
-| OPENAI_API_KEY      | \<your_deepseek_key\>    |
-| OPENAI_BASE_URL     | https://api.deepseek.com |
-| IFCLI_CUSTOM_MODELS | \<model1\>,\<model2\>    | 
-| IFCLI_DEFAULT_MODEL | deepseek-chat            |
+Windows: Data and MCP configurations are stored in %APPDATA%\ifcli.
 
+macOS/Linux: They are located in $HOME/.config/ifcli.
+
+
+### Deepseek
+
+| Key                     | Value                            | 
+|:------------------------|:---------------------------------|
+| IFCLI_DEEPSEEK_API_KEY  | \<your_deepseek_api_key\>        |
+| IFCLI_DEEPSEEK_BASE_URL | https://api.deepseek.com         |
+| IFCLI_DEEPSEEK_MODELS   | deepseek_chat, deepseek-reasoner | 
+
+### Ollama
+
+| Key                   | Value                      | 
+|:----------------------|:---------------------------|
+| IFCLI_OLLAMA_API_KEY  | ''                         |
+| IFCLI_OLLAMA_BASE_URL | http://localhost:11434/v1/ |
+| IFCLI_OLLAMA_MODELS   | \<model1\>, \<model2\>     | 
+
+### OpenAI
+
+| Key                   | Value                     | 
+|:----------------------|:--------------------------|
+| IFCLI_OPENAI_API_KEY  | <your_openai_api_key>     |
+| IFCLI_OPENAI_BASE_URL | https://api.openai.com/v1 |
+| IFCLI_OPENAI_MODELS   | gpt-4o                    | 
 
 ## Command
-
-### chat 
 
 ```bash
 Usage: ifct [options] [command]
@@ -43,30 +57,28 @@ Usage: ifct [options] [command]
 ifcli chat with LLM
 
 Options:
-  -V, --version     output the version number
-  -h, --help        display help for command
+  -V, --version         output the version number
+  -h, --help            display help for command
 
 Commands:
-  new <string>      new chat
-  ask <string>      talk with agent
-  list              list all chats
-  history           history questions
-  remove            remove chat
-  change            change to another chat
-  prompt [options]  prompt manager
-  config [options]  manage current chat configuration
-  clear             clear the current chat message
-  help [command]    display help for command
+  new <string>          new chat
+  ask <string>          talk with agent
+  list|ls               list all chats
+  history|hs [options]  history questions
+  remove|rm             remove chat
+  change|ch             change to another chat
+  prompt|pt [options]   prompt manager
+  config|cf [options]   manage current chat configuration
+  clear|cl              clear the current chat message
+  help [command]        display help for command
 ```
 
-
-#### mcp tools support 
+### mcp tools support 
 
 | Config Path | Platform                     |
 |:------------|:-----------------------------|
 | Windows     | $APPDATA/ifcli/mcp.json      |
-| Mac         | $HOME/.config/ifcli/mcp.json |
-| Linux       | $HOME/.config/ifcli/mcp.json |
+| Mac/Linux   | $HOME/.config/ifcli/mcp.json |
 
 
 ```json
@@ -80,7 +92,7 @@ Commands:
   }
 ]
 ```
-##### MCP Using Example
+#### MCP Using Example
 
 ```bash
 # Single Version
@@ -89,5 +101,3 @@ ifct ask "@weather What's the weather today?"
 # Multi Version
 ifct ask "@weather:v1 What's the weather today?"
 ```
-
-This project was created using `bun init` in [bun v1.1.36.](https://bun.sh) is a fast all-in-one JavaScript runtime.

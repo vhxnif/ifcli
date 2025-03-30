@@ -5,7 +5,7 @@ import { editor, optionFunMapping, stdin } from './util/common-utils'
 
 const program = new Command()
 
-program.name('ifct').description('ifcli chat with LLM').version('0.1.0')
+program.name('ifct').description('ifcli chat with LLM').version('0.1.7')
 
 program
     .command('new')
@@ -21,27 +21,32 @@ program
 
 program
     .command('list')
+    .alias("ls")
     .description('list all chats')
     .action(() => chatAction.printChats())
 
 program
     .command('history')
+    .alias('hs')
     .description('history questions')
     .option('-l, --limit <limit>', 'history message limit', '100')
     .action(async (option) => chatAction.printChatHistory(Number(option.limit)))
 
 program
     .command('remove')
+    .alias('rm')
     .description('remove chat')
     .action(() => chatAction.removeChat())
 
 program
     .command('change')
+    .alias('ch')
     .description('change to another chat')
     .action(() => chatAction.changeChat())
 
 program
     .command('prompt')
+    .alias('pt')
     .description('prompt manager')
     .option('-s, --select <name>', 'select a prompt for the current chat')
     .option('-m, --modify', "modify the current chat's prompt")
@@ -75,6 +80,7 @@ program
 
 program
     .command('config')
+    .alias('cf')
     .description('manage current chat configuration')
     .option('-c, --context-size <contextSize>', 'update context size')
     .option('-m, --model', `change chat model`)
@@ -97,6 +103,7 @@ program
 
 program
     .command('clear')
+    .alias('cl')
     .description('clear the current chat message')
     .action(() => chatAction.clearChatMessage())
 
