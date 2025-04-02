@@ -20,9 +20,9 @@ bun install && bun run build && bun link
 
 ## Config
 
-Windows: Data and MCP configurations are stored in %APPDATA%\ifcli.
+**Windows**: Data and MCP configurations are stored in %APPDATA%\ifcli.
 
-macOS/Linux: They are located in $HOME/.config/ifcli.
+**macOS/Linux**: They are located in $HOME/.config/ifcli.
 
 
 ### Deepseek
