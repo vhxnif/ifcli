@@ -36,6 +36,7 @@ const chat_config = `
         update_time INTEGER,
         CONSTRAINT chat_config_PK PRIMARY KEY (id)
     );
+    CREATE UNIQUE INDEX IF NOT EXISTS chat_config_IDX ON chat_config (chat_id);
 `
 
 const chat_prompt = `
@@ -48,13 +49,25 @@ const chat_prompt = `
         CONSTRAINT chat_prompt_PK PRIMARY KEY (name, version)
     );
 `
+const chat_preset_message = `
+    CREATE TABLE IF NOT EXISTS chat_preset_message (
+        id TEXT,
+        chat_id TEXT,
+        user TEXT,
+        assistant TEXT,
+        create_time INTEGER,
+        CONSTRAINT chat_preset_message_PK PRIMARY KEY (id)
+    );
+    CREATE INDEX IF NOT EXISTS chat_preset_message_IDX ON chat_preset_message (chat_id);
+`
 
 // table_name: ddl
-const table_def = {
+const table_def: Record<string, string> = {
     "chat": chat,
     "chat_message": chat_message,
     "chat_config": chat_config,
     "chat_prompt": chat_prompt,
+    "chat_preset_message": chat_preset_message
 }
 
 export { table_def }

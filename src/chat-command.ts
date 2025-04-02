@@ -79,6 +79,23 @@ program
     })
 
 program
+    .command('preset')
+    .alias('ps')
+    .option('-e, --edit', 'edit preset message')
+    .option('-c, --clear', 'clear preset message')
+    .action(async (option) => {
+        if (option.edit) {
+            await chatAction.editPresetMessage()
+            return
+        }
+        if (option.clear) {
+            chatAction.clearPresetMessage()
+            return
+        }
+        chatAction.printPresetMessage()
+    })
+
+program
     .command('config')
     .alias('cf')
     .description('manage chat config')

@@ -7,9 +7,11 @@ import {
     Chat,
     ChatConfig,
     ChatMessage,
+    ChatPresetMessage,
     ChatPrompt,
     type IChatStore,
     type MessageContent,
+    type PresetMessageContent,
 } from '../types/store-types'
 import { table_def } from './table-def'
 import { temperature } from '../types/constant'
@@ -52,6 +54,8 @@ export class ChatStore implements IChatStore {
         'id, chat_id as chatId , sys_prompt as sysPrompt, with_context as withContext, context_limit as contextLimit, llm_type as llmType, model, scenario_name as scenarioName, scenario, update_time as updateTime'
     private chatPromptColumn =
         'name, version, role, content, modify_time as modifyTime'
+    private chatPresetMessageColumn =
+        'id, chat_id, user, assistant, create_time as createTime'
 
     chats = () =>
         this.db.query(`SELECT ${this.chatColumn} FROM chat`).as(Chat).all()
@@ -247,6 +251,49 @@ export class ChatStore implements IChatStore {
             .query(`${sql} WHERE name LIKE ?`)
             .as(ChatPrompt)
             .all(`%${name}%`)
+    }
+
+    createPresetMessage = (params: PresetMessageContent[]) => {
+        const { id } = this.currentChat()
+        this.db.transaction(() => {
+            this.deletePresetMessage(id)
+            this.addPresetMessage(id, params)
+        })()
+    }
+
+    selectPresetMessage = () => {
+        return this.currentChatRun((c) => this.queryPresetMessage(c.id))
+    }
+
+    clearPresetMessage = () => {
+        this.currentChatRun((c) => this.deletePresetMessage(c.id))
+    }
+
+    private addPresetMessage = (
+        chatId: string,
+        params: PresetMessageContent[]
+    ) => {
+        const statement = this.db.prepare(
+            `INSERT INTO chat_preset_message (id, chat_id, user, assistant, create_time) VALUES (?, ?, ?, ?, ?)`
+        )
+        params.forEach((it) => {
+            statement.run(uuid(), chatId, it.user, it.assistant, unixnow())
+        })
+    }
+
+    private queryPresetMessage = (chatId: string) => {
+        return this.db
+            .query(
+                `SELECT ${this.chatPresetMessageColumn} FROM chat_preset_message WHERE chat_id = ?`
+            )
+            .as(ChatPresetMessage)
+            .all(chatId)
+    }
+
+    private deletePresetMessage = (chatId: string) => {
+        this.db
+            .prepare(`DELETE FROM chat_preset_message WHERE chat_id = ?`)
+            .run(chatId)
     }
 
     private chatNotExistsRun = <T,>(name: string, f: () => T): T => {
