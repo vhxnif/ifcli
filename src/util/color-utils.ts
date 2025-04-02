@@ -47,8 +47,30 @@ const style = {
     italic: chalk.italic,
 }
 
+const wrapAnsi = (c: ChalkInstance, str: string, width: number) => {
+    const f = (arr: string[], s: string) => {
+        let tmp: number = 0
+        let idx = s.length - 1
+        for (let i = 0; i < s.length; i++) {
+            tmp += Bun.stringWidth(s[i])
+            if (tmp >= width) {
+                idx = i
+                break
+            }
+        }
+        const ns = s.slice(0, idx + 1)
+        arr.push(ns)
+        if (idx < s.length - 1) {
+            f(arr, s.slice(idx + 1))
+        }
+    }
+    const strArr: string[] = []
+    f(strArr, str)
+    return strArr.map((it) => c(it)).join('\n')
+}
 export {
     color,
     style,
     display,
+    wrapAnsi,
 }

@@ -20,11 +20,12 @@ import {
     type MessageContent,
     type PresetMessageContent,
 } from '../types/store-types'
-import { color, display } from '../util/color-utils'
+import { color, display, wrapAnsi } from '../util/color-utils'
 import { editor, error, exit, println, uuid } from '../util/common-utils'
-import { printTable, tableConfig } from '../util/table-util'
+import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { input, select, selectRun } from '../util/inquirer-utils'
 import type { LLMType } from '../config/app-llm-config'
+import type { TableUserConfig } from 'table'
 
 export class ChatAction implements IChatAction {
     clientMap: Map<LLMType, ILLMClient> = new Map()
@@ -150,6 +151,13 @@ export class ChatAction implements IChatAction {
 
     printChatConfig = () => {
         this.store.contextRun((cf) => {
+            const [ext, myConfig] = tableConfigWithExt({ cols: [1, 1] })
+            const config: TableUserConfig = {
+                ...myConfig,
+                spanningCells: [
+                    { col: 0, row: 4, colSpan: 2, alignment: 'left' },
+                ],
+            }
             const data = [
                 [
                     display.caution('WithContext:'),
@@ -164,14 +172,9 @@ export class ChatAction implements IChatAction {
                     display.tip(`${cf.llmType}#${cf.model}`),
                 ],
                 [display.caution('Scenario:'), display.tip(cf.scenarioName)],
-                [display.note(cf.sysPrompt), ''],
+                [wrapAnsi(display.note, cf.sysPrompt, ext.colNum), ''],
             ]
-            printTable(data, {
-                ...tableConfig({ cols: [1, 1] }),
-                spanningCells: [
-                    { col: 0, row: 4, colSpan: 2, alignment: 'left' },
-                ],
-            })
+            printTable(data, config)
         })
     }
 
