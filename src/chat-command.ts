@@ -81,6 +81,7 @@ program
 program
     .command('preset')
     .alias('ps')
+    .description('preset message manager')
     .option('-e, --edit', 'edit preset message')
     .option('-c, --clear', 'clear preset message')
     .action(async (option) => {
