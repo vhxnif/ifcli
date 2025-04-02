@@ -17,4 +17,7 @@ export interface IChatAction {
     selectPrompt: (name: string) => void
     usefulTools: () => Promise<void>
     prompt: () => string
+    editPresetMessage: () => Promise<void>
+    clearPresetMessage: () => void
+    printPresetMessage: () => void
 }

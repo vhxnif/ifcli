@@ -24,7 +24,22 @@ const tableDefaultConfig: TableUserConfig = {
     },
 }
 
-const tableConfig = ({
+type TableConfigParam = {
+    cols: number[]
+    celConfig?: ColumnUserConfig[]
+    maxColumn?: number
+    alignment?: Alignment
+}
+
+const tableConfig = (param: TableConfigParam): TableUserConfig => {
+    return tableConfigWithExt(param)[1]
+}
+
+type TableExt = {
+    colNum: number
+}
+
+const tableConfigWithExt = ({
     cols,
     celConfig = [],
     maxColumn = 70,
@@ -34,12 +49,14 @@ const tableConfig = ({
     celConfig?: ColumnUserConfig[]
     maxColumn?: number
     alignment?: Alignment
-}): TableUserConfig => {
+}): [TableExt, TableUserConfig] => {
     const allPart = cols.reduce((sum, it) => (sum += it), 0)
     const curCol = terminal.column - 4 * cols.length
     const colNum = curCol > maxColumn ? maxColumn : curCol
     const calWidth = cols.map((it) => Math.floor(colNum * (it / allPart)))
-    return {
+    return [
+        {colNum},
+        {
         ...tableDefaultConfig,
         columns: calWidth.map((it, idx) => {
             if (celConfig.length === 0) {
@@ -50,13 +67,16 @@ const tableConfig = ({
             }
             return { ...celConfig[idx], width: it }
         }),
-    }
+    }]
 }
 
 const printTable = (data: unknown[][], userConfig?: TableUserConfig) =>
     console.log(table(data, userConfig))
 
 export {
+    type TableExt,
+    type TableConfigParam,
+    tableConfigWithExt,
     tableConfig,
     printTable,
 }

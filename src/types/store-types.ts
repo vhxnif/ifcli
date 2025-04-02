@@ -36,10 +36,23 @@ export class ChatPrompt {
     modifyTime!: bigint
 }
 
+export class ChatPresetMessage {
+    id!: string
+    chat_id!: string
+    user!: string
+    assistant!: string
+    create_time!: bigint
+}
+
 export type MessageContent = {
     role: 'user' | 'assistant' | 'reasoning'
     content: string
     pairKey: string
+}
+
+export type PresetMessageContent = {
+    user: string
+    assistant: string
 }
 
 export interface IChatStore {
@@ -70,6 +83,11 @@ export interface IChatStore {
     // ---- prompt ---- //
     publishPrompt: (name: string, version: string, content: string) => void
     searchPrompt: (name: string, version?: string) => ChatPrompt[]
+
+    // --- preset message --- //
+    createPresetMessage: (params: PresetMessageContent[]) => void
+    selectPresetMessage: () => ChatPresetMessage[]
+    clearPresetMessage: () => void
 
     // ---- other ---- //
     contextRun: (f: (cf: ChatConfig) => void) => void

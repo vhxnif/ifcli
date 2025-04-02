@@ -29,7 +29,12 @@ const optionFunMapping = (
     df?.()
 }
 
-const stdin = async () => await Bun.stdin.text()
+const stdin = async () => {
+    for await (const  chunk of Bun.stdin.stream()) {
+        return Buffer.from(chunk).toString()
+    }
+}
+
 const stringWidth = (str: string) => Bun.stringWidth(str)
 
 const editor = async (content: string, fileType: string = 'md') => {

@@ -5,6 +5,7 @@ import type { IConfig } from '../types/config-types'
 import { temperature } from '../types/constant'
 import type {
     ILLMClient,
+    LLMMessage,
     LLMParam,
     LLMResult,
     LLMStreamParam,
@@ -17,12 +18,14 @@ import {
     type ChatConfig,
     type IChatStore,
     type MessageContent,
+    type PresetMessageContent,
 } from '../types/store-types'
-import { color, display } from '../util/color-utils'
-import { error, exit, println, uuid } from '../util/common-utils'
-import { printTable, tableConfig } from '../util/table-util'
+import { color, display, wrapAnsi } from '../util/color-utils'
+import { editor, error, exit, println, uuid } from '../util/common-utils'
+import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { input, select, selectRun } from '../util/inquirer-utils'
 import type { LLMType } from '../config/app-llm-config'
+import type { TableUserConfig } from 'table'
 
 export class ChatAction implements IChatAction {
     clientMap: Map<LLMType, ILLMClient> = new Map()
@@ -32,30 +35,39 @@ export class ChatAction implements IChatAction {
     constructor(clients: ILLMClient[], store: IChatStore, config: IConfig) {
         this.store = store
         this.config = config
-        clients.forEach(it => this.clientMap.set(it.type, it))
+        clients.forEach((it) => this.clientMap.set(it.type, it))
     }
     private text = color.mauve
     private client = async () => {
         const getClient = () => {
             const config = this.store.chatConfig()
-            return this.clientMap.get(config.llmType as LLMType) 
+            return this.clientMap.get(config.llmType as LLMType)
         }
         const ct = getClient()
-        if(!ct) {
+        if (!ct) {
             await this.modifyLLMAndModel()
         }
         return getClient()!
     }
 
-    private selectLLmAndModel  = async () : Promise<[LLMType, string]> => {
-        const llm = await select({ message: 'Select A Provider', choices :  Array.from(this.clientMap.keys()).map(it => ({ name: it as string, value: it as string}))})
-        if(!llm) {
+    private selectLLmAndModel = async (): Promise<[LLMType, string]> => {
+        const llm = await select({
+            message: 'Select A Provider',
+            choices: Array.from(this.clientMap.keys()).map((it) => ({
+                name: it as string,
+                value: it as string,
+            })),
+        })
+        if (!llm) {
             exit()
         }
         const llmSelect = this.clientMap.get(llm as LLMType)!
         llmSelect.models()
-        const model = await select({ message: 'Select A Model', choices :  llmSelect.models().map(it => ({ name: it, value: it}))})
-        if(!model) {
+        const model = await select({
+            message: 'Select A Model',
+            choices: llmSelect.models().map((it) => ({ name: it, value: it })),
+        })
+        if (!model) {
             exit()
         }
         return [llm as LLMType, model]
@@ -71,12 +83,7 @@ export class ChatAction implements IChatAction {
             return
         }
         const [llm, model] = await this.selectLLmAndModel()
-        this.store.newChat(
-            name,
-            CHAT_DEFAULT_SYSTEM,
-            llm,
-            model,
-        )
+        this.store.newChat(name, CHAT_DEFAULT_SYSTEM, llm, model)
         this.printChats()
     }
 
@@ -132,7 +139,9 @@ export class ChatAction implements IChatAction {
         this.sortedChats().then((chats) =>
             chats.forEach((it, idx) => {
                 println(
-                    `[${idx === 0 ? color.green('*') : color.pink(idx)}] ${it.select ? color.yellow(it.name) : this.text(it.name)}`
+                    `[${idx === 0 ? color.green('*') : color.pink(idx)}] ${
+                        it.select ? color.yellow(it.name) : this.text(it.name)
+                    }`
                 )
             })
         )
@@ -142,6 +151,13 @@ export class ChatAction implements IChatAction {
 
     printChatConfig = () => {
         this.store.contextRun((cf) => {
+            const [ext, myConfig] = tableConfigWithExt({ cols: [1, 1] })
+            const config: TableUserConfig = {
+                ...myConfig,
+                spanningCells: [
+                    { col: 0, row: 4, colSpan: 2, alignment: 'left' },
+                ],
+            }
             const data = [
                 [
                     display.caution('WithContext:'),
@@ -151,22 +167,20 @@ export class ChatAction implements IChatAction {
                     display.caution('ContextSize:'),
                     display.warning(cf.contextLimit),
                 ],
-                [display.caution('CurrentModle:'), display.tip(`${cf.llmType}#${cf.model}`)],
-                [display.caution('Scenario:'), display.tip(cf.scenarioName)],
-                [display.note(cf.sysPrompt), ''],
-            ]
-            printTable(data, {
-                ...tableConfig({ cols: [1, 1] }),
-                spanningCells: [
-                    { col: 0, row: 4, colSpan: 2, alignment: 'left' },
+                [
+                    display.caution('CurrentModle:'),
+                    display.tip(`${cf.llmType}#${cf.model}`),
                 ],
-            })
+                [display.caution('Scenario:'), display.tip(cf.scenarioName)],
+                [wrapAnsi(display.note, cf.sysPrompt, ext.colNum), ''],
+            ]
+            printTable(data, config)
         })
     }
 
     printChatHistory = async (limit: number) => {
         const messages = this.store.historyMessage(limit)
-        if(isEmpty(messages)) {
+        if (isEmpty(messages)) {
             error('History Message is Empty.')
             return
         }
@@ -255,6 +269,125 @@ export class ChatAction implements IChatAction {
         return this.store.chatConfig().sysPrompt
     }
 
+    clearPresetMessage = () => {
+        this.store.clearPresetMessage()
+    }
+
+    printPresetMessage = () => {
+        const presetMessageText = this.presetMessageText({ colorful: true })
+        if(presetMessageText.isDefault) {
+            error('Preset Message Not Set.')
+            return
+        }
+        println(presetMessageText.content)
+    }
+
+    editPresetMessage = async () => {
+        const hasher = new Bun.CryptoHasher('sha256')
+        const digest = (str: string) => {
+            hasher.update(str)
+            return hasher.digest().toString()
+        }
+        const sourceText = this.presetMessageText({}).content
+        const text = await editor(sourceText)
+        if (!text) {
+            return
+        }
+        if (digest(sourceText) === digest(text)) {
+            error('Nothing Edited')
+            return
+        }
+        const contents = this.parsePresetMessageText(text)
+        this.store.createPresetMessage(contents)
+    }
+
+    private presetMessageText = ({
+        colorful = false,
+    }: {
+        colorful?: boolean
+    }): {
+        isDefault: boolean,
+        content: string,
+    } => {
+        const userType = () => `${colorful ? color.mauve.bold('user') : 'user'}`
+        const assistantType = () =>
+            `${colorful ? color.yellow.bold('assistant') : 'assistant'}`
+        const pairMessage = (user: string, assistant: string) =>
+            `[${userType()}]\n${user}\n\n[${assistantType()}]\n${assistant}\n`
+        const presetMessages = this.store.selectPresetMessage()
+        if (isEmpty(presetMessages)) {
+            const dfText = pairMessage(
+                '<user message content>',
+                '<assistant message content>'
+            )
+            return {
+                isDefault: true,
+                content: dfText,
+            }
+        }
+        const text = presetMessages
+            .map((it) => pairMessage(it.user, it.assistant))
+            .join('\n')
+        return {
+            isDefault: false,
+            content: text
+        }
+    }
+
+    private parsePresetMessageText = (text: string) => {
+        type TmpContent = {
+            user: string[]
+            assistant: string[]
+            type?: 'user' | 'assistant'
+        }
+        const parseContent = (str: string[]) => str.join('\n').trim()
+        const toPresetMessageContent = (c: TmpContent) =>
+            ({
+                user: parseContent(c.user),
+                assistant: parseContent(c.assistant),
+            } as PresetMessageContent)
+        const validContent = (c: TmpContent) =>
+            c.type && !isEmpty(c.user) && !isEmpty(c.assistant)
+        return text
+            .split('\n')
+            .reduce((arr, it) => {
+                const newItem = () => {
+                    arr.push({ user: [], assistant: [] })
+                }
+                const tail = () => {
+                    if (isEmpty(arr)) {
+                        newItem()
+                    }
+                    return arr[arr.length - 1]
+                }
+                const setType = (str: 'user' | 'assistant') => {
+                    tail().type = str
+                }
+                const appendContent = (str: string) => {
+                    const t = tail()
+                    if ('user' === t?.type) {
+                        t.user.push(str)
+                    }
+                    if ('assistant' === t?.type) {
+                        t.assistant.push(str)
+                    }
+                }
+                if (it === '[user]') {
+                    newItem()
+                    setType('user')
+                    return arr
+                }
+                if (it === '[assistant]') {
+                    setType('assistant')
+                    return arr
+                }
+                appendContent(it)
+                return arr
+            }, [] as TmpContent[])
+            .filter(validContent)
+            .map(toPresetMessageContent)
+    }
+
     private extractTools = (
         userMessage: string
     ): { tools: string[]; userMessage: string } => {
@@ -312,7 +445,14 @@ export class ChatAction implements IChatAction {
                   return client.assistant(it.content)
               })
             : []
-        const msg = [...context, client.user(content)]
+        const presetMessage = this.store.selectPresetMessage().flatMap(
+            (it) =>
+                [
+                    { role: 'user', content: it.user },
+                    { role: 'assistant', content: it.assistant },
+                ] as LLMMessage[]
+        )
+        const msg = [...presetMessage, ...context, client.user(content)]
         if (isEmpty(prompt)) {
             return msg
         }
@@ -366,7 +506,11 @@ export class ChatAction implements IChatAction {
 
     private llmParam = async (userMessage: string, config: ChatConfig) => {
         const { sysPrompt, withContext, model, scenario } = config
-        const messages = await this.messages(userMessage, sysPrompt, withContext)
+        const messages = await this.messages(
+            userMessage,
+            sysPrompt,
+            withContext
+        )
         return {
             messages,
             model,
