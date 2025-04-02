@@ -15,7 +15,7 @@ program
 
 program
     .command('ask')
-    .description('talk with agent')
+    .description('chat with AI')
     .argument('<string>')
     .action(async (content) => await chatAction.ask(content))
 
@@ -28,7 +28,7 @@ program
 program
     .command('history')
     .alias('hs')
-    .description('history questions')
+    .description('view chat history')
     .option('-l, --limit <limit>', 'history message limit', '100')
     .action(async (option) => chatAction.printChatHistory(Number(option.limit)))
 
@@ -39,9 +39,9 @@ program
     .action(() => chatAction.removeChat())
 
 program
-    .command('change')
-    .alias('ch')
-    .description('change to another chat')
+    .command('switch')
+    .alias('st')
+    .description('switch to another chat')
     .action(() => chatAction.changeChat())
 
 program
@@ -50,8 +50,8 @@ program
     .description('prompt manager')
     .option('-s, --select <name>', 'select a prompt for the current chat')
     .option('-m, --modify', "modify the current chat's prompt")
-    .option('-c, --cover [prompt]', "modify the current chat's prompt")
-    .option('-p, --publish', 'publish the current chat prompt')
+    .option('-c, --cover [prompt]', "override the current chat's prompt")
+    .option('-p, --publish', 'publish  prompt')
     .action((option) => {
         optionFunMapping(option, {
             select: (v) => chatAction.selectPrompt(v as string),
@@ -81,9 +81,9 @@ program
 program
     .command('config')
     .alias('cf')
-    .description('manage current chat configuration')
+    .description('manage chat config')
     .option('-c, --context-size <contextSize>', 'update context size')
-    .option('-m, --model', `change chat model`)
+    .option('-m, --model', `switch model`)
     .option('-w, --with-context', 'change with-context', false)
     .option('-s, --scenario', 'select scenario')
     .option('-t, --tools', 'list useful tools')
