@@ -21,7 +21,7 @@ program
 
 program
     .command('list')
-    .alias("ls")
+    .alias('ls')
     .description('list all chats')
     .action(() => chatAction.printChats())
 
