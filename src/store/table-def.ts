@@ -28,6 +28,7 @@ const chat_config = `
         chat_id TEXT,
         sys_prompt TEXT,
         with_context INTEGER,
+        interactive_output INTEGER,
         context_limit INTEGER DEFAULT (30),
         llm_type TEXT,
         model TEXT,

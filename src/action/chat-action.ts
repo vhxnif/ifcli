@@ -1,6 +1,6 @@
 import { isEmpty } from 'lodash'
 import { CHAT_DEFAULT_SYSTEM } from '../config/prompt'
-import type { IChatAction } from '../types/action-types'
+import type { AskContent, IChatAction } from '../types/action-types'
 import type { IConfig } from '../types/config-types'
 import { temperature } from '../types/constant'
 import type {
@@ -26,6 +26,7 @@ import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { input, select, selectRun } from '../util/inquirer-utils'
 import type { TableUserConfig } from 'table'
 import { AppSettingParse } from '../config/app-setting'
+import { assistant, system, user } from '../llm/llm-utils'
 
 export class ChatAction implements IChatAction {
     clientMap: Map<string, ILLMClient> = new Map()
@@ -38,8 +39,11 @@ export class ChatAction implements IChatAction {
         clients.forEach((it) => this.clientMap.set(it.type, it))
     }
     private text = color.mauve
-    private client = async () => {
+    private client = async (llmType?: string) => {
         const getClient = () => {
+            if (llmType) {
+                return this.clientMap.get(llmType)
+            }
             const config = this.store.chatConfig()
             return this.clientMap.get(config.llmType)
         }
@@ -96,14 +100,14 @@ export class ChatAction implements IChatAction {
         )
     }
 
-    ask = async (content: string) => {
-        this.store.contextRun(async (cf) => {
-            const client = await this.client()
+    ask = async ({ content, chatName }: AskContent) => {
+        const f = async (cf: ChatConfig) => {
+            const client = await this.client(cf.llmType)
             const { tools, userMessage } = this.extractTools(content)
             const llmParam = await this.llmParam(userMessage, cf)
             const streamParam = {
                 ...llmParam,
-                messageStore: this.storeMessage,
+                messageStore: v => this.storeMessage(cf.chatId, v),
             } as LLMStreamParam
             const streamRun = () => client.stream(streamParam)
             const toolsRun = (mcpClients: MCPClient[]) =>
@@ -121,7 +125,17 @@ export class ChatAction implements IChatAction {
                 return
             }
             await toolsRun(usefulTools)
-        })
+        }
+        if (chatName) {
+            const chat = this.store.getChat(chatName)
+            if (!chat) {
+                error(`${chatName} is missing.`)
+                return
+            }
+            await f(this.store.queryChatConfig(chat.id))
+            return
+        }
+        this.store.contextRun(async (cf) => await f(cf))
     }
 
     changeChat = () =>
@@ -151,24 +165,40 @@ export class ChatAction implements IChatAction {
             const config: TableUserConfig = {
                 ...myConfig,
                 spanningCells: [
-                    { col: 0, row: 4, colSpan: 2, alignment: 'left' },
+                    { col: 0, row: 5, colSpan: 2, alignment: 'left' },
                 ],
             }
+            const booleanPrettyFormat = (v: boolean) => (v ? 'true' : 'false')
             const data = [
                 [
                     display.caution('WithContext:'),
-                    display.important(cf.withContext ? 'true' : 'false'),
+                    display.important(booleanPrettyFormat(cf.withContext)),
                 ],
                 [
                     display.caution('ContextSize:'),
                     display.warning(cf.contextLimit),
                 ],
                 [
+                    display.caution('Interactiveoutput:'),
+                    display.important(
+                        booleanPrettyFormat(cf.interactiveOutput)
+                    ),
+                ],
+                [
                     display.caution('CurrentModle:'),
                     display.tip(`${cf.llmType}#${cf.model}`),
                 ],
                 [display.caution('Scenario:'), display.tip(cf.scenarioName)],
-                [wrapAnsi(display.note, cf.sysPrompt, ext.colNum), ''],
+                [
+                    wrapAnsi(
+                        display.note,
+                        isEmpty(cf.sysPrompt)
+                            ? 'The system prompt has not been configured.'
+                            : cf.sysPrompt,
+                        ext.colNum
+                    ),
+                    '',
+                ],
             ]
             printTable(data, config)
         })
@@ -207,6 +237,11 @@ export class ChatAction implements IChatAction {
 
     modifyWithContext = () => {
         this.store.modifyWithContext()
+        this.printChatConfig()
+    }
+
+    modifyInteractiveOutput = () => {
+        this.store.modifyInteractiveOutput()
         this.printChatConfig()
     }
 
@@ -365,7 +400,7 @@ export class ChatAction implements IChatAction {
             ({
                 user: parseContent(c.user),
                 assistant: parseContent(c.assistant),
-            }) as PresetMessageContent
+            } as PresetMessageContent)
         const validContent = (c: TmpContent) =>
             c.type && !isEmpty(c.user) && !isEmpty(c.assistant)
         return text
@@ -456,13 +491,12 @@ export class ChatAction implements IChatAction {
         prompt: string,
         withContext: boolean
     ) => {
-        const client = await this.client()
         const context = withContext
             ? this.store.contextMessage().map((it) => {
                   if (it.role === 'user') {
-                      return client.user(it.content)
+                      return user(it.content)
                   }
-                  return client.assistant(it.content)
+                  return assistant(it.content)
               })
             : []
         const presetMessage = this.store.selectPresetMessage().flatMap(
@@ -472,22 +506,23 @@ export class ChatAction implements IChatAction {
                     { role: 'assistant', content: it.assistant },
                 ] as LLMMessage[]
         )
-        const msg = [...presetMessage, ...context, client.user(content)]
+        const msg = [...presetMessage, ...context, user(content)]
         if (isEmpty(prompt)) {
             return msg
         }
-        return [client.system(prompt), ...msg]
+        return [system(prompt), ...msg]
     }
 
-    private storeMessage = (result: LLMResult): void => {
+    private storeMessage = (chatId: string, result: LLMResult): void => {
         const { userContent, assistantContent, thinkingReasoning } = result
         const pairKey = uuid()
         const messages: MessageContent[] = [
-            { role: 'user', content: userContent, pairKey },
-            { role: 'assistant', content: assistantContent, pairKey },
+            { chatId, role: 'user', content: userContent, pairKey },
+            { chatId, role: 'assistant', content: assistantContent, pairKey },
         ]
         if (thinkingReasoning) {
             messages.push({
+                chatId,
                 role: 'reasoning',
                 content: thinkingReasoning,
                 pairKey,
@@ -525,13 +560,15 @@ export class ChatAction implements IChatAction {
     }
 
     private llmParam = async (userMessage: string, config: ChatConfig) => {
-        const { sysPrompt, withContext, model, scenario } = config
+        const { sysPrompt, withContext, interactiveOutput, model, scenario } =
+            config
         const messages = await this.messages(
             userMessage,
             sysPrompt,
             withContext
         )
         return {
+            interactiveOutput,
             messages,
             model,
             temperature: scenario,

@@ -26,8 +26,12 @@ program
 program
     .command('ask')
     .description('chat with AI')
+    .option('-c, --chat-name <string>', 'ask with other chat')
     .argument('<string>')
-    .action(async (content) => await chatAction.ask(content))
+    .action(
+        async (content, option) =>
+            await chatAction.ask({ content, chatName: option.chatName })
+    )
 
 program
     .command('list')
@@ -113,6 +117,7 @@ program
     .option('-c, --context-size <contextSize>', 'update context size')
     .option('-m, --model', `switch model`)
     .option('-w, --with-context', 'change with-context', false)
+    .option('-i, --interactive', 'set interactive-output', false)
     .option('-s, --scenario', 'select scenario')
     .option('-t, --tools', 'list useful tools')
     .action(async (option) => {
@@ -122,6 +127,7 @@ program
                 contextSize: (v) => chatAction.modifyContextSize(v as number),
                 model: chatAction.modifyModel,
                 withContext: chatAction.modifyWithContext,
+                interactive: chatAction.modifyInteractiveOutput,
                 scenario: chatAction.modifyScenario,
                 tools: chatAction.usefulTools,
             },

@@ -2,52 +2,29 @@
 
 Chat with AI via CLI.
 
-## Install 
-```bash
-# install bun
-npm install -g bun
-```
+## Install
+
+`ifcli` is built by [bunjs](https://bun.sh/) and requires a bun environment.
 
 ### From NPM
+
 ```bash
 npm install -g @vhxnif/ifcli
 ```
 
 ### From Source Code
+
 ```bash
 bun install && bun run build && bun link
 ```
 
 ## Config
 
-**Windows**: Data and MCP configurations are stored in %APPDATA%\ifcli.
+**Windows:** Data and MCP configurations are stored in %APPDATA%\ifcli.
 
-**macOS/Linux**: They are located in $HOME/.config/ifcli.
+**macOS/Linux:** They are located in $HOME/.config/ifcli.
 
-
-### Deepseek
-
-| Key                     | Value                            | 
-|:------------------------|:---------------------------------|
-| IFCLI_DEEPSEEK_API_KEY  | \<your_deepseek_api_key\>        |
-| IFCLI_DEEPSEEK_BASE_URL | https://api.deepseek.com         |
-| IFCLI_DEEPSEEK_MODELS   | deepseek_chat, deepseek-reasoner | 
-
-### Ollama
-
-| Key                   | Value                      | 
-|:----------------------|:---------------------------|
-| IFCLI_OLLAMA_API_KEY  | ''                         |
-| IFCLI_OLLAMA_BASE_URL | http://localhost:11434/v1/ |
-| IFCLI_OLLAMA_MODELS   | \<model1\>, \<model2\>     | 
-
-### OpenAI
-
-| Key                   | Value                     | 
-|:----------------------|:--------------------------|
-| IFCLI_OPENAI_API_KEY  | <your_openai_api_key>     |
-| IFCLI_OPENAI_BASE_URL | https://api.openai.com/v1 |
-| IFCLI_OPENAI_MODELS   | gpt-4o                    | 
+The `EDITOR` environment variable must be configured to enable configuration editing and related system functions.
 
 ## Command
 
@@ -57,42 +34,58 @@ Usage: ifct [options] [command]
 ifcli chat with LLM
 
 Options:
-  -V, --version         output the version number
-  -h, --help            display help for command
+  -V, --version           output the version number
+  -s, --setting           ifcli setting edit
+  -h, --help              display help for command
 
 Commands:
-  new <string>          new chat
-  ask <string>          talk with agent
-  list|ls               list all chats
-  history|hs [options]  history questions
-  remove|rm             remove chat
-  change|ch             change to another chat
-  prompt|pt [options]   prompt manager
-  config|cf [options]   manage current chat configuration
-  clear|cl              clear the current chat message
-  help [command]        display help for command
+  new <string>            new chat
+  ask [options] <string>  chat with AI
+  list|ls                 list all chats
+  history|hs [options]    view chat history
+  remove|rm               remove chat
+  switch|st               switch to another chat
+  prompt|pt [options]     prompt manager
+  preset|ps [options]     preset message manager
+  config|cf [options]     manage chat config
+  clear|cl                clear the current chat message
 ```
 
-### mcp tools support 
+To configure various application settings using the `ifct -s` command.
 
-| Config Path | Platform                     |
-|:------------|:-----------------------------|
-| Windows     | $APPDATA/ifcli/mcp.json      |
-| Mac/Linux   | $HOME/.config/ifcli/mcp.json |
+<img src="./public/setting.png" alt="ifct -s" width="400" height="600">
 
+**Default LLM Server Enable Rule:**
+| server name | required key |
+|:------------|:-------------|
+| deepseek | apiKey |
+| openai | apikey |
+| ollama | models |
 
-```json
-[
-  {
-    "type": ["tools"],
-    "name": "weather",
-    "version": "v1",
-    "command": "node",
-    "args": ["D:\\workspace\\other\\weather\\build\\index.js"]
-  }
-]
+## Tips
+
+### Chat without `ifct switch`
+
+```bash
+# the `ts` is another chat that supports translation.
+alias ts = ifct ask -c 'ts'
 ```
-#### MCP Using Example
+
+### Edit System Prompt
+
+Pipe symbols are supported
+
+```bash
+cat system_prompt.md | ifct pt -c
+```
+
+Use the editor
+
+```bash
+ifct pt -m
+```
+
+### MCP using Example
 
 ```bash
 # Single Version
@@ -101,3 +94,8 @@ ifct ask "@weather What's the weather today?"
 # Multi Version
 ifct ask "@weather:v1 What's the weather today?"
 ```
+
+### Interactive output
+
+The `ifct cf -i` command can turn on/off interactive output.
+

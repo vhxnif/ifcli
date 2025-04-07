@@ -1,4 +1,3 @@
-import type { LLMType } from '../config/app-llm-config'
 import type MCPClient from './mcp-client'
 
 export type LLMRole = 'system' | 'user' | 'assistant'
@@ -14,6 +13,7 @@ export type LLMResult = {
 }
 
 export type LLMParam = {
+    interactiveOutput: boolean
     messages: LLMMessage[]
     model: string
     temperature: number
@@ -33,13 +33,10 @@ export type LLMStreamMCPParam = LLMStreamParam & {
 }
 
 export interface ILLMClient {
-    type: LLMType
+    type: string 
     mcpClients: () => MCPClient[]
     defaultModel: () => string
     models: () => string[]
-    user: (content: string) => LLMMessage
-    system: (content: string) => LLMMessage
-    assistant: (content: string) => LLMMessage
     call: (param: LLMCallParam) => Promise<void>
     stream: (param: LLMStreamParam) => Promise<void>
     callWithTools: (param: LLMStreamMCPParam) => Promise<void>

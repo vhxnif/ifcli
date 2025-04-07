@@ -38,7 +38,4 @@ export class AppConfig implements IConfig {
     }
     dataPath = (): string =>
         `${this.configPath()}${path.sep}${this.appName()}.sqlite`
-
-    mcpConfigPath = (): string =>
-        path.join(this.platformConfigPath(), this.appName(), 'mcp.json')
 }

@@ -3,6 +3,7 @@ import { table } from 'table'
 import { color } from '../util/color-utils'
 import { default as page } from '../component/llm-res-prompt'
 import { tableConfig } from '../util/table-util'
+import type { LLMMessage, LLMRole } from '../types/llm-types'
 
 const thinkTableHeader = color.sky('Thinking Content')
 const contentTableHeader = color.sky('Assistant Content')
@@ -68,6 +69,17 @@ const llmNotifyMessage = {
     completed: color.blue('[认知模块已同步，思维链路无延迟——*]'),
 }
 
+const message = (role: LLMRole, content: string): LLMMessage => ({
+    role,
+    content,
+})
+const user = (content: string): LLMMessage => message('user', content)
+
+const system = (content: string): LLMMessage => message('system', content)
+
+const assistant = (content: string): LLMMessage => message('assistant', content)
+
+
 export {
     thinkTableHeader,
     contentTableHeader,
@@ -76,4 +88,8 @@ export {
     llmTableConfigWithHeader,
     llmResultPageShow,
     llmTableShow,
+    message,
+    user,
+    system,
+    assistant,
 }

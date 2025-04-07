@@ -20,6 +20,7 @@ export class ChatConfig {
     chatId!: string
     sysPrompt!: string
     withContext!: boolean
+    interactiveOutput!: boolean
     contextLimit!: number
     llmType!: string
     model!: string
@@ -53,6 +54,7 @@ export class AppSetting {
 }
 
 export type MessageContent = {
+    chatId: string,
     role: 'user' | 'assistant' | 'reasoning'
     content: string
     pairKey: string
@@ -83,6 +85,7 @@ export interface IChatStore {
     removeChat: (name: string) => void
     changeChat: (name: string) => void
     currentChat: () => Chat
+    getChat: (name: string) => Chat | null
 
     // ---- message ---- //
     saveMessage: (messages: MessageContent[]) => void
@@ -97,7 +100,9 @@ export interface IChatStore {
     modifyContextLimit: (contextLimit: number) => void
     modifyModel: (llm: string, model: string) => void
     modifyWithContext: () => void
+    modifyInteractiveOutput: () => void
     modifyScenario: (sc: [string, number]) => void
+    queryChatConfig: (chatId: string) => ChatConfig
 
     // ---- prompt ---- //
     publishPrompt: (name: string, version: string, content: string) => void

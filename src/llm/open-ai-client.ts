@@ -42,13 +42,6 @@ export class OpenAiClient implements ILLMClient {
 
     models = () => this.config.models
 
-    user = (content: string): LLMMessage => this.message('user', content)
-
-    system = (content: string): LLMMessage => this.message('system', content)
-
-    assistant = (content: string): LLMMessage =>
-        this.message('assistant', content)
-
     call = async (param: LLMCallParam) => {
         const { messages, model, temperature, contentConsumer } = param
         await this.client.chat.completions
@@ -64,8 +57,9 @@ export class OpenAiClient implements ILLMClient {
     }
 
     stream = async (param: LLMStreamParam) => {
-        const { messages, model, temperature, messageStore } = param
+        const { messages, model, interactiveOutput, temperature, messageStore } = param
         const display = new StreamDisplay({
+            interactiveOutput,
             userMessage: this.userMessage(messages),
             messageStore,
         })
@@ -87,12 +81,13 @@ export class OpenAiClient implements ILLMClient {
     }
 
     callWithTools = async (param: LLMStreamMCPParam) => {
-        const { messages, model, temperature, messageStore, mcpClients } = param
+        const { messages, model, interactiveOutput, temperature, messageStore, mcpClients } = param
         // support tools mcp server now
         const actMcpClients = mcpClients!.filter((it) =>
             it.type.includes('tools')
         )
         const display = new StreamDisplay({
+            interactiveOutput,
             userMessage: this.userMessage(messages),
             messageStore,
         })
@@ -150,11 +145,6 @@ export class OpenAiClient implements ILLMClient {
                     }) as RunnableToolFunction<any>
             )
         )
-
-    private message = (role: LLMRole, content: string): LLMMessage => ({
-        role,
-        content,
-    })
 
     private userMessage = (messages: LLMMessage[]) => {
         return messages[messages.length - 1]
