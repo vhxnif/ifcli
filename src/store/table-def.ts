@@ -60,14 +60,26 @@ const chat_preset_message = `
     );
     CREATE INDEX IF NOT EXISTS chat_preset_message_IDX ON chat_preset_message (chat_id);
 `
+const app_setting = `
+    CREATE TABLE IF NOT EXISTS app_setting (
+        id TEXT,
+        version TEXT,
+        mcp_server TEXT,
+        llm_setting TEXT,
+        create_time INTEGER,
+        CONSTRAINT app_setting_PK PRIMARY KEY (id)
+    );
+    CREATE INDEX IF NOT EXISTS app_setting_IDX ON app_setting (create_time);
+`
 
 // table_name: ddl
 const table_def: Record<string, string> = {
-    "chat": chat,
-    "chat_message": chat_message,
-    "chat_config": chat_config,
-    "chat_prompt": chat_prompt,
-    "chat_preset_message": chat_preset_message
+    chat: chat,
+    chat_message: chat_message,
+    chat_config: chat_config,
+    chat_prompt: chat_prompt,
+    chat_preset_message: chat_preset_message,
+    app_setting: app_setting,
 }
 
 export { table_def }

@@ -2,10 +2,20 @@
 import { Command } from '@commander-js/extra-typings'
 import { chatAction } from './app-context'
 import { editor, optionFunMapping, stdin } from './util/common-utils'
+import { version } from './config/app-setting'
 
 const program = new Command()
 
-program.name('ifct').description('ifcli chat with LLM').version('0.1.7')
+program
+    .name('ifct')
+    .description('ifcli chat with LLM')
+    .version(`${version}`)
+    .option('-s, --setting', 'ifcli setting edit')
+    .action(async (option) => {
+        if (option.setting) {
+            await chatAction.setting()
+        }
+    })
 
 program
     .command('new')

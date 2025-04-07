@@ -24,11 +24,11 @@ import { color, display, wrapAnsi } from '../util/color-utils'
 import { editor, error, exit, println, uuid } from '../util/common-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { input, select, selectRun } from '../util/inquirer-utils'
-import type { LLMType } from '../config/app-llm-config'
 import type { TableUserConfig } from 'table'
+import { AppSettingParse } from '../config/app-setting'
 
 export class ChatAction implements IChatAction {
-    clientMap: Map<LLMType, ILLMClient> = new Map()
+    clientMap: Map<string, ILLMClient> = new Map()
     store: IChatStore
     config: IConfig
 
@@ -41,7 +41,7 @@ export class ChatAction implements IChatAction {
     private client = async () => {
         const getClient = () => {
             const config = this.store.chatConfig()
-            return this.clientMap.get(config.llmType as LLMType)
+            return this.clientMap.get(config.llmType)
         }
         const ct = getClient()
         if (!ct) {
@@ -50,7 +50,7 @@ export class ChatAction implements IChatAction {
         return getClient()!
     }
 
-    private selectLLmAndModel = async (): Promise<[LLMType, string]> => {
+    private selectLLmAndModel = async (): Promise<[string, string]> => {
         const llm = await select({
             message: 'Select A Provider',
             choices: Array.from(this.clientMap.keys()).map((it) => ({
@@ -61,7 +61,7 @@ export class ChatAction implements IChatAction {
         if (!llm) {
             exit()
         }
-        const llmSelect = this.clientMap.get(llm as LLMType)!
+        const llmSelect = this.clientMap.get(llm)!
         llmSelect.models()
         const model = await select({
             message: 'Select A Model',
@@ -70,11 +70,7 @@ export class ChatAction implements IChatAction {
         if (!model) {
             exit()
         }
-        return [llm as LLMType, model]
-    }
-
-    init = () => {
-        this.store.init()
+        return [llm, model]
     }
 
     newChat = async (name: string) => {
@@ -275,7 +271,7 @@ export class ChatAction implements IChatAction {
 
     printPresetMessage = () => {
         const presetMessageText = this.presetMessageText({ colorful: true })
-        if(presetMessageText.isDefault) {
+        if (presetMessageText.isDefault) {
             error('Preset Message Not Set.')
             return
         }
@@ -283,17 +279,12 @@ export class ChatAction implements IChatAction {
     }
 
     editPresetMessage = async () => {
-        const hasher = new Bun.CryptoHasher('sha256')
-        const digest = (str: string) => {
-            hasher.update(str)
-            return hasher.digest().toString()
-        }
         const sourceText = this.presetMessageText({}).content
         const text = await editor(sourceText)
         if (!text) {
             return
         }
-        if (digest(sourceText) === digest(text)) {
+        if (this.isTextSame(sourceText, text)) {
             error('Nothing Edited')
             return
         }
@@ -301,13 +292,42 @@ export class ChatAction implements IChatAction {
         this.store.createPresetMessage(contents)
     }
 
+    setting = async () => {
+        const st = this.store.appSetting()!
+        const parse = new AppSettingParse(st)
+        const sourceText = parse.editShow()
+        const text = await editor(sourceText, 'json')
+        if (!text) {
+            return
+        }
+        if (this.isTextSame(sourceText, text)) {
+            error('Setting Not Change.')
+            return
+        }
+
+        const add = parse.editParse(text)
+        if (!add) {
+            return
+        }
+        this.store.addAppSetting(add)
+    }
+
+    private isTextSame = (sourceText: string, text: string) => {
+        const hasher = new Bun.CryptoHasher('sha256')
+        const digest = (str: string) => {
+            hasher.update(str)
+            return hasher.digest().toString()
+        }
+        return digest(sourceText) === digest(text)
+    }
+
     private presetMessageText = ({
         colorful = false,
     }: {
         colorful?: boolean
     }): {
-        isDefault: boolean,
-        content: string,
+        isDefault: boolean
+        content: string
     } => {
         const userType = () => `${colorful ? color.mauve.bold('user') : 'user'}`
         const assistantType = () =>
@@ -330,7 +350,7 @@ export class ChatAction implements IChatAction {
             .join('\n')
         return {
             isDefault: false,
-            content: text
+            content: text,
         }
     }
 
@@ -345,7 +365,7 @@ export class ChatAction implements IChatAction {
             ({
                 user: parseContent(c.user),
                 assistant: parseContent(c.assistant),
-            } as PresetMessageContent)
+            }) as PresetMessageContent
         const validContent = (c: TmpContent) =>
             c.type && !isEmpty(c.user) && !isEmpty(c.assistant)
         return text

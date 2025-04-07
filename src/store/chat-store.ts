@@ -4,17 +4,20 @@ import { isEmpty } from 'lodash'
 import { unixnow, uuid } from '../util/common-utils'
 import type { IConfig } from '../types/config-types'
 import {
+    AppSetting,
     Chat,
     ChatConfig,
     ChatMessage,
     ChatPresetMessage,
     ChatPrompt,
+    type AppSettingContent,
     type IChatStore,
     type MessageContent,
     type PresetMessageContent,
 } from '../types/store-types'
 import { table_def } from './table-def'
 import { temperature } from '../types/constant'
+import { defaultSetting } from '../config/app-setting'
 
 class SqliteTable {
     name!: string
@@ -44,8 +47,15 @@ export class ChatStore implements IChatStore {
             .forEach(([_, v]) => {
                 this.db.run(v)
             })
+        const st = this.appSetting()
+        if (st) {
+            return
+        }
+        this.addAppSetting(defaultSetting)
     }
 
+    private appSettingColumn =
+        'id, version, mcp_server as mcpServer, llm_setting as llmSetting, create_time as createTime'
     private chatColumn =
         'id, name, "select", action_time as actionTime, select_time as selectTime'
     private chatMessageColumn =
@@ -267,6 +277,24 @@ export class ChatStore implements IChatStore {
 
     clearPresetMessage = () => {
         this.currentChatRun((c) => this.deletePresetMessage(c.id))
+    }
+
+    appSetting = () => {
+        return this.db
+            .query(
+                `SELECT ${this.appSettingColumn} FROM app_setting order by create_time desc limit 1`
+            )
+            .as(AppSetting)
+            .get()
+    }
+
+    addAppSetting = (setting: AppSettingContent) => {
+        const { version, mcpServer, llmSetting } = setting
+        this.db
+            .prepare(
+                `INSERT INTO app_setting (id, version, mcp_server, llm_setting, create_time) VALUES (?, ?, ?, ?, ?)`
+            )
+            .run(uuid(), version, mcpServer, llmSetting, unixnow())
     }
 
     private addPresetMessage = (

@@ -44,6 +44,14 @@ export class ChatPresetMessage {
     create_time!: bigint
 }
 
+export class AppSetting {
+    id!: string
+    version!: string
+    mcpServer!: string
+    llmSetting!: string
+    create_time!: bigint
+}
+
 export type MessageContent = {
     role: 'user' | 'assistant' | 'reasoning'
     content: string
@@ -55,12 +63,23 @@ export type PresetMessageContent = {
     assistant: string
 }
 
+export type AppSettingContent = {
+    version: string
+    mcpServer: string
+    llmSetting: string
+}
+
 export interface IChatStore {
     init: () => void
     // ---- chat ---- //
     chats: () => Chat[]
     queryChat: (name: string) => Chat | null
-    newChat: (name: string, prompt: string, llmType: string, model: string) => void
+    newChat: (
+        name: string,
+        prompt: string,
+        llmType: string,
+        model: string
+    ) => void
     removeChat: (name: string) => void
     changeChat: (name: string) => void
     currentChat: () => Chat
@@ -76,7 +95,7 @@ export interface IChatStore {
     chatConfig: () => ChatConfig
     modifySystemPrompt: (prompt: string) => void
     modifyContextLimit: (contextLimit: number) => void
-    modifyModel: (llm:string, model: string) => void
+    modifyModel: (llm: string, model: string) => void
     modifyWithContext: () => void
     modifyScenario: (sc: [string, number]) => void
 
@@ -84,10 +103,13 @@ export interface IChatStore {
     publishPrompt: (name: string, version: string, content: string) => void
     searchPrompt: (name: string, version?: string) => ChatPrompt[]
 
-    // --- preset message --- //
+    // ---- preset message ---- //
     createPresetMessage: (params: PresetMessageContent[]) => void
     selectPresetMessage: () => ChatPresetMessage[]
     clearPresetMessage: () => void
+    // ---- app setting ----
+    appSetting: () => AppSetting | null
+    addAppSetting: (setting: AppSettingContent) => void
 
     // ---- other ---- //
     contextRun: (f: (cf: ChatConfig) => void) => void

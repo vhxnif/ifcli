@@ -1,5 +1,4 @@
 export interface IChatAction {
-    init: () => void
     newChat: (name: string) => Promise<void>
     removeChat: () => void
     ask: (content: string) => Promise<void>
@@ -20,4 +19,5 @@ export interface IChatAction {
     editPresetMessage: () => Promise<void>
     clearPresetMessage: () => void
     printPresetMessage: () => void
+    setting: () => Promise<void>
 }

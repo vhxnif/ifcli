@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import OpenAi from 'openai'
 import type { RunnableToolFunction } from 'openai/lib/RunnableFunction'
-import type { ILLMConfig, LLMType } from '../config/app-llm-config'
 import type {
     ILLMClient,
     LLMCallParam,
@@ -14,15 +13,22 @@ import type {
 import MCPClient from '../types/mcp-client'
 import { llmNotifyMessage } from './llm-utils'
 import { StreamDisplay } from './stream-display'
+import type { LLMSetting } from '../config/app-setting'
 
 export class OpenAiClient implements ILLMClient {
     client: OpenAi
-    type: LLMType
-    private config: ILLMConfig 
+    type: string
+    private config: LLMSetting
     private mcps: MCPClient[]
-    constructor({ llmConfig, mcpClients}: { llmConfig: ILLMConfig, mcpClients: MCPClient[]}) {
-        this.config = llmConfig 
-        this.type = this.config.type
+    constructor({
+        llmConfig,
+        mcpClients,
+    }: {
+        llmConfig: LLMSetting
+        mcpClients: MCPClient[]
+    }) {
+        this.config = llmConfig
+        this.type = this.config.name
         this.client = new OpenAi({
             baseURL: this.config.baseUrl,
             apiKey: this.config.apiKey,
@@ -32,7 +38,7 @@ export class OpenAiClient implements ILLMClient {
 
     mcpClients = () => this.mcps
 
-    defaultModel = () => this.config.defaultModel
+    defaultModel = () => this.config.models[0]
 
     models = () => this.config.models
 
