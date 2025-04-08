@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Database } from 'bun:sqlite'
-import { isEmpty } from 'lodash'
-import { unixnow, uuid } from '../util/common-utils'
+import { isEmpty, unixnow, uuid } from '../util/common-utils'
 import type { IConfig } from '../types/config-types'
 import {
     AppSetting,
@@ -61,7 +60,7 @@ export class ChatStore implements IChatStore {
     private chatMessageColumn =
         'id, chat_id as chatId, "role", content, pair_key as pairKey, action_time as actionTime'
     private chatConfigColumn =
-        'id, chat_id as chatId , sys_prompt as sysPrompt, with_context as withContext, interactive_output as interactiveOutput, context_limit as contextLimit, llm_type as llmType, model, scenario_name as scenarioName, scenario, update_time as updateTime'
+        'id, chat_id as chatId , sys_prompt as sysPrompt, with_context as withContext, interactive_output as interactiveOutput, with_mcp as withMCP, context_limit as contextLimit, llm_type as llmType, model, scenario_name as scenarioName, scenario, update_time as updateTime'
     private chatPromptColumn =
         'name, version, role, content, modify_time as modifyTime'
     private chatPresetMessageColumn =
@@ -84,7 +83,7 @@ export class ChatStore implements IChatStore {
                 `INSERT INTO chat (id, name, "select", action_time, select_time) VALUES (?, ?, ?, ?, ?)`
             )
             const configStatement = this.db.prepare(
-                `INSERT INTO chat_config (id, chat_id, sys_prompt, with_context, context_limit, interactive_output, llm_type, model, scenario_name, scenario, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                `INSERT INTO chat_config (id, chat_id, sys_prompt, with_context, context_limit, interactive_output, with_mcp, llm_type, model, scenario_name, scenario, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             )
             const [scenarioName, scenario] = temperature.general
             this.db.transaction(() => {
@@ -99,6 +98,7 @@ export class ChatStore implements IChatStore {
                     prompt,
                     true,
                     true,
+                    false,
                     10,
                     llmType,
                     model,
@@ -215,23 +215,20 @@ export class ChatStore implements IChatStore {
                 .run(llm, model, unixnow(), cf.id)
         )
 
-    modifyWithContext = () =>
-        this.currentChatConfigRun((_, cf) =>
-            this.db
-                .prepare(
-                    `UPDATE chat_config SET with_context = ?, update_time = ? where id = ?`
-                )
-                .run(!cf.withContext, unixnow(), cf.id)
-        )
+    modifyWithContext = () => this.changeConfigBooleanType('with_context', c => c.withContext)
+    modifyInteractiveOutput = () => this.changeConfigBooleanType('interactive_output ', c => c.interactiveOutput)
+    modifyWithMCP = () => this.changeConfigBooleanType('with_mcp', c => c.withMCP)
 
-    modifyInteractiveOutput = () =>
+    private changeConfigBooleanType = (columnName: string, f: (f: ChatConfig) => boolean) => {
         this.currentChatConfigRun((_, cf) =>
             this.db
                 .prepare(
-                    `UPDATE chat_config SET interactive_output = ?, update_time = ? where id = ?`
+                    `UPDATE chat_config SET ${columnName} = ?, update_time = ? where id = ?`
                 )
-                .run(!cf.interactiveOutput, unixnow(), cf.id)
+                .run(!f(cf), unixnow(), cf.id)
         )
+    }
+
 
     modifyScenario = (sc: [string, number]) =>
         this.currentChatConfigRun((_, cf) =>

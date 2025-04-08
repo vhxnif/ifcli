@@ -16,6 +16,7 @@ export interface IChatAction {
     modifySystemPrompt: (prompt: string) => void
     modifyWithContext: () => void
     modifyInteractiveOutput: () => void
+    modifyWithMCP: () => void
     modifyScenario: () => void
     publishPrompt: () => Promise<void>
     selectPrompt: (name: string) => void

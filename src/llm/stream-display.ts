@@ -187,6 +187,7 @@ export class StreamDisplay {
         }
         if (this.interactiveOutput) {
             f(matchRun())
+            return
         }
         f(run())
     }

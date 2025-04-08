@@ -13,6 +13,7 @@ export type LLMResult = {
 }
 
 export type LLMParam = {
+    userMessage: LLMMessage,
     interactiveOutput: boolean
     messages: LLMMessage[]
     model: string
@@ -34,9 +35,8 @@ export type LLMStreamMCPParam = LLMStreamParam & {
 
 export interface ILLMClient {
     type: string 
-    mcpClients: () => MCPClient[]
-    defaultModel: () => string
-    models: () => string[]
+    models: string[]
+    defaultModel: string 
     call: (param: LLMCallParam) => Promise<void>
     stream: (param: LLMStreamParam) => Promise<void>
     callWithTools: (param: LLMStreamMCPParam) => Promise<void>

@@ -118,6 +118,7 @@ program
     .option('-m, --model', `switch model`)
     .option('-w, --with-context', 'change with-context', false)
     .option('-i, --interactive', 'set interactive-output', false)
+    .option('-f, --with-mcp', 'set with-mcp (function call)', false)
     .option('-s, --scenario', 'select scenario')
     .option('-t, --tools', 'list useful tools')
     .action(async (option) => {
@@ -128,6 +129,7 @@ program
                 model: chatAction.modifyModel,
                 withContext: chatAction.modifyWithContext,
                 interactive: chatAction.modifyInteractiveOutput,
+                withMcp: chatAction.modifyWithMCP,
                 scenario: chatAction.modifyScenario,
                 tools: chatAction.usefulTools,
             },

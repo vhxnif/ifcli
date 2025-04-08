@@ -2,6 +2,14 @@
 
 Chat with AI via CLI.
 
+**Features:**
+
+- System prompt settings and management.
+- Support preset message settings.
+- History chat record management and viewing.
+- MCP(tools) Supported.
+- Supports diverse gameplay with `alias`.
+
 ## Install
 
 `ifcli` is built by [bunjs](https://bun.sh/) and requires a bun environment.
@@ -55,12 +63,31 @@ To configure various application settings using the `ifct -s` command.
 
 <img src="./public/setting.png" alt="ifct -s" width="400" height="600">
 
-**Default LLM Server Enable Rule:**
-| server name | required key |
-|:------------|:-------------|
-| deepseek | apiKey |
-| openai | apikey |
-| ollama | models |
+**LLM Setting**
+| column name | type     | required | 
+|:------------|:---------|:---------|
+| name        | string   | true     |
+| baseUrl     | string   | true     |
+| apiKey      | string   | false    |
+| models      | string[] | true     |
+
+
+**MCP Server(SSE)**
+| column name | type                      | required | 
+|:------------|:--------------------------|:---------|
+| name        | string                    | true     |  
+| version     | string                    | true     |  
+| type        | 'sse'                     | true     |  
+| url         | string                    | true     | 
+| opts        | SSEClientTransportOptions | false    |
+
+**MCP Server(Stdio)**
+| column name | type                  | required | 
+|:------------|:----------------------|:---------|
+| name        | string                | true     |  
+| version     | string                | true     |  
+| type        | 'stdio'               | true     | 
+| params      | StdioServerParameters | true     |
 
 ## Tips
 
@@ -87,15 +114,8 @@ ifct pt -m
 
 ### MCP using Example
 
-```bash
-# Single Version
-ifct ask "@weather What's the weather today?"
-
-# Multi Version
-ifct ask "@weather:v1 What's the weather today?"
-```
+Use the `ifct -s` command to set the MCP configuration and `ifct cf -f` to enable MCP for the current chat.
 
 ### Interactive output
 
 The `ifct cf -i` command can turn on/off interactive output.
-

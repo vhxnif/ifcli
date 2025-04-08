@@ -11,13 +11,12 @@ import type { IChatStore } from './types/store-types'
 const config: IConfig = new AppConfig()
 const store: IChatStore = new ChatStore(config)
 store.init()
-
-const st = store.appSetting()!
-const settingParse = new AppSettingParse(st)
+const settingParse = new AppSettingParse(store.appSetting()!)
 const { mcpServers, llmSettings } = settingParse.setting(true)
-const mcpClients = mcpServers.map((it) => new MCPClient(it))
-const llmClients = llmSettings.map(
-    (it) => new OpenAiClient({ llmConfig: it, mcpClients })
-)
-const chatAction: IChatAction = new ChatAction(llmClients, store, config)
+const chatAction: IChatAction = new ChatAction({ 
+    llmClients: llmSettings.map((it) => new OpenAiClient(it)), 
+    mcpClients: mcpServers.map((it) => new MCPClient(it)), 
+    store
+})
+
 export { chatAction, store as chatStore }

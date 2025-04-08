@@ -21,6 +21,7 @@ export class ChatConfig {
     sysPrompt!: string
     withContext!: boolean
     interactiveOutput!: boolean
+    withMCP!: boolean
     contextLimit!: number
     llmType!: string
     model!: string
@@ -101,6 +102,7 @@ export interface IChatStore {
     modifyModel: (llm: string, model: string) => void
     modifyWithContext: () => void
     modifyInteractiveOutput: () => void
+    modifyWithMCP: () => void
     modifyScenario: (sc: [string, number]) => void
     queryChatConfig: (chatId: string) => ChatConfig
 

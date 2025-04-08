@@ -1,7 +1,6 @@
-import { isEmpty } from 'lodash'
 import type { MCPConfig } from '../types/mcp-client'
 import type { AppSetting, AppSettingContent } from '../types/store-types'
-import { error } from '../util/common-utils'
+import { error, isEmpty } from '../util/common-utils'
 
 export type LLMSetting = {
     name: string
@@ -11,11 +10,11 @@ export type LLMSetting = {
 }
 
 export type Setting = {
-    mcpServers: MCPConfig[]
+    mcpServers: MCPConfig[] 
     llmSettings: LLMSetting[]
 }
 
-export const version = '0.1.7'
+export const version = '0.1.8'
 
 export const defaultLLMSettings: LLMSetting[] = [
     {
@@ -66,7 +65,7 @@ export class AppSettingParse {
         if (isEmpty(mcpServerJson)) {
             return []
         }
-        return JSON.parse(mcpServerJson!) as MCPConfig[]
+        return JSON.parse(mcpServerJson) as MCPConfig[]
     }
 
     private llmSettings = (withoutDefault: boolean = false): LLMSetting[] => {
@@ -92,7 +91,7 @@ export class AppSettingParse {
         try {
             const st = JSON.parse(str) as Setting
             return {
-                version,
+                version: this.appSetting.version,
                 mcpServer: this.mcpServerParse(st),
                 llmSetting: this.llmSettingParse(st),
             } as AppSettingContent

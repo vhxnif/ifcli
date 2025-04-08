@@ -1,7 +1,5 @@
-import { isEmpty } from 'lodash'
 import { CHAT_DEFAULT_SYSTEM } from '../config/prompt'
 import type { AskContent, IChatAction } from '../types/action-types'
-import type { IConfig } from '../types/config-types'
 import { temperature } from '../types/constant'
 import type {
     ILLMClient,
@@ -21,7 +19,14 @@ import {
     type PresetMessageContent,
 } from '../types/store-types'
 import { color, display, wrapAnsi } from '../util/color-utils'
-import { editor, error, exit, println, uuid } from '../util/common-utils'
+import {
+    editor,
+    error,
+    exit,
+    isEmpty,
+    println,
+    uuid,
+} from '../util/common-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { input, select, selectRun } from '../util/inquirer-utils'
 import type { TableUserConfig } from 'table'
@@ -31,12 +36,12 @@ import { assistant, system, user } from '../llm/llm-utils'
 export class ChatAction implements IChatAction {
     clientMap: Map<string, ILLMClient> = new Map()
     store: IChatStore
-    config: IConfig
+    mcps: MCPClient[]
 
-    constructor(clients: ILLMClient[], store: IChatStore, config: IConfig) {
+    constructor({ llmClients, mcpClients, store } : { llmClients: ILLMClient[], mcpClients: MCPClient[], store: IChatStore}) {
         this.store = store
-        this.config = config
-        clients.forEach((it) => this.clientMap.set(it.type, it))
+        llmClients.forEach((it) => this.clientMap.set(it.type, it))
+        this.mcps = mcpClients
     }
     private text = color.mauve
     private client = async (llmType?: string) => {
@@ -66,10 +71,9 @@ export class ChatAction implements IChatAction {
             exit()
         }
         const llmSelect = this.clientMap.get(llm)!
-        llmSelect.models()
         const model = await select({
             message: 'Select A Model',
-            choices: llmSelect.models().map((it) => ({ name: it, value: it })),
+            choices: llmSelect.models.map((it) => ({ name: it, value: it })),
         })
         if (!model) {
             exit()
@@ -103,28 +107,26 @@ export class ChatAction implements IChatAction {
     ask = async ({ content, chatName }: AskContent) => {
         const f = async (cf: ChatConfig) => {
             const client = await this.client(cf.llmType)
-            const { tools, userMessage } = this.extractTools(content)
-            const llmParam = await this.llmParam(userMessage, cf)
+            const llmParam = this.llmParam(content, cf)
             const streamParam = {
                 ...llmParam,
-                messageStore: v => this.storeMessage(cf.chatId, v),
+                messageStore: (v) => this.storeMessage(cf.chatId, v),
             } as LLMStreamParam
             const streamRun = () => client.stream(streamParam)
+            if(!cf.withMCP) {
+                await streamRun()
+                return 
+            }
+            if (isEmpty(this.mcps)) {
+                await streamRun()
+                return
+            }
             const toolsRun = (mcpClients: MCPClient[]) =>
                 client.callWithTools({
                     ...streamParam,
                     mcpClients: mcpClients,
                 })
-            if (isEmpty(tools)) {
-                await streamRun()
-                return
-            }
-            const usefulTools = await this.userUseTools(tools)
-            if (isEmpty(usefulTools)) {
-                await streamRun()
-                return
-            }
-            await toolsRun(usefulTools)
+            await toolsRun(this.mcps)
         }
         if (chatName) {
             const chat = this.store.getChat(chatName)
@@ -161,11 +163,14 @@ export class ChatAction implements IChatAction {
 
     printChatConfig = () => {
         this.store.contextRun((cf) => {
-            const [ext, myConfig] = tableConfigWithExt({ cols: [1, 1] })
+            const [ext, myConfig] = tableConfigWithExt({
+                cols: [1, 1, 1, 1],
+                alignment: 'left',
+            })
             const config: TableUserConfig = {
                 ...myConfig,
                 spanningCells: [
-                    { col: 0, row: 5, colSpan: 2, alignment: 'left' },
+                    { col: 0, row: 3, colSpan: 4, alignment: 'left' },
                 ],
             }
             const booleanPrettyFormat = (v: boolean) => (v ? 'true' : 'false')
@@ -173,22 +178,23 @@ export class ChatAction implements IChatAction {
                 [
                     display.caution('WithContext:'),
                     display.important(booleanPrettyFormat(cf.withContext)),
-                ],
-                [
-                    display.caution('ContextSize:'),
-                    display.warning(cf.contextLimit),
-                ],
-                [
-                    display.caution('Interactiveoutput:'),
+                    display.caution('Interactive:'),
                     display.important(
                         booleanPrettyFormat(cf.interactiveOutput)
                     ),
                 ],
                 [
-                    display.caution('CurrentModle:'),
-                    display.tip(`${cf.llmType}#${cf.model}`),
+                    display.caution('Scenario:'),
+                    display.tip(cf.scenarioName),
+                    display.caution('ContextSize:'),
+                    display.warning(cf.contextLimit),
                 ],
-                [display.caution('Scenario:'), display.tip(cf.scenarioName)],
+                [
+                    display.caution('LLMType & Model:'),
+                    display.tip(`${cf.llmType}\n${cf.model}`),
+                    display.caution('WithMCP:'),
+                    display.important(booleanPrettyFormat(cf.withMCP)),
+                ],
                 [
                     wrapAnsi(
                         display.note,
@@ -197,6 +203,8 @@ export class ChatAction implements IChatAction {
                             : cf.sysPrompt,
                         ext.colNum
                     ),
+                    '',
+                    '',
                     '',
                 ],
             ]
@@ -245,6 +253,11 @@ export class ChatAction implements IChatAction {
         this.printChatConfig()
     }
 
+    modifyWithMCP = () => {
+        this.store.modifyWithMCP()
+        this.printChatConfig()
+    }
+
     modifyScenario = () => {
         selectRun(
             'Select Scenario:',
@@ -284,7 +297,7 @@ export class ChatAction implements IChatAction {
     }
 
     usefulTools = async () => {
-        const tools = (await this.client()).mcpClients().reduce(
+        const tools = this.mcps.reduce(
             (arr, it) => {
                 return [
                     ...arr,
@@ -443,29 +456,8 @@ export class ChatAction implements IChatAction {
             .map(toPresetMessageContent)
     }
 
-    private extractTools = (
-        userMessage: string
-    ): { tools: string[]; userMessage: string } => {
-        const regex = /@[^\s]+/g
-        const matches = userMessage.match(regex)
-        if (matches) {
-            const tools = matches.map((it) => it.replace('@', ''))
-            return {
-                tools: tools,
-                userMessage: tools.reduce(
-                    (str, it) => str.replace(it, ''),
-                    userMessage
-                ),
-            }
-        }
-        return {
-            tools: [],
-            userMessage: userMessage,
-        }
-    }
-
     private getPublishPromptInput = async (prompt: string) => {
-        const name = await input({ message: 'Prompt Name : ' })
+        const name = await input({ message: 'Prompt Name: ' })
         const version = await input({ message: 'Prompt Version: ' })
         const existsPrompt = this.store.searchPrompt(name, version)
         if (isEmpty(existsPrompt)) {
@@ -486,7 +478,7 @@ export class ChatAction implements IChatAction {
             f
         )
 
-    private messages = async (
+    private messages = (
         content: string,
         prompt: string,
         withContext: boolean
@@ -542,32 +534,12 @@ export class ChatAction implements IChatAction {
         return [st!, ...oths]
     }
 
-    private userUseTools = async (tools: string[]) => {
-        const clients = (await this.client()).mcpClients()
-        return tools.reduce((arr, it) => {
-            const clientMatch = (mcp: string) => {
-                if (mcp.includes(':')) {
-                    return (c: MCPClient) => mcp === `${c.name}:${c.version}`
-                }
-                return (c: MCPClient) => mcp === c.name
-            }
-            const client = clients.find(clientMatch(it))
-            if (client) {
-                arr.push(client)
-            }
-            return arr
-        }, [] as MCPClient[])
-    }
-
-    private llmParam = async (userMessage: string, config: ChatConfig) => {
+    private llmParam = (userMessage: string, config: ChatConfig) => {
         const { sysPrompt, withContext, interactiveOutput, model, scenario } =
             config
-        const messages = await this.messages(
-            userMessage,
-            sysPrompt,
-            withContext
-        )
+        const messages = this.messages(userMessage, sysPrompt, withContext)
         return {
+            userMessage: user(userMessage),
             interactiveOutput,
             messages,
             model,
