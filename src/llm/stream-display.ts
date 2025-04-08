@@ -1,5 +1,6 @@
 import type { ChalkInstance } from 'chalk'
 import type OpenAI from 'openai'
+import ora, { type Ora } from 'ora'
 import { table } from 'table'
 import type { LLMMessage, LLMResult } from '../types/llm-types'
 import { color } from '../util/color-utils'
@@ -10,7 +11,7 @@ import {
     type LLMResultPageShow,
 } from './llm-utils'
 import { ShowWin } from './show-win'
-import ora, { type Ora } from 'ora'
+import { print } from '../util/common-utils'
 
 export class StreamDisplay {
     private hasReasoningContent: boolean = false
@@ -159,6 +160,10 @@ export class StreamDisplay {
         if (this.thinkStopFlag) {
             return
         }
+        this.interactiveOutputRun(
+            () => {},
+            () => print("\n\n")
+        )
         this.thinkStopFlag = true
     }
 

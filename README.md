@@ -61,7 +61,58 @@ Commands:
 
 To configure various application settings using the `ifct -s` command.
 
-<img src="./public/setting.png" alt="ifct -s" width="400" height="600">
+```json
+{
+  "mcpServers": [
+    {
+      "name": "weather",
+      "version": "v1",
+      "type": "sse",
+      "url": "http://localhost:3000/sse"
+    },
+    {
+      "name": "weather",
+      "version": "v2",
+      "type": "stdio",
+      "params": {
+        "command": "bun",
+        "args": [
+          "run",
+          "/Users/chen/workspace/weather-mcp/src/mcp/stdio-server.ts"
+        ]
+      }
+    }
+  ],
+  "llmSettings": [
+    {
+      "name": "deepseek",
+      "baseUrl": "https://api.deepseek.com",
+      "apiKey": "<your deepseek api key>",
+      "models": [
+        "deepseek-chat",
+        "deepseek-reasoner"
+      ]
+    },
+    {
+      "name": "ollama",
+      "baseUrl": "http://localhost:11434/v1/",
+      "apiKey": "",
+      "models": [
+        "gemma3:latest"
+      ]
+    },
+    {
+      "name": "openai",
+      "baseUrl": "https://api.openai.com/v1",
+      "apiKey": "<your openai key>",
+      "models": [
+        "gpt-4o"
+      ]
+    }
+  ]
+}
+
+```
 
 **LLM Setting**
 | column name | type     | required | 

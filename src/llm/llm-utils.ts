@@ -1,9 +1,9 @@
 import type { TableUserConfig } from 'table'
 import { table } from 'table'
-import { color } from '../util/color-utils'
 import { default as page } from '../component/llm-res-prompt'
-import { tableConfig } from '../util/table-util'
 import type { LLMMessage, LLMRole } from '../types/llm-types'
+import { color } from '../util/color-utils'
+import { tableConfig } from '../util/table-util'
 
 const thinkTableHeader = color.sky('Thinking Content')
 const contentTableHeader = color.sky('Assistant Content')
@@ -81,15 +81,7 @@ const assistant = (content: string): LLMMessage => message('assistant', content)
 
 
 export {
-    thinkTableHeader,
-    contentTableHeader,
-    llmTableConfig,
-    llmNotifyMessage,
-    llmTableConfigWithHeader,
-    llmResultPageShow,
-    llmTableShow,
-    message,
-    user,
-    system,
-    assistant,
+    assistant, contentTableHeader, llmNotifyMessage, llmResultPageShow, llmTableConfig, llmTableConfigWithHeader, llmTableShow,
+    message, system, thinkTableHeader, user
 }
+
