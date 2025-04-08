@@ -2,10 +2,20 @@
 import { Command } from '@commander-js/extra-typings'
 import { chatAction } from './app-context'
 import { editor, optionFunMapping, stdin } from './util/common-utils'
+import { version } from './config/app-setting'
 
 const program = new Command()
 
-program.name('ifct').description('ifcli chat with LLM').version('0.1.7')
+program
+    .name('ifct')
+    .description('ifcli chat with LLM')
+    .version(`${version}`)
+    .option('-s, --setting', 'ifcli setting edit')
+    .action(async (option) => {
+        if (option.setting) {
+            await chatAction.setting()
+        }
+    })
 
 program
     .command('new')
@@ -16,8 +26,12 @@ program
 program
     .command('ask')
     .description('chat with AI')
+    .option('-c, --chat-name <string>', 'ask with other chat')
     .argument('<string>')
-    .action(async (content) => await chatAction.ask(content))
+    .action(
+        async (content, option) =>
+            await chatAction.ask({ content, chatName: option.chatName })
+    )
 
 program
     .command('list')
@@ -103,6 +117,8 @@ program
     .option('-c, --context-size <contextSize>', 'update context size')
     .option('-m, --model', `switch model`)
     .option('-w, --with-context', 'change with-context', false)
+    .option('-i, --interactive', 'set interactive-output', false)
+    .option('-f, --with-mcp', 'set with-mcp (function call)', false)
     .option('-s, --scenario', 'select scenario')
     .option('-t, --tools', 'list useful tools')
     .action(async (option) => {
@@ -112,6 +128,8 @@ program
                 contextSize: (v) => chatAction.modifyContextSize(v as number),
                 model: chatAction.modifyModel,
                 withContext: chatAction.modifyWithContext,
+                interactive: chatAction.modifyInteractiveOutput,
+                withMcp: chatAction.modifyWithMCP,
                 scenario: chatAction.modifyScenario,
                 tools: chatAction.usefulTools,
             },

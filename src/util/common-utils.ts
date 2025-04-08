@@ -55,6 +55,24 @@ const editor = async (content: string, fileType: string = 'md') => {
 }
 const exit = () => process.exit()
 
+type IsEmpty = {
+    (str: undefined) : boolean,
+    (str: null) : boolean,
+    (str: string): boolean,
+    <T>(arr: T[]): boolean,
+} 
+
+const isEmpty: IsEmpty = <T>(param: string | T[] | undefined | null) => {
+    if(!param) {
+        return true 
+    }
+    if(typeof param === 'string') {
+        return param.length <= 0
+    }
+    const arr = param as Array<T>
+    return arr.length <= 0
+}
+
 export {
     exit,
     editor,
@@ -68,4 +86,5 @@ export {
     println,
     log,
     error,
+    isEmpty,
 }

@@ -1,7 +1,5 @@
-import { isEmpty } from 'lodash'
 import { CHAT_DEFAULT_SYSTEM } from '../config/prompt'
-import type { IChatAction } from '../types/action-types'
-import type { IConfig } from '../types/config-types'
+import type { AskContent, IChatAction } from '../types/action-types'
 import { temperature } from '../types/constant'
 import type {
     ILLMClient,
@@ -21,27 +19,38 @@ import {
     type PresetMessageContent,
 } from '../types/store-types'
 import { color, display, wrapAnsi } from '../util/color-utils'
-import { editor, error, exit, println, uuid } from '../util/common-utils'
+import {
+    editor,
+    error,
+    exit,
+    isEmpty,
+    println,
+    uuid,
+} from '../util/common-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { input, select, selectRun } from '../util/inquirer-utils'
-import type { LLMType } from '../config/app-llm-config'
 import type { TableUserConfig } from 'table'
+import { AppSettingParse } from '../config/app-setting'
+import { assistant, system, user } from '../llm/llm-utils'
 
 export class ChatAction implements IChatAction {
-    clientMap: Map<LLMType, ILLMClient> = new Map()
+    clientMap: Map<string, ILLMClient> = new Map()
     store: IChatStore
-    config: IConfig
+    mcps: MCPClient[]
 
-    constructor(clients: ILLMClient[], store: IChatStore, config: IConfig) {
+    constructor({ llmClients, mcpClients, store } : { llmClients: ILLMClient[], mcpClients: MCPClient[], store: IChatStore}) {
         this.store = store
-        this.config = config
-        clients.forEach((it) => this.clientMap.set(it.type, it))
+        llmClients.forEach((it) => this.clientMap.set(it.type, it))
+        this.mcps = mcpClients
     }
     private text = color.mauve
-    private client = async () => {
+    private client = async (llmType?: string) => {
         const getClient = () => {
+            if (llmType) {
+                return this.clientMap.get(llmType)
+            }
             const config = this.store.chatConfig()
-            return this.clientMap.get(config.llmType as LLMType)
+            return this.clientMap.get(config.llmType)
         }
         const ct = getClient()
         if (!ct) {
@@ -50,7 +59,7 @@ export class ChatAction implements IChatAction {
         return getClient()!
     }
 
-    private selectLLmAndModel = async (): Promise<[LLMType, string]> => {
+    private selectLLmAndModel = async (): Promise<[string, string]> => {
         const llm = await select({
             message: 'Select A Provider',
             choices: Array.from(this.clientMap.keys()).map((it) => ({
@@ -61,20 +70,15 @@ export class ChatAction implements IChatAction {
         if (!llm) {
             exit()
         }
-        const llmSelect = this.clientMap.get(llm as LLMType)!
-        llmSelect.models()
+        const llmSelect = this.clientMap.get(llm)!
         const model = await select({
             message: 'Select A Model',
-            choices: llmSelect.models().map((it) => ({ name: it, value: it })),
+            choices: llmSelect.models.map((it) => ({ name: it, value: it })),
         })
         if (!model) {
             exit()
         }
-        return [llm as LLMType, model]
-    }
-
-    init = () => {
-        this.store.init()
+        return [llm, model]
     }
 
     newChat = async (name: string) => {
@@ -100,32 +104,40 @@ export class ChatAction implements IChatAction {
         )
     }
 
-    ask = async (content: string) => {
-        this.store.contextRun(async (cf) => {
-            const client = await this.client()
-            const { tools, userMessage } = this.extractTools(content)
-            const llmParam = await this.llmParam(userMessage, cf)
+    ask = async ({ content, chatName }: AskContent) => {
+        const f = async (cf: ChatConfig) => {
+            const client = await this.client(cf.llmType)
+            const llmParam = this.llmParam(content, cf)
             const streamParam = {
                 ...llmParam,
-                messageStore: this.storeMessage,
+                messageStore: (v) => this.storeMessage(cf.chatId, v),
             } as LLMStreamParam
             const streamRun = () => client.stream(streamParam)
+            if(!cf.withMCP) {
+                await streamRun()
+                return 
+            }
+            if (isEmpty(this.mcps)) {
+                await streamRun()
+                return
+            }
             const toolsRun = (mcpClients: MCPClient[]) =>
                 client.callWithTools({
                     ...streamParam,
                     mcpClients: mcpClients,
                 })
-            if (isEmpty(tools)) {
-                await streamRun()
+            await toolsRun(this.mcps)
+        }
+        if (chatName) {
+            const chat = this.store.getChat(chatName)
+            if (!chat) {
+                error(`${chatName} is missing.`)
                 return
             }
-            const usefulTools = await this.userUseTools(tools)
-            if (isEmpty(usefulTools)) {
-                await streamRun()
-                return
-            }
-            await toolsRun(usefulTools)
-        })
+            await f(this.store.queryChatConfig(chat.id))
+            return
+        }
+        this.store.contextRun(async (cf) => await f(cf))
     }
 
     changeChat = () =>
@@ -151,28 +163,50 @@ export class ChatAction implements IChatAction {
 
     printChatConfig = () => {
         this.store.contextRun((cf) => {
-            const [ext, myConfig] = tableConfigWithExt({ cols: [1, 1] })
+            const [ext, myConfig] = tableConfigWithExt({
+                cols: [1, 1, 1, 1],
+                alignment: 'left',
+            })
             const config: TableUserConfig = {
                 ...myConfig,
                 spanningCells: [
-                    { col: 0, row: 4, colSpan: 2, alignment: 'left' },
+                    { col: 0, row: 3, colSpan: 4, alignment: 'left' },
                 ],
             }
+            const booleanPrettyFormat = (v: boolean) => (v ? 'true' : 'false')
             const data = [
                 [
                     display.caution('WithContext:'),
-                    display.important(cf.withContext ? 'true' : 'false'),
+                    display.important(booleanPrettyFormat(cf.withContext)),
+                    display.caution('Interactive:'),
+                    display.important(
+                        booleanPrettyFormat(cf.interactiveOutput)
+                    ),
                 ],
                 [
+                    display.caution('Scenario:'),
+                    display.tip(cf.scenarioName),
                     display.caution('ContextSize:'),
                     display.warning(cf.contextLimit),
                 ],
                 [
-                    display.caution('CurrentModle:'),
-                    display.tip(`${cf.llmType}#${cf.model}`),
+                    display.caution('LLMType & Model:'),
+                    display.tip(`${cf.llmType}\n${cf.model}`),
+                    display.caution('WithMCP:'),
+                    display.important(booleanPrettyFormat(cf.withMCP)),
                 ],
-                [display.caution('Scenario:'), display.tip(cf.scenarioName)],
-                [wrapAnsi(display.note, cf.sysPrompt, ext.colNum), ''],
+                [
+                    wrapAnsi(
+                        display.note,
+                        isEmpty(cf.sysPrompt)
+                            ? 'The system prompt has not been configured.'
+                            : cf.sysPrompt,
+                        ext.colNum
+                    ),
+                    '',
+                    '',
+                    '',
+                ],
             ]
             printTable(data, config)
         })
@@ -211,6 +245,16 @@ export class ChatAction implements IChatAction {
 
     modifyWithContext = () => {
         this.store.modifyWithContext()
+        this.printChatConfig()
+    }
+
+    modifyInteractiveOutput = () => {
+        this.store.modifyInteractiveOutput()
+        this.printChatConfig()
+    }
+
+    modifyWithMCP = () => {
+        this.store.modifyWithMCP()
         this.printChatConfig()
     }
 
@@ -253,7 +297,7 @@ export class ChatAction implements IChatAction {
     }
 
     usefulTools = async () => {
-        const tools = (await this.client()).mcpClients().reduce(
+        const tools = this.mcps.reduce(
             (arr, it) => {
                 return [
                     ...arr,
@@ -275,7 +319,7 @@ export class ChatAction implements IChatAction {
 
     printPresetMessage = () => {
         const presetMessageText = this.presetMessageText({ colorful: true })
-        if(presetMessageText.isDefault) {
+        if (presetMessageText.isDefault) {
             error('Preset Message Not Set.')
             return
         }
@@ -283,17 +327,12 @@ export class ChatAction implements IChatAction {
     }
 
     editPresetMessage = async () => {
-        const hasher = new Bun.CryptoHasher('sha256')
-        const digest = (str: string) => {
-            hasher.update(str)
-            return hasher.digest().toString()
-        }
         const sourceText = this.presetMessageText({}).content
         const text = await editor(sourceText)
         if (!text) {
             return
         }
-        if (digest(sourceText) === digest(text)) {
+        if (this.isTextSame(sourceText, text)) {
             error('Nothing Edited')
             return
         }
@@ -301,13 +340,42 @@ export class ChatAction implements IChatAction {
         this.store.createPresetMessage(contents)
     }
 
+    setting = async () => {
+        const st = this.store.appSetting()!
+        const parse = new AppSettingParse(st)
+        const sourceText = parse.editShow()
+        const text = await editor(sourceText, 'json')
+        if (!text) {
+            return
+        }
+        if (this.isTextSame(sourceText, text)) {
+            error('Setting Not Change.')
+            return
+        }
+
+        const add = parse.editParse(text)
+        if (!add) {
+            return
+        }
+        this.store.addAppSetting(add)
+    }
+
+    private isTextSame = (sourceText: string, text: string) => {
+        const hasher = new Bun.CryptoHasher('sha256')
+        const digest = (str: string) => {
+            hasher.update(str)
+            return hasher.digest().toString()
+        }
+        return digest(sourceText) === digest(text)
+    }
+
     private presetMessageText = ({
         colorful = false,
     }: {
         colorful?: boolean
     }): {
-        isDefault: boolean,
-        content: string,
+        isDefault: boolean
+        content: string
     } => {
         const userType = () => `${colorful ? color.mauve.bold('user') : 'user'}`
         const assistantType = () =>
@@ -330,7 +398,7 @@ export class ChatAction implements IChatAction {
             .join('\n')
         return {
             isDefault: false,
-            content: text
+            content: text,
         }
     }
 
@@ -388,29 +456,8 @@ export class ChatAction implements IChatAction {
             .map(toPresetMessageContent)
     }
 
-    private extractTools = (
-        userMessage: string
-    ): { tools: string[]; userMessage: string } => {
-        const regex = /@[^\s]+/g
-        const matches = userMessage.match(regex)
-        if (matches) {
-            const tools = matches.map((it) => it.replace('@', ''))
-            return {
-                tools: tools,
-                userMessage: tools.reduce(
-                    (str, it) => str.replace(it, ''),
-                    userMessage
-                ),
-            }
-        }
-        return {
-            tools: [],
-            userMessage: userMessage,
-        }
-    }
-
     private getPublishPromptInput = async (prompt: string) => {
-        const name = await input({ message: 'Prompt Name : ' })
+        const name = await input({ message: 'Prompt Name: ' })
         const version = await input({ message: 'Prompt Version: ' })
         const existsPrompt = this.store.searchPrompt(name, version)
         if (isEmpty(existsPrompt)) {
@@ -431,18 +478,17 @@ export class ChatAction implements IChatAction {
             f
         )
 
-    private messages = async (
+    private messages = (
         content: string,
         prompt: string,
         withContext: boolean
     ) => {
-        const client = await this.client()
         const context = withContext
             ? this.store.contextMessage().map((it) => {
                   if (it.role === 'user') {
-                      return client.user(it.content)
+                      return user(it.content)
                   }
-                  return client.assistant(it.content)
+                  return assistant(it.content)
               })
             : []
         const presetMessage = this.store.selectPresetMessage().flatMap(
@@ -452,22 +498,23 @@ export class ChatAction implements IChatAction {
                     { role: 'assistant', content: it.assistant },
                 ] as LLMMessage[]
         )
-        const msg = [...presetMessage, ...context, client.user(content)]
+        const msg = [...presetMessage, ...context, user(content)]
         if (isEmpty(prompt)) {
             return msg
         }
-        return [client.system(prompt), ...msg]
+        return [system(prompt), ...msg]
     }
 
-    private storeMessage = (result: LLMResult): void => {
+    private storeMessage = (chatId: string, result: LLMResult): void => {
         const { userContent, assistantContent, thinkingReasoning } = result
         const pairKey = uuid()
         const messages: MessageContent[] = [
-            { role: 'user', content: userContent, pairKey },
-            { role: 'assistant', content: assistantContent, pairKey },
+            { chatId, role: 'user', content: userContent, pairKey },
+            { chatId, role: 'assistant', content: assistantContent, pairKey },
         ]
         if (thinkingReasoning) {
             messages.push({
+                chatId,
                 role: 'reasoning',
                 content: thinkingReasoning,
                 pairKey,
@@ -487,31 +534,13 @@ export class ChatAction implements IChatAction {
         return [st!, ...oths]
     }
 
-    private userUseTools = async (tools: string[]) => {
-        const clients = (await this.client()).mcpClients()
-        return tools.reduce((arr, it) => {
-            const clientMatch = (mcp: string) => {
-                if (mcp.includes(':')) {
-                    return (c: MCPClient) => mcp === `${c.name}:${c.version}`
-                }
-                return (c: MCPClient) => mcp === c.name
-            }
-            const client = clients.find(clientMatch(it))
-            if (client) {
-                arr.push(client)
-            }
-            return arr
-        }, [] as MCPClient[])
-    }
-
-    private llmParam = async (userMessage: string, config: ChatConfig) => {
-        const { sysPrompt, withContext, model, scenario } = config
-        const messages = await this.messages(
-            userMessage,
-            sysPrompt,
-            withContext
-        )
+    private llmParam = (userMessage: string, config: ChatConfig) => {
+        const { sysPrompt, withContext, interactiveOutput, model, scenario } =
+            config
+        const messages = this.messages(userMessage, sysPrompt, withContext)
         return {
+            userMessage: user(userMessage),
+            interactiveOutput,
             messages,
             model,
             temperature: scenario,

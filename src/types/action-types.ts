@@ -1,8 +1,11 @@
+export type AskContent = {
+    content: string
+    chatName?: string
+}
 export interface IChatAction {
-    init: () => void
     newChat: (name: string) => Promise<void>
     removeChat: () => void
-    ask: (content: string) => Promise<void>
+    ask: (param: AskContent) => Promise<void>
     changeChat: () => void
     printChats: () => void
     clearChatMessage: () => void
@@ -12,6 +15,8 @@ export interface IChatAction {
     modifyModel: () => Promise<void>
     modifySystemPrompt: (prompt: string) => void
     modifyWithContext: () => void
+    modifyInteractiveOutput: () => void
+    modifyWithMCP: () => void
     modifyScenario: () => void
     publishPrompt: () => Promise<void>
     selectPrompt: (name: string) => void
@@ -20,4 +25,5 @@ export interface IChatAction {
     editPresetMessage: () => Promise<void>
     clearPresetMessage: () => void
     printPresetMessage: () => void
+    setting: () => Promise<void>
 }

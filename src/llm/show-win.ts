@@ -1,21 +1,16 @@
-import type { ChalkInstance } from "chalk"
-import { marked, type MarkedExtension } from "marked"
-import { markedTerminal } from "marked-terminal"
-import wrapAnsi from "wrap-ansi"
-import { llmTableConfig } from "./llm-utils"
-import { color } from "../util/color-utils"
-import { stringWidth } from "../util/common-utils"
+import type { ChalkInstance } from 'chalk'
+import { llmTableConfig } from './llm-utils'
+import { stringWidth } from '../util/common-utils'
 
 export class ShowWin {
-
     private arr: string[] = []
     private winIdx: number = 0
     private winSize: number = 0
     private maxSize: number
-    private cellSize: number = llmTableConfig.columns?.[0].width ?? 70 
+    private cellSize: number = llmTableConfig.columns?.[0].width ?? 70
 
     constructor(rowSize: number = 25, cellSize?: number) {
-        if(cellSize) {
+        if (cellSize) {
             this.cellSize = cellSize
         }
         this.maxSize = this.cellSize * rowSize
@@ -38,7 +33,7 @@ export class ShowWin {
         this.arr.push(str)
     }
 
-    show = (color: ChalkInstance) => wrapAnsi(color(this.arr.slice(this.winIdx).join('')), this.cellSize)
+    show = (color: ChalkInstance) => color(this.arr.slice(this.winIdx).join(''))
 
     isEmpty = () => this.arr.length === 0
 
@@ -69,7 +64,6 @@ export class ShowWin {
             reset()
         }
         return res
-
     }
 
     private strWidth = (str: string) => {
@@ -82,15 +76,7 @@ export class ShowWin {
     }
 
     private contentSplit = (str: string) => {
-        marked.use(markedTerminal({
-            listitem: color.sapphire,
-            hr: color.pink.bold,
-            width: this.cellSize,
-            reflowText: true,
-            tab: 2,
-        }) as MarkedExtension)
-        const mkd = wrapAnsi(marked.parse(str) as string, this.cellSize)
-        return mkd.split('\n').reduce((arr, cur) => {
+        return str.split('\n').reduce((arr, cur) => {
             arr.push('\n')
             arr.push(cur)
             return arr

@@ -1,13 +1,10 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import OpenAi from 'openai'
 import type { RunnableToolFunction } from 'openai/lib/RunnableFunction'
-import type { ILLMConfig, LLMType } from '../config/app-llm-config'
+import type { LLMSetting } from '../config/app-setting'
 import type {
     ILLMClient,
     LLMCallParam,
-    LLMMessage,
-    LLMRole,
     LLMStreamMCPParam,
     LLMStreamParam,
 } from '../types/llm-types'
@@ -17,31 +14,22 @@ import { StreamDisplay } from './stream-display'
 
 export class OpenAiClient implements ILLMClient {
     client: OpenAi
-    type: LLMType
-    private config: ILLMConfig 
-    private mcps: MCPClient[]
-    constructor({ llmConfig, mcpClients}: { llmConfig: ILLMConfig, mcpClients: MCPClient[]}) {
-        this.config = llmConfig 
-        this.type = this.config.type
+    type: string
+    models: string[]
+    defaultModel: string 
+
+    constructor(
+        { baseUrl, apiKey, models, name }: LLMSetting
+    ) {
+        this.type = name
+        this.models = models
+        this.defaultModel = models[0]
         this.client = new OpenAi({
-            baseURL: this.config.baseUrl,
-            apiKey: this.config.apiKey,
+            baseURL: baseUrl,
+            apiKey: apiKey,
         })
-        this.mcps = mcpClients
     }
 
-    mcpClients = () => this.mcps
-
-    defaultModel = () => this.config.defaultModel
-
-    models = () => this.config.models
-
-    user = (content: string): LLMMessage => this.message('user', content)
-
-    system = (content: string): LLMMessage => this.message('system', content)
-
-    assistant = (content: string): LLMMessage =>
-        this.message('assistant', content)
 
     call = async (param: LLMCallParam) => {
         const { messages, model, temperature, contentConsumer } = param
@@ -58,9 +46,17 @@ export class OpenAiClient implements ILLMClient {
     }
 
     stream = async (param: LLMStreamParam) => {
-        const { messages, model, temperature, messageStore } = param
+        const {
+            userMessage,
+            messages,
+            model,
+            interactiveOutput,
+            temperature,
+            messageStore,
+        } = param
         const display = new StreamDisplay({
-            userMessage: this.userMessage(messages),
+            interactiveOutput,
+            userMessage,
             messageStore,
         })
         try {
@@ -75,27 +71,32 @@ export class OpenAiClient implements ILLMClient {
             }
             await display.pageShow()
         } catch (e: unknown) {
-            console.error(e)
+            console.log(e)
             display.error()
         }
     }
 
     callWithTools = async (param: LLMStreamMCPParam) => {
-        const { messages, model, temperature, messageStore, mcpClients } = param
+        const {
+            userMessage,
+            messages,
+            model,
+            interactiveOutput,
+            temperature,
+            messageStore,
+            mcpClients,
+        } = param
         // support tools mcp server now
-        const actMcpClients = mcpClients!.filter((it) =>
-            it.type.includes('tools')
-        )
         const display = new StreamDisplay({
-            userMessage: this.userMessage(messages),
+            interactiveOutput,
+            userMessage,
             messageStore,
         })
         try {
-            await Promise.all(actMcpClients.map((it) => it.connect()))
-            // map to openai tools
+            await Promise.all(mcpClients.map((it) => it.connect()))
             const tools = (
                 await Promise.all(
-                    actMcpClients.flatMap((it) => this.mapToTools(it))
+                    mcpClients.flatMap((it) => this.mapToTools(it))
                 )
             ).flat()
             // call llm
@@ -119,10 +120,11 @@ export class OpenAiClient implements ILLMClient {
             await runner.finalChatCompletion()
             await display.pageShow()
         } catch (err: unknown) {
-            await Promise.all(actMcpClients.map((it) => it.close()))
+            await Promise.all(mcpClients.map((it) => it.close()))
+            console.log(err)
             display.error()
         }
-        await Promise.all(actMcpClients.map((it) => it.close()))
+        await Promise.all(mcpClients.map((it) => it.close()))
     }
 
     private mapToTools = async (mcp: MCPClient) =>
@@ -141,16 +143,7 @@ export class OpenAiClient implements ILLMClient {
                                 await mcp.callTool(t.name, args),
                             parse: JSON.parse,
                         },
-                    }) as RunnableToolFunction<any>
+                    } as RunnableToolFunction<any>)
             )
         )
-
-    private message = (role: LLMRole, content: string): LLMMessage => ({
-        role,
-        content,
-    })
-
-    private userMessage = (messages: LLMMessage[]) => {
-        return messages[messages.length - 1]
-    }
 }

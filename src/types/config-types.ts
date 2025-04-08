@@ -3,5 +3,4 @@ export interface IConfig {
     configPath: () => string | undefined
     dataPath: () => string
     platformConfigPath: () => string
-    mcpConfigPath: () => string
 }

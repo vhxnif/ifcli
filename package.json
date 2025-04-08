@@ -1,6 +1,6 @@
 {
     "name": "@vhxnif/ifcli",
-    "version": "0.1.7",
+    "version": "0.1.8",
     "description": "Chat with AI via CLI",
     "keywords": [
         "deepseek",
@@ -35,8 +35,6 @@
         "@commander-js/extra-typings": "^12.1.0",
         "@eslint/js": "^9.23.0",
         "@types/bun": "^1.2.7",
-        "@types/lodash": "^4.17.16",
-        "@types/marked-terminal": "^6.1.1",
         "bun-types": "^1.2.7",
         "eslint": "^9.23.0",
         "globals": "^15.15.0",
@@ -52,12 +50,8 @@
         "@modelcontextprotocol/sdk": "^1.8.0",
         "chalk": "^5.4.1",
         "commander": "^12.1.0",
-        "lodash": "^4.17.21",
-        "marked": "^15.0.7",
-        "marked-terminal": "^7.3.0",
         "openai": "^4.89.1",
         "ora": "^8.2.0",
-        "table": "^6.9.0",
-        "wrap-ansi": "^9.0.0"
+        "table": "^6.9.0"
     }
 }
