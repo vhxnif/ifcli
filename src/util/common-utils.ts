@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import path from 'path'
 import { env, tmpPath } from './platform-utils'
 

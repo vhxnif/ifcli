@@ -5,7 +5,6 @@ import { version } from './config/app-setting'
 import {
     editor,
     error,
-    exit,
     stdin
 } from './util/common-utils'
 
@@ -166,5 +165,4 @@ program
 program.parseAsync().catch((e: unknown) => {
     const { message } = e as Error
     error(message)
-    exit()
 })
