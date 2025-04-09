@@ -15,22 +15,9 @@ const error = console.error
 const uuid = () => Bun.randomUUIDv7().replaceAll('-', '')
 const unixnow = (): number => Date.now()
 const containsChinese = (str: string): boolean => /[\u4e00-\u9fa5]/.test(str)
-const optionFunMapping = (
-    options: { [x: string]: unknown },
-    map: Record<string, (str: unknown) => void>,
-    df?: () => void
-) => {
-    const opt = Object.entries(options).find(([_, v]) => v || v === '')
-    if (opt) {
-        const [key, value] = opt
-        map[`${key}`]?.(value)
-        return
-    }
-    df?.()
-}
 
 const stdin = async () => {
-    for await (const  chunk of Bun.stdin.stream()) {
+    for await (const chunk of Bun.stdin.stream()) {
         return Buffer.from(chunk).toString()
     }
 }
@@ -56,17 +43,17 @@ const editor = async (content: string, fileType: string = 'md') => {
 const exit = () => process.exit()
 
 type IsEmpty = {
-    (str: undefined) : boolean,
-    (str: null) : boolean,
-    (str: string): boolean,
-    <T>(arr: T[]): boolean,
-} 
+    (str: undefined): boolean
+    (str: null): boolean
+    (str: string): boolean
+    <T>(arr: T[]): boolean
+}
 
 const isEmpty: IsEmpty = <T>(param: string | T[] | undefined | null) => {
-    if(!param) {
-        return true 
+    if (!param) {
+        return true
     }
-    if(typeof param === 'string') {
+    if (typeof param === 'string') {
         return param.length <= 0
     }
     const arr = param as Array<T>
@@ -81,7 +68,6 @@ export {
     uuid,
     unixnow,
     containsChinese,
-    optionFunMapping,
     print,
     println,
     log,

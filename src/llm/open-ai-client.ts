@@ -71,8 +71,8 @@ export class OpenAiClient implements ILLMClient {
             }
             await display.pageShow()
         } catch (e: unknown) {
-            console.log(e)
             display.error()
+            throw e
         }
     }
 
@@ -86,7 +86,6 @@ export class OpenAiClient implements ILLMClient {
             messageStore,
             mcpClients,
         } = param
-        // support tools mcp server now
         const display = new StreamDisplay({
             interactiveOutput,
             userMessage,
@@ -99,7 +98,6 @@ export class OpenAiClient implements ILLMClient {
                     mcpClients.flatMap((it) => this.mapToTools(it))
                 )
             ).flat()
-            // call llm
             const runner = this.client.beta.chat.completions
                 .runTools({
                     model,
@@ -120,11 +118,11 @@ export class OpenAiClient implements ILLMClient {
             await runner.finalChatCompletion()
             await display.pageShow()
         } catch (err: unknown) {
-            await Promise.all(mcpClients.map((it) => it.close()))
-            console.log(err)
             display.error()
+            throw err
+        } finally {
+            await Promise.all(mcpClients.map((it) => it.close()))
         }
-        await Promise.all(mcpClients.map((it) => it.close()))
     }
 
     private mapToTools = async (mcp: MCPClient) =>

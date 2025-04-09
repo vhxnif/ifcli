@@ -1,3 +1,7 @@
+export class SqliteTable {
+    name!: string
+}
+
 export class Chat {
     id!: string
     name!: string
@@ -55,7 +59,7 @@ export class AppSetting {
 }
 
 export type MessageContent = {
-    chatId: string,
+    chatId: string
     role: 'user' | 'assistant' | 'reasoning'
     content: string
     pairKey: string
@@ -85,8 +89,7 @@ export interface IChatStore {
     ) => void
     removeChat: (name: string) => void
     changeChat: (name: string) => void
-    currentChat: () => Chat
-    getChat: (name: string) => Chat | null
+    currentChat: () => Chat | null
 
     // ---- message ---- //
     saveMessage: (messages: MessageContent[]) => void
@@ -96,7 +99,7 @@ export interface IChatStore {
     selectMessage: (messageId: string) => ChatMessage
 
     // ---- config ---- //
-    chatConfig: () => ChatConfig
+    currentChatConfig: () => ChatConfig
     modifySystemPrompt: (prompt: string) => void
     modifyContextLimit: (contextLimit: number) => void
     modifyModel: (llm: string, model: string) => void
@@ -117,7 +120,4 @@ export interface IChatStore {
     // ---- app setting ----
     appSetting: () => AppSetting | null
     addAppSetting: (setting: AppSettingContent) => void
-
-    // ---- other ---- //
-    contextRun: (f: (cf: ChatConfig) => void) => void
 }

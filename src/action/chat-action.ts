@@ -19,14 +19,7 @@ import {
     type PresetMessageContent,
 } from '../types/store-types'
 import { color, display, wrapAnsi } from '../util/color-utils'
-import {
-    editor,
-    error,
-    exit,
-    isEmpty,
-    println,
-    uuid,
-} from '../util/common-utils'
+import { editor, error, isEmpty, println, uuid } from '../util/common-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { input, select, selectRun } from '../util/inquirer-utils'
 import type { TableUserConfig } from 'table'
@@ -38,7 +31,15 @@ export class ChatAction implements IChatAction {
     store: IChatStore
     mcps: MCPClient[]
 
-    constructor({ llmClients, mcpClients, store } : { llmClients: ILLMClient[], mcpClients: MCPClient[], store: IChatStore}) {
+    constructor({
+        llmClients,
+        mcpClients,
+        store,
+    }: {
+        llmClients: ILLMClient[]
+        mcpClients: MCPClient[]
+        store: IChatStore
+    }) {
         this.store = store
         llmClients.forEach((it) => this.clientMap.set(it.type, it))
         this.mcps = mcpClients
@@ -49,7 +50,7 @@ export class ChatAction implements IChatAction {
             if (llmType) {
                 return this.clientMap.get(llmType)
             }
-            const config = this.store.chatConfig()
+            const config = this.store.currentChatConfig()
             return this.clientMap.get(config.llmType)
         }
         const ct = getClient()
@@ -68,7 +69,7 @@ export class ChatAction implements IChatAction {
             })),
         })
         if (!llm) {
-            exit()
+            throw Error('At least one provider must be selected.')
         }
         const llmSelect = this.clientMap.get(llm)!
         const model = await select({
@@ -76,7 +77,7 @@ export class ChatAction implements IChatAction {
             choices: llmSelect.models.map((it) => ({ name: it, value: it })),
         })
         if (!model) {
-            exit()
+            throw Error('At least one model must be selected.')
         }
         return [llm, model]
     }
@@ -94,7 +95,7 @@ export class ChatAction implements IChatAction {
     removeChat = () => {
         const cts = this.store.chats()
         if (cts.length == 1) {
-            error('One chat must be keept.')
+            error('At least one chat must remain.')
             return
         }
         this.selectChatRun(
@@ -112,24 +113,24 @@ export class ChatAction implements IChatAction {
                 ...llmParam,
                 messageStore: (v) => this.storeMessage(cf.chatId, v),
             } as LLMStreamParam
-            const streamRun = () => client.stream(streamParam)
-            if(!cf.withMCP) {
+            const streamRun = async () => await client.stream(streamParam)
+            if (!cf.withMCP) {
                 await streamRun()
-                return 
+                return
             }
             if (isEmpty(this.mcps)) {
                 await streamRun()
                 return
             }
-            const toolsRun = (mcpClients: MCPClient[]) =>
-                client.callWithTools({
+            const toolsRun = async (mcpClients: MCPClient[]) =>
+                await client.callWithTools({
                     ...streamParam,
                     mcpClients: mcpClients,
                 })
             await toolsRun(this.mcps)
         }
         if (chatName) {
-            const chat = this.store.getChat(chatName)
+            const chat = this.store.queryChat(chatName)
             if (!chat) {
                 error(`${chatName} is missing.`)
                 return
@@ -137,7 +138,7 @@ export class ChatAction implements IChatAction {
             await f(this.store.queryChatConfig(chat.id))
             return
         }
-        this.store.contextRun(async (cf) => await f(cf))
+        await f(this.store.currentChatConfig())
     }
 
     changeChat = () =>
@@ -162,7 +163,7 @@ export class ChatAction implements IChatAction {
     clearChatMessage = () => this.store.clearMessage()
 
     printChatConfig = () => {
-        this.store.contextRun((cf) => {
+        const f = (cf: ChatConfig) => {
             const [ext, myConfig] = tableConfigWithExt({
                 cols: [1, 1, 1, 1],
                 alignment: 'left',
@@ -209,7 +210,8 @@ export class ChatAction implements IChatAction {
                 ],
             ]
             printTable(data, config)
-        })
+        }
+        f(this.store.currentChatConfig())
     }
 
     printChatHistory = async (limit: number) => {
@@ -258,8 +260,8 @@ export class ChatAction implements IChatAction {
         this.printChatConfig()
     }
 
-    modifyScenario = () => {
-        selectRun(
+    modifyScenario = async () => {
+        await selectRun(
             'Select Scenario:',
             Object.keys(temperature).map((k) => ({
                 name: temperature[k][0],
@@ -273,23 +275,21 @@ export class ChatAction implements IChatAction {
     }
 
     publishPrompt = async () => {
-        this.store.contextRun(async (cf) => {
-            const prompt = cf.sysPrompt
-            if (!prompt) {
-                error('Current Chat Prompt Missing.')
-                return
-            }
-            this.getPublishPromptInput(prompt)
-        })
-    }
-
-    selectPrompt = (name: string) => {
-        const prompts = this.store.searchPrompt(name)
-        if (isEmpty(prompts)) {
-            error('No Match Prompts.')
+        const { sysPrompt } = this.store.currentChatConfig()
+        const prompt = sysPrompt
+        if (!prompt) {
+            error('Current Chat Prompt Missing.')
             return
         }
-        selectRun(
+        await this.getPublishPromptInput(prompt)
+    }
+
+    selectPrompt = async (name: string) => {
+        const prompts = this.store.searchPrompt(name)
+        if (isEmpty(prompts)) {
+            throw Error('No Match Prompts.')
+        }
+        await selectRun(
             'Select Prompt:',
             prompts.map((it) => ({ name: it.name, value: it.content })),
             (v) => this.modifySystemPrompt(v)
@@ -310,7 +310,7 @@ export class ChatAction implements IChatAction {
     }
 
     prompt = () => {
-        return this.store.chatConfig().sysPrompt
+        return this.store.currentChatConfig().sysPrompt
     }
 
     clearPresetMessage = () => {
@@ -458,13 +458,21 @@ export class ChatAction implements IChatAction {
 
     private getPublishPromptInput = async (prompt: string) => {
         const name = await input({ message: 'Prompt Name: ' })
+        if (isEmpty(name)) {
+            await this.getPublishPromptInput(prompt)
+            return
+        }
         const version = await input({ message: 'Prompt Version: ' })
+        if (isEmpty(version)) {
+            await this.getPublishPromptInput(prompt)
+            return
+        }
         const existsPrompt = this.store.searchPrompt(name, version)
         if (isEmpty(existsPrompt)) {
             this.store.publishPrompt(name, version, prompt)
             return
         }
-        this.getPublishPromptInput(prompt)
+        await this.getPublishPromptInput(prompt)
     }
 
     private selectChatRun = async (

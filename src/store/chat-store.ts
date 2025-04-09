@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Database } from 'bun:sqlite'
-import { isEmpty, unixnow, uuid } from '../util/common-utils'
+import { defaultSetting } from '../config/app-setting'
 import type { IConfig } from '../types/config-types'
+import { temperature } from '../types/constant'
 import {
     AppSetting,
     Chat,
@@ -9,18 +10,14 @@ import {
     ChatMessage,
     ChatPresetMessage,
     ChatPrompt,
+    SqliteTable,
     type AppSettingContent,
     type IChatStore,
     type MessageContent,
     type PresetMessageContent,
 } from '../types/store-types'
+import { isEmpty, unixnow, uuid } from '../util/common-utils'
 import { table_def } from './table-def'
-import { temperature } from '../types/constant'
-import { defaultSetting } from '../config/app-setting'
-
-class SqliteTable {
-    name!: string
-}
 
 export class ChatStore implements IChatStore {
     private db: Database
@@ -30,10 +27,6 @@ export class ChatStore implements IChatStore {
 
     clearMessage = () =>
         this.currentChatRun((c) => this.deleteChatMessage(c.id))
-
-    contextRun = (f: (cf: ChatConfig) => void) => {
-        f(this.currentChatRun((c) => this.queryChatConfig(c.id)))
-    }
 
     init = () => {
         const tables = this.db
@@ -137,17 +130,20 @@ export class ChatStore implements IChatStore {
             })
         })
 
-    currentChat = () =>
-        this.db
+    currentChat = () => {
+        return this.db
             .query(`SELECT ${this.chatColumn} FROM chat WHERE "select" = ?`)
             .as(Chat)
-            .get(true)!
+            .get(true)
+    }
 
-    getChat = (name: string) =>
-        this.db
-            .query(`SELECT ${this.chatColumn} FROM chat WHERE name = ?`)
-            .as(Chat)
-            .get(name)
+    private existCurrentChat = () => {
+        const chat = this.currentChat()
+        if (chat) {
+            return chat
+        }
+        throw Error('Execute `ifct new <chatName>` first.')
+    }
 
     saveMessage = (messages: MessageContent[]) => {
         const statement = this.db.prepare(
@@ -184,8 +180,8 @@ export class ChatStore implements IChatStore {
             .as(ChatMessage)
             .get(messageId)!
 
-    chatConfig = () => {
-        return this.queryChatConfig(this.currentChat().id)
+    currentChatConfig = () => {
+        return this.queryChatConfig(this.existCurrentChat().id)
     }
 
     modifySystemPrompt = (prompt: string) =>
@@ -215,11 +211,20 @@ export class ChatStore implements IChatStore {
                 .run(llm, model, unixnow(), cf.id)
         )
 
-    modifyWithContext = () => this.changeConfigBooleanType('with_context', c => c.withContext)
-    modifyInteractiveOutput = () => this.changeConfigBooleanType('interactive_output ', c => c.interactiveOutput)
-    modifyWithMCP = () => this.changeConfigBooleanType('with_mcp', c => c.withMCP)
+    modifyWithContext = () =>
+        this.changeConfigBooleanType('with_context', (c) => c.withContext)
+    modifyInteractiveOutput = () =>
+        this.changeConfigBooleanType(
+            'interactive_output ',
+            (c) => c.interactiveOutput
+        )
+    modifyWithMCP = () =>
+        this.changeConfigBooleanType('with_mcp', (c) => c.withMCP)
 
-    private changeConfigBooleanType = (columnName: string, f: (f: ChatConfig) => boolean) => {
+    private changeConfigBooleanType = (
+        columnName: string,
+        f: (f: ChatConfig) => boolean
+    ) => {
         this.currentChatConfigRun((_, cf) =>
             this.db
                 .prepare(
@@ -228,7 +233,6 @@ export class ChatStore implements IChatStore {
                 .run(!f(cf), unixnow(), cf.id)
         )
     }
-
 
     modifyScenario = (sc: [string, number]) =>
         this.currentChatConfigRun((_, cf) =>
@@ -276,7 +280,7 @@ export class ChatStore implements IChatStore {
     }
 
     createPresetMessage = (params: PresetMessageContent[]) => {
-        const { id } = this.currentChat()
+        const { id } = this.existCurrentChat()
         this.db.transaction(() => {
             this.deletePresetMessage(id)
             this.addPresetMessage(id, params)
@@ -361,11 +365,7 @@ export class ChatStore implements IChatStore {
     }
 
     private currentChatRun = <T>(f: (chat: Chat) => T): T => {
-        const c = this.currentChat()
-        if (c) {
-            return f(c)
-        }
-        throw Error('selected chat not exists.')
+        return f(this.existCurrentChat())
     }
 
     private currentChatConfigRun = <T>(f: (ct: Chat, cf: ChatConfig) => T): T =>

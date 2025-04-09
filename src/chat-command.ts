@@ -1,8 +1,13 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
 import { chatAction } from './app-context'
-import { editor, optionFunMapping, stdin } from './util/common-utils'
 import { version } from './config/app-setting'
+import {
+    editor,
+    error,
+    exit,
+    stdin
+} from './util/common-utils'
 
 const program = new Command()
 
@@ -66,30 +71,35 @@ program
     .option('-m, --modify', "modify the current chat's prompt")
     .option('-c, --cover [prompt]', "override the current chat's prompt")
     .option('-p, --publish', 'publish  prompt')
-    .action((option) => {
-        optionFunMapping(option, {
-            select: (v) => chatAction.selectPrompt(v as string),
-            modify: async () => {
-                const text = await editor(chatAction.prompt())
+    .action(async (option) => {
+
+        const { select, modify, cover, publish } = option
+        if(select) {
+            await chatAction.selectPrompt(select)
+        }
+        if(modify) {
+            await editor(chatAction.prompt()).then((text) => {
                 if (text) {
                     chatAction.modifySystemPrompt(text)
                 }
-            },
-            cover: async (v) => {
-                if (typeof v === 'boolean') {
-                    const str = await stdin()
-                    if (str) {
-                        chatAction.modifySystemPrompt(str)
-                    }
-                    return
+            })
+        }
+        if(cover) {
+            if (typeof cover === 'boolean') {
+                const str = await stdin()
+                if (str) {
+                    chatAction.modifySystemPrompt(str)
                 }
-                if (typeof v === 'string') {
-                    chatAction.modifySystemPrompt(v)
-                    return
-                }
-            },
-            publish: chatAction.publishPrompt,
-        })
+                return
+            }
+            if (typeof cover === 'string') {
+                chatAction.modifySystemPrompt(cover)
+                return
+            }
+        }
+        if(publish) {
+            await chatAction.publishPrompt()
+        }
     })
 
 program
@@ -122,19 +132,29 @@ program
     .option('-s, --scenario', 'select scenario')
     .option('-t, --tools', 'list useful tools')
     .action(async (option) => {
-        optionFunMapping(
-            option,
-            {
-                contextSize: (v) => chatAction.modifyContextSize(v as number),
-                model: chatAction.modifyModel,
-                withContext: chatAction.modifyWithContext,
-                interactive: chatAction.modifyInteractiveOutput,
-                withMcp: chatAction.modifyWithMCP,
-                scenario: chatAction.modifyScenario,
-                tools: chatAction.usefulTools,
-            },
-            chatAction.printChatConfig
-        )
+        const { contextSize, model, withContext, interactive, withMcp, scenario, tools } = option
+        if(contextSize) {
+            chatAction.modifyContextSize(Number(contextSize))
+        }
+        if(model) {
+            await chatAction.modifyModel()
+        }
+        if(withContext) {
+            chatAction.modifyWithContext()
+        }
+        if(interactive) {
+            chatAction.modifyInteractiveOutput()
+        }
+        if(withMcp) {
+            chatAction.modifyWithMCP()
+        }
+        if(scenario) {
+            await chatAction.modifyScenario()
+        }
+        if(tools) {
+            await chatAction.usefulTools()
+        }
+        chatAction.printChatConfig()
     })
 
 program
@@ -143,4 +163,8 @@ program
     .description('clear the current chat message')
     .action(() => chatAction.clearChatMessage())
 
-program.parseAsync()
+program.parseAsync().catch((e: unknown) => {
+    const { message } = e as Error
+    error(message)
+    exit()
+})

@@ -61,12 +61,12 @@ const llmResultPageShow = async (param: LLMResultPageShow) => {
 }
 
 const llmNotifyMessage = {
-    waiting: color.blue('[量子信道开启中，正在折叠时空距离...]'),
-    analyzing: color.blue('[语义引力阱已捕获请求，正在解压超弦信号...]'),
-    thinking: color.blue('[核心矩阵激活，正在遍历知识星云...]'),
-    rendering: color.blue('[全息投影就绪，正在渲染多维信息流——*]'),
-    error: color.blue('[遭遇未知粒子风暴，正在重新校准频率...]'),
-    completed: color.blue('[认知模块已同步，思维链路无延迟——*]'),
+    waiting: color.blue('[Quantum Channel Opening :: Bending Space-Time Continuum...]'),
+    analyzing: color.blue('[Semantic Gravity Well Locked :: Decrypting Hyperstring Resonance...]'),
+    thinking: color.blue('[Neural Matrix Active :: Traversing Knowledge Nebula...]'),
+    rendering: color.blue('[Holographic Interface Online :: Rendering Multidimensional Data Streams—*]'),
+    error: color.blue('[Unknown Particle Storm Detected :: Rebooting Chrono-Sync Protocols...]'),
+    completed: color.blue('[Cognitive Sync Module Engaged :: Neural Latency Neutralized—*]'),
 }
 
 const message = (role: LLMRole, content: string): LLMMessage => ({
