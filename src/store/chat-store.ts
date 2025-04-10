@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Database } from 'bun:sqlite'
-import { defaultSetting } from '../config/app-setting'
+import { defaultSetting, version } from '../config/app-setting'
 import type { IConfig } from '../types/config-types'
 import { temperature } from '../types/constant'
 import {
@@ -39,11 +39,16 @@ export class ChatStore implements IChatStore {
             .forEach(([_, v]) => {
                 this.db.run(v)
             })
+        // todo ddl dml execute
         const st = this.appSetting()
-        if (st) {
+        if (!st) {
+            this.addAppSetting(defaultSetting)
             return
         }
-        this.addAppSetting(defaultSetting)
+        if(st.version === version) {
+            return 
+        }
+        this.updateVersion(version, st.id)
     }
 
     private appSettingColumn =
@@ -311,6 +316,12 @@ export class ChatStore implements IChatStore {
                 `INSERT INTO app_setting (id, version, mcp_server, llm_setting, create_time) VALUES (?, ?, ?, ?, ?)`
             )
             .run(uuid(), version, mcpServer, llmSetting, unixnow())
+    }
+
+    private updateVersion = (version: string, id: string) => {
+        this.db
+            .prepare('UPDATE app_setting SET version = ? WHERE id = ?')
+            .run(version, id)
     }
 
     private addPresetMessage = (

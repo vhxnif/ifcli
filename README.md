@@ -48,7 +48,7 @@ Options:
 
 Commands:
   new <string>            new chat
-  ask [options] <string>  chat with AI
+  ask [options] [string]  chat with AI
   list|ls                 list all chats
   history|hs [options]    view chat history
   remove|rm               remove chat

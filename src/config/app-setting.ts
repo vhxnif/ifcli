@@ -14,7 +14,7 @@ export type Setting = {
     llmSettings: LLMSetting[]
 }
 
-export const version = '0.1.8'
+export const version = '0.1.9'
 
 export const defaultLLMSettings: LLMSetting[] = [
     {
