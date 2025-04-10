@@ -9,8 +9,10 @@ const thinkTableHeader = color.sky('Thinking Content')
 const contentTableHeader = color.sky('Assistant Content')
 
 export type LLMResultPageShow = {
-    assistantContent: string[]
-    thinkingContent?: string[]
+    pageAssistantContent: string[]
+    assistantContent: string
+    pageThinkingContent?: string[]
+    thinkingContent?: string
     notifyInfo?: string
 }
 
@@ -29,7 +31,7 @@ const llmTableConfigWithHeader = (headerContent: string) =>
     ({
         ...llmTableConfig,
         header: { alignment: 'center', content: headerContent },
-    }) as TableUserConfig
+    } as TableUserConfig)
 
 const llmTableShow = (param: TableShowParam) => {
     const { header, content, notifyInfo } = param
@@ -40,19 +42,25 @@ const llmTableShow = (param: TableShowParam) => {
 }
 
 const llmResultPageShow = async (param: LLMResultPageShow) => {
-    const { assistantContent, thinkingContent, notifyInfo } = param
+    const {
+        pageAssistantContent,
+        assistantContent,
+        pageThinkingContent,
+        thinkingContent,
+        notifyInfo,
+    } = param
     const contentPageShow = llmTableShow({
         header: contentTableHeader,
-        content: assistantContent,
+        content: pageAssistantContent,
         notifyInfo,
     })
-    if (thinkingContent) {
+    if (pageThinkingContent) {
         await page({
             content: contentPageShow,
             sourceContent: assistantContent,
             think: llmTableShow({
                 header: thinkTableHeader,
-                content: thinkingContent,
+                content: pageThinkingContent,
                 notifyInfo,
             }),
             sourceThink: thinkingContent,
@@ -63,12 +71,24 @@ const llmResultPageShow = async (param: LLMResultPageShow) => {
 }
 
 const llmNotifyMessage = {
-    waiting: color.blue('[Quantum Channel Opening :: Bending Space-Time Continuum...]'),
-    analyzing: color.blue('[Semantic Gravity Well Locked :: Decrypting Hyperstring Resonance...]'),
-    thinking: color.blue('[Neural Matrix Active :: Traversing Knowledge Nebula...]'),
-    rendering: color.blue('[Holographic Interface Online :: Rendering Multidimensional Data Streams—*]'),
-    error: color.blue('[Unknown Particle Storm Detected :: Rebooting Chrono-Sync Protocols...]'),
-    completed: color.blue('[Cognitive Sync Module Engaged :: Neural Latency Neutralized—*]'),
+    waiting: color.blue(
+        '[Quantum Channel Opening :: Bending Space-Time Continuum...]'
+    ),
+    analyzing: color.blue(
+        '[Semantic Gravity Well Locked :: Decrypting Hyperstring Resonance...]'
+    ),
+    thinking: color.blue(
+        '[Neural Matrix Active :: Traversing Knowledge Nebula...]'
+    ),
+    rendering: color.blue(
+        '[Holographic Interface Online :: Rendering Multidimensional Data Streams—*]'
+    ),
+    error: color.blue(
+        '[Unknown Particle Storm Detected :: Rebooting Chrono-Sync Protocols...]'
+    ),
+    completed: color.blue(
+        '[Cognitive Sync Module Engaged :: Neural Latency Neutralized—*]'
+    ),
 }
 
 const message = (role: LLMRole, content: string): LLMMessage => ({
@@ -81,9 +101,16 @@ const system = (content: string): LLMMessage => message('system', content)
 
 const assistant = (content: string): LLMMessage => message('assistant', content)
 
-
 export {
-    assistant, contentTableHeader, llmNotifyMessage, llmResultPageShow, llmTableConfig, llmTableConfigWithHeader, llmTableShow,
-    message, system, thinkTableHeader, user
+    assistant,
+    contentTableHeader,
+    llmNotifyMessage,
+    llmResultPageShow,
+    llmTableConfig,
+    llmTableConfigWithHeader,
+    llmTableShow,
+    message,
+    system,
+    thinkTableHeader,
+    user,
 }
-

@@ -96,12 +96,14 @@ export class StreamDisplay {
         this.interactiveOutputRun(
             async () => {
                 const showParam: LLMResultPageShow = {
-                    assistantContent: this.contentColl.pageContent(),
+                    pageAssistantContent: this.contentColl.pageContent(),
+                    assistantContent: this.contentColl.content(),
                     notifyInfo: llmNotifyMessage.completed,
                 }
                 if (!this.thinkReasoning.isEmpty()) {
-                    showParam.thinkingContent =
+                    showParam.pageThinkingContent =
                         this.thinkReasoning.pageContent()
+                    showParam.thinkingContent = this.thinkReasoning.content()
                 }
                 await llmResultPageShow(showParam)
             },
@@ -162,7 +164,7 @@ export class StreamDisplay {
         }
         this.interactiveOutputRun(
             () => {},
-            () => print("\n\n")
+            () => print('\n\n')
         )
         this.thinkStopFlag = true
     }

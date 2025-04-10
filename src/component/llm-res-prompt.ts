@@ -11,16 +11,16 @@ import { editor } from "../util/common-utils"
 
 type ConfirmConfig = {
     content: string[]
-    sourceContent: string[]
+    sourceContent: string
     think?: string[]
-    sourceThink?: string[]
+    sourceThink?: string
     start?: number
     theme?: PartialDeep<Theme>
 }
 
 type TabInfo = {
     data: string[],
-    sourceData: string[],
+    sourceData: string,
     setIndex: (v: number) => void
 }
 
@@ -93,7 +93,7 @@ export default createPrompt<number, ConfirmConfig>((config, done) => {
         } else if (isKey("l")) {
             changeTab(tab.next)
         } else if (isKey("e")) {
-            await editor(tab.info.sourceData.join("\n"))
+            await editor(tab.info.sourceData)
         } else if (isKey("q")) {
             done(-1)
         }
