@@ -1,4 +1,3 @@
-import { default as hisMsgDisplay } from '../component/llm-his-msg-prompt'
 import type { AskContent, IChatAction } from '../types/action-types'
 import { temperature } from '../types/constant'
 import type {
@@ -15,14 +14,22 @@ import { AppSettingParse } from '../config/app-setting'
 import { assistant, system, user } from '../llm/llm-utils'
 import {
     Chat,
+    ChatMessage,
     type ChatConfig,
     type IChatStore,
     type MessageContent,
-    type PresetMessageContent
+    type PresetMessageContent,
 } from '../types/store-types'
 import { color, display, wrapAnsi } from '../util/color-utils'
-import { editor, error, isEmpty, println, uuid } from '../util/common-utils'
-import { input, select, selectRun } from '../util/inquirer-utils'
+import {
+    editor,
+    error,
+    groupBy,
+    isEmpty,
+    println,
+    uuid,
+} from '../util/common-utils'
+import { input, select, selectRun, type Choice } from '../util/inquirer-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 
 export class ChatAction implements IChatAction {
@@ -218,9 +225,53 @@ export class ChatAction implements IChatAction {
             error('History Message is Empty.')
             return
         }
-        await hisMsgDisplay({
-            messages,
-        })
+        const msp = groupBy(messages, (m: ChatMessage) => m.pairKey)
+        const findRole = (role: string) => (arr: ChatMessage[]) =>
+            arr.find((it) => it.role === role)?.content
+        const findUser = findRole('user')
+        const findAssistant = findRole('assistant')
+        const findReasoning = findRole('reasoning')
+        const subUserContent = (str: string) => {
+            const s = JSON.stringify(str).slice(1, -1)
+            if(s.length <= 25) {
+                return s
+            }
+            return `${s.substring(0, 20)}...`
+        }
+        const choices = msp.entries().reduce((arr, it) => {
+            const userContent = findUser(it[1])
+            if (!userContent) {
+                return arr
+            }
+            arr.push({ name: subUserContent(userContent), value: it[0] })
+            return arr
+        }, [] as Choice[])
+        const show = async (df?: string) => {
+            const value = await select({
+                message: 'History Messages',
+                choices,
+                default: df,
+            })
+            const msgs = msp.get(value)
+            if (!msgs) {
+                error('Assistant Content Missing')
+                return
+            }
+            const text = () => {
+                const reasoning = findReasoning(msgs)
+                const assistant = findAssistant(msgs)
+                if (!reasoning) {
+                    return assistant ?? ''
+                }
+                return `**Reasoing:**\n\n${reasoning}\n\n---\n\n**Assistant:**\n\n${assistant}`
+            }
+            await editor(text())
+            if (choices.length <= 1) {
+                return
+            }
+            await show(value)
+        }
+        await show()
     }
 
     modifyContextSize = (size: number) => {
