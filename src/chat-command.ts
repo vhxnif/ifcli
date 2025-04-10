@@ -97,18 +97,16 @@ program
                 }
             })
         }
-        if (cover) {
-            if (typeof cover === 'boolean') {
-                const str = await stdin()
-                if (str) {
-                    chatAction.modifySystemPrompt(str)
-                }
-                return
+        if (typeof cover === 'boolean') {
+            const str = await stdin()
+            if (str) {
+                chatAction.modifySystemPrompt(str)
             }
-            if (typeof cover === 'string') {
-                chatAction.modifySystemPrompt(cover)
-                return
-            }
+            return
+        }
+        if (typeof cover === 'string') {
+            chatAction.modifySystemPrompt(cover)
+            return
         }
         if (publish) {
             await chatAction.publishPrompt()
