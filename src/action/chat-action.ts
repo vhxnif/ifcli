@@ -1,4 +1,4 @@
-import { CHAT_DEFAULT_SYSTEM } from '../config/prompt'
+import { default as hisMsgDisplay } from '../component/llm-his-msg-prompt'
 import type { AskContent, IChatAction } from '../types/action-types'
 import { temperature } from '../types/constant'
 import type {
@@ -9,22 +9,21 @@ import type {
     LLMStreamParam,
 } from '../types/llm-types'
 import MCPClient from '../types/mcp-client'
-import { default as hisMsgDisplay } from '../component/llm-his-msg-prompt'
 
+import type { TableUserConfig } from 'table'
+import { AppSettingParse } from '../config/app-setting'
+import { assistant, system, user } from '../llm/llm-utils'
 import {
     Chat,
     type ChatConfig,
     type IChatStore,
     type MessageContent,
-    type PresetMessageContent,
+    type PresetMessageContent
 } from '../types/store-types'
 import { color, display, wrapAnsi } from '../util/color-utils'
 import { editor, error, isEmpty, println, uuid } from '../util/common-utils'
-import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { input, select, selectRun } from '../util/inquirer-utils'
-import type { TableUserConfig } from 'table'
-import { AppSettingParse } from '../config/app-setting'
-import { assistant, system, user } from '../llm/llm-utils'
+import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 
 export class ChatAction implements IChatAction {
     clientMap: Map<string, ILLMClient> = new Map()
@@ -88,8 +87,7 @@ export class ChatAction implements IChatAction {
             return
         }
         const [llm, model] = await this.selectLLmAndModel()
-        this.store.newChat(name, CHAT_DEFAULT_SYSTEM, llm, model)
-        this.printChats()
+        this.store.newChat(name, '', llm, model)
     }
 
     removeChat = () => {

@@ -2,11 +2,7 @@
 import { Command } from '@commander-js/extra-typings'
 import { chatAction } from './app-context'
 import { version } from './config/app-setting'
-import {
-    editor,
-    error,
-    stdin
-} from './util/common-utils'
+import { editor, error, stdin } from './util/common-utils'
 
 const program = new Command()
 
@@ -31,11 +27,30 @@ program
     .command('ask')
     .description('chat with AI')
     .option('-c, --chat-name <string>', 'ask with other chat')
-    .argument('<string>')
-    .action(
-        async (content, option) =>
-            await chatAction.ask({ content, chatName: option.chatName })
-    )
+    .option('-e, --edit', 'use editor')
+    .argument('[string]')
+    .action(async (content, option) => {
+        const { chatName, edit } = option
+        const ask = async (ct: string) =>
+            await chatAction.ask({ content: ct, chatName })
+        if (content) {
+            await ask(content)
+            return
+        }
+        const getContentAndAsk = async (
+            f: () => Promise<string | undefined>
+        ) => {
+            const text = await f()
+            if (text) {
+                await ask(text)
+            }
+        }
+        if (edit) {
+            await getContentAndAsk(async () => await editor(''))
+            return
+        }
+        await getContentAndAsk(stdin)
+    })
 
 program
     .command('list')
@@ -71,19 +86,18 @@ program
     .option('-c, --cover [prompt]', "override the current chat's prompt")
     .option('-p, --publish', 'publish  prompt')
     .action(async (option) => {
-
         const { select, modify, cover, publish } = option
-        if(select) {
+        if (select) {
             await chatAction.selectPrompt(select)
         }
-        if(modify) {
+        if (modify) {
             await editor(chatAction.prompt()).then((text) => {
                 if (text) {
                     chatAction.modifySystemPrompt(text)
                 }
             })
         }
-        if(cover) {
+        if (cover) {
             if (typeof cover === 'boolean') {
                 const str = await stdin()
                 if (str) {
@@ -96,7 +110,7 @@ program
                 return
             }
         }
-        if(publish) {
+        if (publish) {
             await chatAction.publishPrompt()
         }
     })
@@ -131,26 +145,34 @@ program
     .option('-s, --scenario', 'select scenario')
     .option('-t, --tools', 'list useful tools')
     .action(async (option) => {
-        const { contextSize, model, withContext, interactive, withMcp, scenario, tools } = option
-        if(contextSize) {
+        const {
+            contextSize,
+            model,
+            withContext,
+            interactive,
+            withMcp,
+            scenario,
+            tools,
+        } = option
+        if (contextSize) {
             chatAction.modifyContextSize(Number(contextSize))
         }
-        if(model) {
+        if (model) {
             await chatAction.modifyModel()
         }
-        if(withContext) {
+        if (withContext) {
             chatAction.modifyWithContext()
         }
-        if(interactive) {
+        if (interactive) {
             chatAction.modifyInteractiveOutput()
         }
-        if(withMcp) {
+        if (withMcp) {
             chatAction.modifyWithMCP()
         }
-        if(scenario) {
+        if (scenario) {
             await chatAction.modifyScenario()
         }
-        if(tools) {
+        if (tools) {
             await chatAction.usefulTools()
         }
         chatAction.printChatConfig()

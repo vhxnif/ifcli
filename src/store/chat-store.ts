@@ -170,7 +170,7 @@ export class ChatStore implements IChatStore {
         )
 
     historyMessage = (count: number) =>
-        this.currentChatRun((c) => this.queryMessage(c.id, count))
+        this.currentChatRun((c) => this.queryMessage(c.id, count, true))
 
     selectMessage = (messageId: string) =>
         this.db
@@ -371,11 +371,11 @@ export class ChatStore implements IChatStore {
     private currentChatConfigRun = <T>(f: (ct: Chat, cf: ChatConfig) => T): T =>
         this.currentChatRun((c) => f(c, this.queryChatConfig(c.id)))
 
-    private queryMessage = (chatId: string, count: number) =>
+    private queryMessage = (chatId: string, count: number, withReasoning: boolean = false) =>
         this.db
             .query(
                 `
-                select ${this.chatMessageColumn} from chat_message where chat_id = ? and pair_key in (
+                select ${this.chatMessageColumn} from chat_message where chat_id = ? ${withReasoning ? '' : 'and role != \'reasoning\''} and pair_key in (
                     select pair_key from chat_message group by pair_key order by max(action_time) desc limit ?
                 ) order by action_time desc
                 `

@@ -59,6 +59,19 @@ const isEmpty: IsEmpty = <T>(param: string | T[] | undefined | null) => {
     return arr.length <= 0
 }
 
+
+const groupBy = <T, R>(arr: T[], key: (i: T) => R) => {
+    return arr.reduce((df, it) => {
+        const v = df.get(key(it))
+        if (v) {
+            v.push(it)
+        } else {
+            df.set(key(it), [it])
+        }
+        return df
+    }, new Map<R, T[]>())
+}
+
 export {
     exit,
     editor,
@@ -72,4 +85,5 @@ export {
     log,
     error,
     isEmpty,
+    groupBy,
 }
