@@ -7,16 +7,20 @@ import {
 } from "@inquirer/core"
 import type { PartialDeep } from "@inquirer/type"
 import { color } from "../util/color-utils"
+import { editor } from "../util/common-utils"
 
 type ConfirmConfig = {
     content: string[]
+    sourceContent: string[]
     think?: string[]
+    sourceThink?: string[]
     start?: number
     theme?: PartialDeep<Theme>
 }
 
 type TabInfo = {
     data: string[],
+    sourceData: string[],
     setIndex: (v: number) => void
 }
 
@@ -28,13 +32,14 @@ type Tab = {
 }
 
 export default createPrompt<number, ConfirmConfig>((config, done) => {
-    const { content, think, start } = config
+    const { content, sourceContent, think, sourceThink, start } = config
     const [thinkPageIndex, setThinkPageIndex] = useState(start ?? 0)
     const [contentPageIndex, setContentPageIndex] = useState(start ?? 0)
     const contentTab: Tab = {
         name: 'Content',
         info: {
             data: content,
+            sourceData: sourceContent, 
             setIndex: setContentPageIndex
         },
     }
@@ -43,6 +48,7 @@ export default createPrompt<number, ConfirmConfig>((config, done) => {
             name: 'Think',
             info: {
                 data: think,
+                sourceData: sourceThink!,
                 setIndex: setThinkPageIndex
             },
             next: contentTab,
@@ -54,7 +60,7 @@ export default createPrompt<number, ConfirmConfig>((config, done) => {
     const [tab, setTab] = useState(contentTab)
     const theme = makeTheme(config.theme)
     const getIdx = () => tab.name === 'Content' ? contentPageIndex : thinkPageIndex
-    useKeypress((key, rl) => {
+    useKeypress(async (key, rl) => {
         const show = (
             command: 'next' | 'prev'
         ) => {
@@ -86,6 +92,8 @@ export default createPrompt<number, ConfirmConfig>((config, done) => {
             changeTab(tab.prev)
         } else if (isKey("l")) {
             changeTab(tab.next)
+        } else if (isKey("e")) {
+            await editor(tab.info.sourceData.join("\n"))
         } else if (isKey("q")) {
             done(-1)
         }
@@ -95,6 +103,6 @@ export default createPrompt<number, ConfirmConfig>((config, done) => {
     const currPageNumber = `${idx + 1}/${data.length}`
     const currContent = data[idx]
     const key = (str: string) => theme.style.key(str)
-    const message = `PrevTab ${key("h")}, NextTab ${key("l")}, NextPage ${key("j")}, PrevPage ${key("k")}, \nTab: ${color.maroon(tab.name)}, Page ${key(currPageNumber)}, Exit ${key("q")} `
+    const message = `PrevTab ${key("h")}, NextTab ${key("l")}, PrevPage ${key("k")}, NextPage ${key("j")} \nTab: ${color.maroon.bold(tab.name)}, ShowInEditor ${key("e")}, Page ${key(currPageNumber)}, Exit ${key("q")}`
     return `${currContent}${message}`
 })

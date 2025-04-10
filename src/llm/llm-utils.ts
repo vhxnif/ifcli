@@ -49,15 +49,17 @@ const llmResultPageShow = async (param: LLMResultPageShow) => {
     if (thinkingContent) {
         await page({
             content: contentPageShow,
+            sourceContent: assistantContent,
             think: llmTableShow({
                 header: thinkTableHeader,
                 content: thinkingContent,
                 notifyInfo,
             }),
+            sourceThink: thinkingContent,
         })
         return
     }
-    await page({ content: contentPageShow })
+    await page({ content: contentPageShow, sourceContent: assistantContent })
 }
 
 const llmNotifyMessage = {
