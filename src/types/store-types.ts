@@ -1,3 +1,7 @@
+export class SqliteTable {
+    name!: string
+}
+
 export class Chat {
     id!: string
     name!: string
@@ -20,7 +24,6 @@ export class ChatConfig {
     chatId!: string
     sysPrompt!: string
     withContext!: boolean
-    interactiveOutput!: boolean
     withMCP!: boolean
     contextLimit!: number
     llmType!: string
@@ -49,13 +52,14 @@ export class ChatPresetMessage {
 export class AppSetting {
     id!: string
     version!: string
+    generalSetting!: string
     mcpServer!: string
     llmSetting!: string
     create_time!: bigint
 }
 
 export type MessageContent = {
-    chatId: string,
+    chatId: string
     role: 'user' | 'assistant' | 'reasoning'
     content: string
     pairKey: string
@@ -68,6 +72,7 @@ export type PresetMessageContent = {
 
 export type AppSettingContent = {
     version: string
+    generalSetting: string
     mcpServer: string
     llmSetting: string
 }
@@ -85,8 +90,7 @@ export interface IChatStore {
     ) => void
     removeChat: (name: string) => void
     changeChat: (name: string) => void
-    currentChat: () => Chat
-    getChat: (name: string) => Chat | null
+    currentChat: () => Chat | null
 
     // ---- message ---- //
     saveMessage: (messages: MessageContent[]) => void
@@ -96,12 +100,11 @@ export interface IChatStore {
     selectMessage: (messageId: string) => ChatMessage
 
     // ---- config ---- //
-    chatConfig: () => ChatConfig
+    currentChatConfig: () => ChatConfig
     modifySystemPrompt: (prompt: string) => void
     modifyContextLimit: (contextLimit: number) => void
     modifyModel: (llm: string, model: string) => void
     modifyWithContext: () => void
-    modifyInteractiveOutput: () => void
     modifyWithMCP: () => void
     modifyScenario: (sc: [string, number]) => void
     queryChatConfig: (chatId: string) => ChatConfig
@@ -117,7 +120,4 @@ export interface IChatStore {
     // ---- app setting ----
     appSetting: () => AppSetting | null
     addAppSetting: (setting: AppSettingContent) => void
-
-    // ---- other ---- //
-    contextRun: (f: (cf: ChatConfig) => void) => void
 }

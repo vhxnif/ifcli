@@ -1,9 +1,14 @@
 import input from '@inquirer/input'
 import select from '@inquirer/select'
 
+export type Choice = {
+    name: string,
+    value: string,
+}
+
 const selectRun = async (
     message: string,
-    choices: { name: string; value: string }[],
+    choices: Choice[],
     f: (str: string) => void
 ) => f(await select({ message, choices }))
 

@@ -1,10 +1,22 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { chatAction } from './app-context'
-import { editor, optionFunMapping, stdin } from './util/common-utils'
+import { chatAction, settingAction } from './app-context'
 import { version } from './config/app-setting'
+import { editor, error, stdin } from './util/common-utils'
+import { color } from './util/color-utils'
 
 const program = new Command()
+
+program.configureHelp({
+    styleTitle: (str) => color.peach.bold(str),
+    styleCommandText: (str) => color.sky(str),
+    styleCommandDescription: (str) => color.green.bold.italic(str),
+    styleDescriptionText: (str) => color.flamingo.italic(str),
+    styleOptionText: (str) => color.green(str),
+    styleArgumentText: (str) => color.pink(str),
+    styleSubcommandText: (str) => color.sapphire.italic(str),
+    styleOptionTerm: (str) => color.mauve.italic(str)
+})
 
 program
     .name('ifct')
@@ -13,7 +25,7 @@ program
     .option('-s, --setting', 'ifcli setting edit')
     .action(async (option) => {
         if (option.setting) {
-            await chatAction.setting()
+            await settingAction.setting()
         }
     })
 
@@ -21,23 +33,42 @@ program
     .command('new')
     .description('new chat')
     .argument('<string>')
-    .action((content) => chatAction.newChat(content))
+    .action(async (content) => await chatAction.newChat(content))
 
 program
     .command('ask')
     .description('chat with AI')
     .option('-c, --chat-name <string>', 'ask with other chat')
-    .argument('<string>')
-    .action(
-        async (content, option) =>
-            await chatAction.ask({ content, chatName: option.chatName })
-    )
+    .option('-e, --edit', 'use editor')
+    .argument('[string]')
+    .action(async (content, option) => {
+        const { chatName, edit } = option
+        const ask = async (ct: string) =>
+            await chatAction.ask({ content: ct, chatName })
+        if (content) {
+            await ask(content)
+            return
+        }
+        const getContentAndAsk = async (
+            f: () => Promise<string | undefined>
+        ) => {
+            const text = await f()
+            if (text) {
+                await ask(text)
+            }
+        }
+        if (edit) {
+            await getContentAndAsk(async () => await editor(''))
+            return
+        }
+        await getContentAndAsk(stdin)
+    })
 
 program
     .command('list')
     .alias('ls')
     .description('list all chats')
-    .action(() => chatAction.printChats())
+    .action(async () => await chatAction.printChats())
 
 program
     .command('history')
@@ -50,46 +81,48 @@ program
     .command('remove')
     .alias('rm')
     .description('remove chat')
-    .action(() => chatAction.removeChat())
+    .action(async () => await chatAction.removeChat())
 
 program
     .command('switch')
     .alias('st')
     .description('switch to another chat')
-    .action(() => chatAction.changeChat())
+    .action(async () => await chatAction.changeChat())
 
 program
     .command('prompt')
     .alias('pt')
     .description('prompt manager')
-    .option('-s, --select <name>', 'select a prompt for the current chat')
+    .option('-q, --query <name>', 'query and set prompt for current chat')
     .option('-m, --modify', "modify the current chat's prompt")
     .option('-c, --cover [prompt]', "override the current chat's prompt")
     .option('-p, --publish', 'publish  prompt')
-    .action((option) => {
-        optionFunMapping(option, {
-            select: (v) => chatAction.selectPrompt(v as string),
-            modify: async () => {
-                const text = await editor(chatAction.prompt())
+    .action(async (option) => {
+        const { query, modify, cover, publish } = option
+        if (query) {
+            await chatAction.selectPrompt(query)
+        }
+        if (modify) {
+            await editor(chatAction.prompt()).then((text) => {
                 if (text) {
                     chatAction.modifySystemPrompt(text)
                 }
-            },
-            cover: async (v) => {
-                if (typeof v === 'boolean') {
-                    const str = await stdin()
-                    if (str) {
-                        chatAction.modifySystemPrompt(str)
-                    }
-                    return
-                }
-                if (typeof v === 'string') {
-                    chatAction.modifySystemPrompt(v)
-                    return
-                }
-            },
-            publish: chatAction.publishPrompt,
-        })
+            })
+        }
+        if (typeof cover === 'boolean') {
+            const str = await stdin()
+            if (typeof str === 'string') {
+                chatAction.modifySystemPrompt(str.trim())
+            }
+            return
+        }
+        if (typeof cover === 'string') {
+            chatAction.modifySystemPrompt(cover)
+            return
+        }
+        if (publish) {
+            await chatAction.publishPrompt()
+        }
     })
 
 program
@@ -99,13 +132,13 @@ program
     .option('-e, --edit', 'edit preset message')
     .option('-c, --clear', 'clear preset message')
     .action(async (option) => {
-        if (option.edit) {
-            await chatAction.editPresetMessage()
-            return
-        }
-        if (option.clear) {
+        const {edit, clear} = option
+        if (clear) {
             chatAction.clearPresetMessage()
             return
+        }
+        if (edit) {
+            await chatAction.editPresetMessage()
         }
         chatAction.printPresetMessage()
     })
@@ -116,25 +149,32 @@ program
     .description('manage chat config')
     .option('-c, --context-size <contextSize>', 'update context size')
     .option('-m, --model', `switch model`)
-    .option('-w, --with-context', 'change with-context', false)
-    .option('-i, --interactive', 'set interactive-output', false)
-    .option('-f, --with-mcp', 'set with-mcp (function call)', false)
-    .option('-s, --scenario', 'select scenario')
+    .option('-o, --with-context', 'change with-context', false)
+    .option('-p, --with-mcp', 'change with-mcp', false)
+    .option('-u, --use-scenario', 'use scenario')
     .option('-t, --tools', 'list useful tools')
     .action(async (option) => {
-        optionFunMapping(
-            option,
-            {
-                contextSize: (v) => chatAction.modifyContextSize(v as number),
-                model: chatAction.modifyModel,
-                withContext: chatAction.modifyWithContext,
-                interactive: chatAction.modifyInteractiveOutput,
-                withMcp: chatAction.modifyWithMCP,
-                scenario: chatAction.modifyScenario,
-                tools: chatAction.usefulTools,
-            },
-            chatAction.printChatConfig
-        )
+        const { contextSize, model, withContext, withMcp, useScenario, tools } =
+            option
+        if (contextSize) {
+            chatAction.modifyContextSize(Number(contextSize))
+        }
+        if (model) {
+            await chatAction.modifyModel()
+        }
+        if (withContext) {
+            chatAction.modifyWithContext()
+        }
+        if (withMcp) {
+            chatAction.modifyWithMCP()
+        }
+        if (useScenario) {
+            await chatAction.modifyScenario()
+        }
+        if (tools) {
+            await chatAction.usefulTools()
+        }
+        chatAction.printChatConfig()
     })
 
 program
@@ -143,4 +183,9 @@ program
     .description('clear the current chat message')
     .action(() => chatAction.clearChatMessage())
 
-program.parseAsync()
+program
+    .parseAsync()
+    .catch((e: unknown) => {
+        const { message } = e as Error
+        error(message)
+    })

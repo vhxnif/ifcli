@@ -1,72 +1,25 @@
-import type { TableUserConfig } from 'table'
-import { table } from 'table'
-import { default as page } from '../component/llm-res-prompt'
 import type { LLMMessage, LLMRole } from '../types/llm-types'
 import { color } from '../util/color-utils'
-import { tableConfig } from '../util/table-util'
-
-const thinkTableHeader = color.sky('Thinking Content')
-const contentTableHeader = color.sky('Assistant Content')
-
-export type LLMResultPageShow = {
-    assistantContent: string[]
-    thinkingContent?: string[]
-    notifyInfo?: string
-}
-
-export type TableShowParam = {
-    header: string
-    content: string[]
-    notifyInfo?: string
-}
-
-const llmTableConfig = tableConfig({
-    cols: [1],
-    celConfig: [{ alignment: 'left' }],
-})
-
-const llmTableConfigWithHeader = (headerContent: string) =>
-    ({
-        ...llmTableConfig,
-        header: { alignment: 'center', content: headerContent },
-    }) as TableUserConfig
-
-const llmTableShow = (param: TableShowParam) => {
-    const { header, content, notifyInfo } = param
-    return content.map((it) => {
-        const tableStr = table([[it]], llmTableConfigWithHeader(header))
-        return notifyInfo ? `${notifyInfo}\n${tableStr}` : tableStr
-    })
-}
-
-const llmResultPageShow = async (param: LLMResultPageShow) => {
-    const { assistantContent, thinkingContent, notifyInfo } = param
-    const contentPageShow = llmTableShow({
-        header: contentTableHeader,
-        content: assistantContent,
-        notifyInfo,
-    })
-    if (thinkingContent) {
-        await page({
-            content: contentPageShow,
-            think: llmTableShow({
-                header: thinkTableHeader,
-                content: thinkingContent,
-                notifyInfo,
-            }),
-        })
-        return
-    }
-    await page({ content: contentPageShow })
-}
 
 const llmNotifyMessage = {
-    waiting: color.blue('[量子信道开启中，正在折叠时空距离...]'),
-    analyzing: color.blue('[语义引力阱已捕获请求，正在解压超弦信号...]'),
-    thinking: color.blue('[核心矩阵激活，正在遍历知识星云...]'),
-    rendering: color.blue('[全息投影就绪，正在渲染多维信息流——*]'),
-    error: color.blue('[遭遇未知粒子风暴，正在重新校准频率...]'),
-    completed: color.blue('[认知模块已同步，思维链路无延迟——*]'),
+    waiting: color.blue(
+        '[Quantum Channel Opening :: Bending Space-Time Continuum...]'
+    ),
+    analyzing: color.blue(
+        '[Semantic Gravity Well Locked :: Decrypting Hyperstring Resonance...]'
+    ),
+    thinking: color.blue(
+        '[Neural Matrix Active :: Traversing Knowledge Nebula...]'
+    ),
+    rendering: color.blue(
+        '[Holographic Interface Online :: Rendering Multidimensional Data Streams—*]'
+    ),
+    error: color.blue(
+        '[Unknown Particle Storm Detected :: Rebooting Chrono-Sync Protocols...]'
+    ),
+    completed: color.blue(
+        '[Cognitive Sync Module Engaged :: Neural Latency Neutralized—*]'
+    ),
 }
 
 const message = (role: LLMRole, content: string): LLMMessage => ({
@@ -79,9 +32,11 @@ const system = (content: string): LLMMessage => message('system', content)
 
 const assistant = (content: string): LLMMessage => message('assistant', content)
 
-
 export {
-    assistant, contentTableHeader, llmNotifyMessage, llmResultPageShow, llmTableConfig, llmTableConfigWithHeader, llmTableShow,
-    message, system, thinkTableHeader, user
+    assistant,
+    llmNotifyMessage,
+    message,
+    system,
+    user
 }
 

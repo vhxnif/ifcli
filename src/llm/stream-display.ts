@@ -1,49 +1,31 @@
-import type { ChalkInstance } from 'chalk'
+import { type ChalkInstance } from 'chalk'
 import type OpenAI from 'openai'
-import ora, { type Ora } from 'ora'
-import { table } from 'table'
 import type { LLMMessage, LLMResult } from '../types/llm-types'
 import { color } from '../util/color-utils'
-import {
-    llmNotifyMessage,
-    llmResultPageShow,
-    llmTableConfig,
-    type LLMResultPageShow,
-} from './llm-utils'
-import { ShowWin } from './show-win'
+import { terminal } from '../util/platform-utils'
+import { llmNotifyMessage } from './llm-utils'
+import { OraShow } from './ora-show'
 import { print } from '../util/common-utils'
 
 export class StreamDisplay {
     private hasReasoningContent: boolean = false
     private lastChunk: string = ''
     private thinkStopFlag: boolean = false
-    private tableConfig = llmTableConfig
-    private thinkReasoning: ShowWin = new ShowWin()
-    private contentColl: ShowWin = new ShowWin()
     private messageStore: (result: LLMResult) => void
     private userMessage: LLMMessage
-    private spinner: Ora = ora(llmNotifyMessage.waiting)
-    private interactiveOutput: boolean = false
-    private isSpinnerStop: boolean = false
+    private oraShow = new OraShow(llmNotifyMessage.waiting)
+    private reasoning: string[] = []
+    private assistant: string[] = []
     constructor({
-        interactiveOutput,
         userMessage,
         messageStore,
-        thinkWinRowLinit,
     }: {
-        interactiveOutput: boolean
         userMessage: LLMMessage
         messageStore: (result: LLMResult) => void
-        thinkWinRowLinit?: number
     }) {
         this.userMessage = userMessage
         this.messageStore = messageStore
-        if (thinkWinRowLinit) {
-            this.thinkReasoning = new ShowWin(thinkWinRowLinit)
-            this.contentColl = new ShowWin(thinkWinRowLinit)
-        }
-        this.interactiveOutput = interactiveOutput
-        this.spinnerStart()
+        this.oraShow.start()
     }
 
     thinkingShow = (chunk: OpenAI.Chat.Completions.ChatCompletionChunk) => {
@@ -75,150 +57,55 @@ export class StreamDisplay {
     }
 
     contentShow = (content: string) => {
-        this.interactiveOutputRun(
-            () =>
-                this.tableShow(
-                    content,
-                    this.contentColl,
-                    color.mauve,
-                    llmNotifyMessage.rendering
-                ),
-            () => {
-                this.spinnerStop()
-                this.textShow(content, this.contentColl, color.mauve)
-            }
-        )
+        this.oraShow.stop()
+        this.textShow(content, this.assistant, color.mauve)
     }
 
-    pageShow = async () => {
-        this.spinnerStop()
+    stop = async () => {
+        this.oraShow.stop()
         this.doStoreMessage()
-        this.interactiveOutputRun(
-            async () => {
-                const showParam: LLMResultPageShow = {
-                    assistantContent: this.contentColl.pageContent(),
-                    notifyInfo: llmNotifyMessage.completed,
-                }
-                if (!this.thinkReasoning.isEmpty()) {
-                    showParam.thinkingContent =
-                        this.thinkReasoning.pageContent()
-                }
-                await llmResultPageShow(showParam)
-            },
-            async () => {}
-        )
     }
 
     change = (str: string) => {
-        this.spinnerText(str)
+        this.oraShow.show(str)
     }
 
     error = () => {
-        this.spinnerFail(llmNotifyMessage.error)
+        this.oraShow.fail(llmNotifyMessage.error)
     }
 
     private think = (reasoning: string) => {
-        this.interactiveOutputRun(
-            () =>
-                this.tableShow(
-                    reasoning,
-                    this.thinkReasoning,
-                    color.green,
-                    llmNotifyMessage.thinking
-                ),
-            () => {
-                this.spinnerStop()
-                this.textShow(reasoning, this.thinkReasoning, color.green)
-            }
-        )
-    }
-
-    private tableShow = (
-        content: string,
-        contentArray: ShowWin,
-        colorShow: ChalkInstance,
-        notice: string
-    ) => {
-        contentArray.push(content)
-        const tableStr = table(
-            [[contentArray.show(colorShow)]],
-            this.tableConfig
-        )
-        this.spinnerText(`${notice}\n${tableStr}`)
+        this.oraShow.stop()
+        this.textShow(reasoning, this.reasoning, color.green)
     }
 
     private textShow = (
         content: string,
-        contentArray: ShowWin,
+        contentArray: string[],
         colorShow: ChalkInstance
     ) => {
         contentArray.push(content)
-        process.stdout.write(colorShow(content))
+        print(colorShow(content))
     }
 
     private stopThink = () => {
         if (this.thinkStopFlag) {
             return
         }
-        this.interactiveOutputRun(
-            () => {},
-            () => print("\n\n")
-        )
+        this.oraShow.stop()
         this.thinkStopFlag = true
+        print(color.yellow(`\n${'='.repeat(terminal.column)}\n`))
     }
 
     private doStoreMessage() {
         this.messageStore({
             userContent: this.userMessage.content,
-            assistantContent: this.contentColl.content(),
-            thinkingReasoning: this.thinkReasoning.content(),
+            assistantContent: this.content(this.assistant),
+            thinkingReasoning: this.content(this.reasoning),
         })
     }
 
-    private interactiveOutputRun(matchRun: () => void, run: () => void): void
-    private interactiveOutputRun(
-        matchRun: () => Promise<void>,
-        run: () => Promise<void>
-    ): Promise<void>
-    private interactiveOutputRun(
-        matchRun: () => Promise<void> | void,
-        run: () => Promise<void> | void
-    ): Promise<void> | void {
-        const f = (r: Promise<void> | void) => {
-            if (r instanceof Promise) {
-                return r
-            }
-            return r
-        }
-        if (this.interactiveOutput) {
-            f(matchRun())
-            return
-        }
-        f(run())
-    }
-
-    private spinnerStart = () => this.spinner.start()
-
-    private spinnerStop = () => {
-        if (this.isSpinnerStop) {
-            return
-        }
-        this.isSpinnerStop = true
-        this.spinner.stop()
-    }
-
-    private spinnerText = (str: string) => {
-        if (this.isSpinnerStop) {
-            return
-        }
-        this.spinner.text = str
-    }
-
-    private spinnerFail = (msg: string) => {
-        if (this.isSpinnerStop) {
-            return
-        }
-        this.isSpinnerStop = true
-        this.spinner.fail(msg)
+    private content(arr: string[]) {
+        return arr.join('')
     }
 }

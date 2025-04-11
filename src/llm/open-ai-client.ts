@@ -16,11 +16,9 @@ export class OpenAiClient implements ILLMClient {
     client: OpenAi
     type: string
     models: string[]
-    defaultModel: string 
+    defaultModel: string
 
-    constructor(
-        { baseUrl, apiKey, models, name }: LLMSetting
-    ) {
+    constructor({ baseUrl, apiKey, models, name }: LLMSetting) {
         this.type = name
         this.models = models
         this.defaultModel = models[0]
@@ -29,7 +27,6 @@ export class OpenAiClient implements ILLMClient {
             apiKey: apiKey,
         })
     }
-
 
     call = async (param: LLMCallParam) => {
         const { messages, model, temperature, contentConsumer } = param
@@ -42,7 +39,6 @@ export class OpenAiClient implements ILLMClient {
             .then((it) =>
                 contentConsumer(it.choices[0]?.message?.content ?? '')
             )
-            .catch((err) => console.error(err))
     }
 
     stream = async (param: LLMStreamParam) => {
@@ -50,12 +46,10 @@ export class OpenAiClient implements ILLMClient {
             userMessage,
             messages,
             model,
-            interactiveOutput,
             temperature,
             messageStore,
         } = param
         const display = new StreamDisplay({
-            interactiveOutput,
             userMessage,
             messageStore,
         })
@@ -69,10 +63,10 @@ export class OpenAiClient implements ILLMClient {
             for await (const chunk of stream) {
                 display.thinkingShow(chunk)
             }
-            await display.pageShow()
+            await display.stop()
         } catch (e: unknown) {
-            console.log(e)
             display.error()
+            throw e
         }
     }
 
@@ -81,14 +75,11 @@ export class OpenAiClient implements ILLMClient {
             userMessage,
             messages,
             model,
-            interactiveOutput,
             temperature,
             messageStore,
             mcpClients,
         } = param
-        // support tools mcp server now
         const display = new StreamDisplay({
-            interactiveOutput,
             userMessage,
             messageStore,
         })
@@ -99,7 +90,6 @@ export class OpenAiClient implements ILLMClient {
                     mcpClients.flatMap((it) => this.mapToTools(it))
                 )
             ).flat()
-            // call llm
             const runner = this.client.beta.chat.completions
                 .runTools({
                     model,
@@ -118,13 +108,13 @@ export class OpenAiClient implements ILLMClient {
                     display.contentShow(it)
                 })
             await runner.finalChatCompletion()
-            await display.pageShow()
+            await display.stop()
         } catch (err: unknown) {
-            await Promise.all(mcpClients.map((it) => it.close()))
-            console.log(err)
             display.error()
+            throw err
+        } finally {
+            await Promise.all(mcpClients.map((it) => it.close()))
         }
-        await Promise.all(mcpClients.map((it) => it.close()))
     }
 
     private mapToTools = async (mcp: MCPClient) =>
