@@ -40,7 +40,7 @@ The `EDITOR` environment variable must be configured to enable configuration edi
 
 **macOS/Linux:** They are located in $HOME/.config/ifcli.
 
-Every release includes a version-specific data file (ifcli_<version>.sqlite). You will need to handle data migration separately.
+Every release includes a version-specific data file (ifcli_\<version\>.sqlite). You will need to handle data migration separately.
 
 ## Command
 
