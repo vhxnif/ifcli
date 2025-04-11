@@ -28,11 +28,19 @@ bun install && bun run build && bun link
 
 ## Config
 
+To configure various application settings using the `ifct -s` command.**Please configure the large model settings before use.**
+
+To use MCP Server, you must first configure the relevant information and enable MCP functionality for the current chat session `ifct cf -p`.
+
+The `EDITOR` environment variable must be configured to enable configuration editing and related system functions.If not configured, `vim` will be used as the default editor.
+
+### Data Path
+
 **Windows:** Data and MCP configurations are stored in %APPDATA%\ifcli.
 
 **macOS/Linux:** They are located in $HOME/.config/ifcli.
 
-The `EDITOR` environment variable must be configured to enable configuration editing and related system functions.
+Every release includes a version-specific data file (ifcli_<version>.sqlite). You will need to handle data migration separately.
 
 ## Command
 
@@ -58,11 +66,13 @@ Commands:
   config|cf [options]     manage chat config
   clear|cl                clear the current chat message
 ```
-
-To configure various application settings using the `ifct -s` command.
+### AppSetting
 
 ```json
 {
+  "generalSetting": {
+    "interactive": true // Turn this off if Bash shows display errors. On Nushell (Windows), you must disable it.
+  },
   "mcpServers": [
     {
       "name": "weather",
@@ -114,6 +124,11 @@ To configure various application settings using the `ifct -s` command.
 
 ```
 
+**General Setting**
+| column name | type    | required |
+| :-----------| :-------| :--------|
+| interactive | boolean | true     |
+
 **LLM Setting**
 | column name | type     | required | 
 |:------------|:---------|:---------|
@@ -162,11 +177,3 @@ Use the editor
 ```bash
 ifct pt -m
 ```
-
-### MCP using Example
-
-Use the `ifct -s` command to set the MCP configuration and `ifct cf -f` to enable MCP for the current chat.
-
-### Interactive output
-
-The `ifct cf -i` command can turn on/off interactive output.
