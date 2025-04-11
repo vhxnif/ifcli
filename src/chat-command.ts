@@ -149,8 +149,8 @@ program
     .description('manage chat config')
     .option('-c, --context-size <contextSize>', 'update context size')
     .option('-m, --model', `switch model`)
-    .option('-w, --with-context', 'change with-context', false)
-    .option('-f, --with-mcp', 'set with-mcp (function call)', false)
+    .option('-o, --with-context', 'change with-context', false)
+    .option('-p, --with-mcp', 'change with-mcp', false)
     .option('-u, --use-scenario', 'use scenario')
     .option('-t, --tools', 'list useful tools')
     .action(async (option) => {

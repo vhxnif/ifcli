@@ -25,11 +25,7 @@ const stdin = async () => {
 const stringWidth = (str: string) => Bun.stringWidth(str)
 
 const editor = async (content: string, fileType: string = 'md') => {
-    const editor = env('EDITOR')
-    if (!editor) {
-        error(`$EDITOR is missing`)
-        return
-    }
+    const editor = env('EDITOR') ?? 'vim'
     const tmpFile = path.join(tmpPath(), `tmp-${uuid()}.${fileType}`)
     await Bun.write(tmpFile, content, { createPath: false })
     const proc = Bun.spawn([editor, tmpFile], {
