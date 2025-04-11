@@ -32,7 +32,7 @@
         "chat": "bun run ./src/chat-command.ts --"
     },
     "devDependencies": {
-        "@commander-js/extra-typings": "^12.1.0",
+        "@commander-js/extra-typings": "^13.1.0",
         "@eslint/js": "^9.23.0",
         "@types/bun": "^1.2.7",
         "bun-types": "^1.2.7",
@@ -49,7 +49,7 @@
         "@inquirer/select": "^4.1.0",
         "@modelcontextprotocol/sdk": "^1.8.0",
         "chalk": "^5.4.1",
-        "commander": "^12.1.0",
+        "commander": "^13.1.0",
         "openai": "^4.89.1",
         "ora": "^8.2.0",
         "table": "^6.9.0"

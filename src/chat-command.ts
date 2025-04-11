@@ -3,8 +3,20 @@ import { Command } from '@commander-js/extra-typings'
 import { chatAction, settingAction } from './app-context'
 import { version } from './config/app-setting'
 import { editor, error, stdin } from './util/common-utils'
+import { color } from './util/color-utils'
 
 const program = new Command()
+
+program.configureHelp({
+    styleTitle: (str) => color.peach.bold(str),
+    styleCommandText: (str) => color.sky(str),
+    styleCommandDescription: (str) => color.green.bold.italic(str),
+    styleDescriptionText: (str) => color.flamingo.italic(str),
+    styleOptionText: (str) => color.green(str),
+    styleArgumentText: (str) => color.pink(str),
+    styleSubcommandText: (str) => color.sapphire.italic(str),
+    styleOptionTerm: (str) => color.mauve.italic(str)
+})
 
 program
     .name('ifct')
