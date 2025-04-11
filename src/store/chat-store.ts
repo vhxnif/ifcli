@@ -17,6 +17,7 @@ import {
 import { isEmpty, unixnow, uuid } from '../util/common-utils'
 import { table_def } from './table-def'
 import { defaultSetting } from '../config/app-setting'
+import { promptMessage } from '../config/prompt-message'
 
 export class ChatStore implements IChatStore {
     private db: Database
@@ -39,7 +40,7 @@ export class ChatStore implements IChatStore {
             .forEach(([_, v]) => {
                 this.db.run(v)
             })
-        if(!this.appSetting()) {
+        if (!this.appSetting()) {
             this.addAppSetting(defaultSetting)
         }
     }
@@ -139,7 +140,7 @@ export class ChatStore implements IChatStore {
         if (chat) {
             return chat
         }
-        throw Error('Execute `ifct new <chatName>` first.')
+        throw Error(promptMessage.chatMissing)
     }
 
     saveMessage = (messages: MessageContent[]) => {
@@ -302,7 +303,14 @@ export class ChatStore implements IChatStore {
             .prepare(
                 `INSERT INTO app_setting (id, version, general_setting, mcp_server, llm_setting, create_time) VALUES (?, ?, ?, ?, ?, ?)`
             )
-            .run(uuid(), version, generalSetting, mcpServer, llmSetting, unixnow())
+            .run(
+                uuid(),
+                version,
+                generalSetting,
+                mcpServer,
+                llmSetting,
+                unixnow()
+            )
     }
 
     private addPresetMessage = (
@@ -363,11 +371,19 @@ export class ChatStore implements IChatStore {
     private currentChatConfigRun = <T>(f: (ct: Chat, cf: ChatConfig) => T): T =>
         this.currentChatRun((c) => f(c, this.queryChatConfig(c.id)))
 
-    private queryMessage = (chatId: string, count: number, withReasoning: boolean = false) =>
+    private queryMessage = (
+        chatId: string,
+        count: number,
+        withReasoning: boolean = false
+    ) =>
         this.db
             .query(
                 `
-                select ${this.chatMessageColumn} from chat_message where chat_id = ? ${withReasoning ? '' : 'and role != \'reasoning\''} and pair_key in (
+                select ${
+                    this.chatMessageColumn
+                } from chat_message where chat_id = ? ${
+                    withReasoning ? '' : "and role != 'reasoning'"
+                } and pair_key in (
                     select pair_key from chat_message group by pair_key order by max(action_time) desc limit ?
                 ) order by action_time desc
                 `

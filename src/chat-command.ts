@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { chatAction, settingAction, db } from './app-context'
+import { chatAction, settingAction } from './app-context'
 import { version } from './config/app-setting'
 import { editor, error, stdin } from './util/common-utils'
 
@@ -69,7 +69,7 @@ program
     .command('remove')
     .alias('rm')
     .description('remove chat')
-    .action(() => chatAction.removeChat())
+    .action(async () => await chatAction.removeChat())
 
 program
     .command('switch')
@@ -177,4 +177,3 @@ program
         const { message } = e as Error
         error(message)
     })
-    .finally(() => db.close())

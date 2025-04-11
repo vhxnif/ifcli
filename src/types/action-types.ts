@@ -4,7 +4,7 @@ export type AskContent = {
 }
 export interface IChatAction {
     newChat: (name: string) => Promise<void>
-    removeChat: () => void
+    removeChat: () => Promise<void>
     ask: (param: AskContent) => Promise<void>
     changeChat: () => void
     printChats: () => Promise<void>

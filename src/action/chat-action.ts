@@ -34,6 +34,7 @@ import { input, select, selectRun, type Choice } from '../util/inquirer-utils'
 import { terminal } from '../util/platform-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import type { GeneralSetting } from '../config/app-setting'
+import { promptMessage } from '../config/prompt-message'
 
 export class ChatAction implements IChatAction {
     private clientMap: Map<string, ILLMClient> = new Map()
@@ -75,26 +76,26 @@ export class ChatAction implements IChatAction {
 
     private selectLLmAndModel = async (): Promise<[string, string]> => {
         const choices = Array.from(this.clientMap.keys()).map((it) => ({
-                name: it as string,
-                value: it as string,
-            }))
-        if(isEmpty(choices)) {
-            throw Error('Execute `ifct -s` first to configure LLMSetting.')
+            name: it as string,
+            value: it as string,
+        }))
+        if (isEmpty(choices)) {
+            throw Error(promptMessage.settingMissing)
         }
         const llm = await select({
-            message: 'Select A Provider',
+            message: 'Provider:',
             choices,
         })
         if (!llm) {
-            throw Error('At least one provider must be selected.')
+            throw Error(promptMessage.providerMissing)
         }
         const llmSelect = this.clientMap.get(llm)!
         const model = await select({
-            message: 'Select A Model',
+            message: 'Model',
             choices: llmSelect.models.map((it) => ({ name: it, value: it })),
         })
         if (!model) {
-            throw Error('At least one model must be selected.')
+            throw Error(promptMessage.modelMissing)
         }
         return [llm, model]
     }
@@ -108,13 +109,12 @@ export class ChatAction implements IChatAction {
         this.store.newChat(name, '', llm, model)
     }
 
-    removeChat = () => {
+    removeChat = async () => {
         const cts = this.store.chats()
         if (cts.length == 1) {
-            error('At least one chat must remain.')
-            return
+            throw Error(promptMessage.oneChatRemain)
         }
-        this.selectChatRun(
+        await this.selectChatRun(
             'Delete Chat:',
             cts.filter((it) => !it.select),
             (answer) => this.store.removeChat(answer)
@@ -148,7 +148,7 @@ export class ChatAction implements IChatAction {
         if (chatName) {
             const chat = this.store.queryChat(chatName)
             if (!chat) {
-                error(`${chatName} is missing.`)
+                error(`The ${chatName} not found.`)
                 return
             }
             await f(this.store.queryChatConfig(chat.id))
@@ -214,7 +214,7 @@ export class ChatAction implements IChatAction {
                     wrapAnsi(
                         display.note,
                         isEmpty(cf.sysPrompt)
-                            ? 'The system prompt has not been configured.'
+                            ? promptMessage.systemPromptMissing 
                             : cf.sysPrompt,
                         ext.colNum
                     ),
@@ -231,15 +231,12 @@ export class ChatAction implements IChatAction {
     printChatHistory = async (limit: number) => {
         const messages = this.store.historyMessage(limit)
         if (isEmpty(messages)) {
-            error('History Message is Empty.')
-            return
+            throw Error(promptMessage.hisMsgMissing)
         }
         const msp = groupBy(messages, (m: ChatMessage) => m.pairKey)
-        const findRole =
-            (role: string) => (arr: ChatMessage[]) => {
-                return arr.find((it) => it.role === role)?.content
-            }
-
+        const findRole = (role: string) => (arr: ChatMessage[]) => {
+            return arr.find((it) => it.role === role)?.content
+        }
         const findUser = findRole('user')
         const findAssistant = findRole('assistant')
         const findReasoning = findRole('reasoning')
@@ -260,30 +257,31 @@ export class ChatAction implements IChatAction {
         }, [] as Choice[])
         const show = async (df?: string) => {
             const value = await select({
-                message: 'History Messages',
+                message: 'View Message:',
                 choices,
                 default: df,
             })
             const msgs = msp.get(value)
             if (!msgs) {
-                error('Assistant Content Missing')
-                return
+                throw Error(promptMessage.assistantMissing)
             }
             const text = (print: boolean = false) => {
                 const reasoning = findReasoning(msgs)
                 const assistant = findAssistant(msgs) ?? ''
                 if (!reasoning) {
-                    if(print) {
+                    if (print) {
                         return color.mauve(assistant)
                     }
                     return assistant
                 }
-                if(print) {
-                    return `${color.green(reasoning)}\n${color.yellow('='.repeat(terminal.column))}\n${color.mauve(assistant)}`
+                if (print) {
+                    return `${color.green(reasoning)}\n${color.yellow(
+                        '='.repeat(terminal.column)
+                    )}\n${color.mauve(assistant)}`
                 }
-                return `**Reasoning: **${reasoning}\n\n**Assistant: **\n\n${assistant}`
+                return `**Reasoning: **\n\n${reasoning}\n\n**Assistant: **\n\n${assistant}`
             }
-            if(this.generalSetting.interactive) {
+            if (this.generalSetting.interactive) {
                 await editor(text())
                 if (choices.length <= 1) {
                     return
@@ -344,8 +342,7 @@ export class ChatAction implements IChatAction {
         const { sysPrompt } = this.store.currentChatConfig()
         const prompt = sysPrompt
         if (!prompt) {
-            error('Current Chat Prompt Missing.')
-            return
+            throw Error(promptMessage.systemPromptMissing)
         }
         await this.getPublishPromptInput(prompt)
     }
@@ -353,10 +350,10 @@ export class ChatAction implements IChatAction {
     selectPrompt = async (name: string) => {
         const prompts = this.store.searchPrompt(name)
         if (isEmpty(prompts)) {
-            throw Error('No Match Prompts.')
+            throw Error(promptMessage.systemPromptNoMatching)
         }
         await selectRun(
-            'Select Prompt:',
+            'System Prompt:',
             prompts.map((it) => ({ name: it.name, value: it.content })),
             (v) => this.modifySystemPrompt(v)
         )
@@ -386,8 +383,7 @@ export class ChatAction implements IChatAction {
     printPresetMessage = () => {
         const presetMessageText = this.presetMessageText({ colorful: true })
         if (presetMessageText.isDefault) {
-            error('Preset Message Not Set.')
-            return
+            throw Error(promptMessage.presetMsgMissing)
         }
         println(presetMessageText.content)
     }
@@ -399,14 +395,11 @@ export class ChatAction implements IChatAction {
             return
         }
         if (isTextSame(sourceText, text)) {
-            error('Nothing Edited')
-            return
+            throw Error(promptMessage.noEdit)
         }
         const contents = this.parsePresetMessageText(text)
         this.store.createPresetMessage(contents)
     }
-
-
 
     private presetMessageText = ({
         colorful = false,
@@ -518,12 +511,16 @@ export class ChatAction implements IChatAction {
         message: string,
         chats: Chat[],
         f: (str: string) => void
-    ) =>
-        selectRun(
+    ) => {
+        if (isEmpty(chats)) {
+            throw Error(promptMessage.chatMissing)
+        }
+        await selectRun(
             message,
             chats.map((it) => ({ name: it.name, value: it.name })),
             f
         )
+    }
 
     private messages = (
         content: string,
@@ -572,8 +569,8 @@ export class ChatAction implements IChatAction {
 
     private sortedChats = async (): Promise<Chat[]> => {
         const cts = this.store.chats()
-        if(isEmpty(cts)) {
-            throw Error('Execute `ifct new <chatName>` first.')
+        if (isEmpty(cts)) {
+            throw Error(promptMessage.chatMissing)
         }
         const [st, oths] = await Promise.all([
             cts.find((it) => it.select),

@@ -1,7 +1,8 @@
 import { AppSettingParse } from "../config/app-setting"
+import { promptMessage } from "../config/prompt-message"
 import type { ISettingAction } from "../types/action-types"
 import type { IChatStore } from "../types/store-types"
-import { editor, error, isTextSame } from "../util/common-utils"
+import { editor, isTextSame } from "../util/common-utils"
 
 export class SettingAction implements ISettingAction {
 
@@ -19,8 +20,7 @@ export class SettingAction implements ISettingAction {
             return
         }
         if (isTextSame(sourceText, text)) {
-            error('Setting Not Change.')
-            return
+            throw Error(promptMessage.noEdit)
         }
         const add = parse.editParse(text)
         if (!add) {

@@ -1,6 +1,7 @@
 import type { MCPConfig } from '../types/mcp-client'
 import type { AppSetting, AppSettingContent } from '../types/store-types'
 import { error, isEmpty } from '../util/common-utils'
+import { promptMessage } from './prompt-message'
 
 export type LLMSetting = {
     name: string
@@ -117,7 +118,7 @@ export class AppSettingParse {
             } as AppSettingContent
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e: unknown) {
-            error('Setting Format Error.')
+            error(promptMessage.cfParseErr)
             return
         }
     }

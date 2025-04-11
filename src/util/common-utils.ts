@@ -1,5 +1,6 @@
 import path from 'path'
 import { env, tmpPath } from './platform-utils'
+import { color } from './color-utils'
 
 const debug = false
 
@@ -10,7 +11,7 @@ const log = (str: string) => {
     }
 }
 const println = console.log
-const error = console.error
+const error = (str: string) => console.log(color.red.italic(str))
 const uuid = () => Bun.randomUUIDv7().replaceAll('-', '')
 const unixnow = (): number => Date.now()
 const containsChinese = (str: string): boolean => /[\u4e00-\u9fa5]/.test(str)

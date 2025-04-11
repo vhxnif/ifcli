@@ -39,7 +39,6 @@ export class OpenAiClient implements ILLMClient {
             .then((it) =>
                 contentConsumer(it.choices[0]?.message?.content ?? '')
             )
-            .catch((err) => console.error(err))
     }
 
     stream = async (param: LLMStreamParam) => {
