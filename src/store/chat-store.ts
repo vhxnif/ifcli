@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Database } from 'bun:sqlite'
-import { defaultSetting, version } from '../config/app-setting'
-import type { IConfig } from '../types/config-types'
 import { temperature } from '../types/constant'
 import {
     AppSetting,
@@ -18,11 +16,13 @@ import {
 } from '../types/store-types'
 import { isEmpty, unixnow, uuid } from '../util/common-utils'
 import { table_def } from './table-def'
+import { defaultSetting } from '../config/app-setting'
 
 export class ChatStore implements IChatStore {
     private db: Database
-    constructor(config: IConfig) {
-        this.db = new Database(config.dataPath(), { strict: true })
+    constructor(db: Database) {
+        this.db = db
+        this.init()
     }
 
     clearMessage = () =>
@@ -39,26 +39,19 @@ export class ChatStore implements IChatStore {
             .forEach(([_, v]) => {
                 this.db.run(v)
             })
-        // todo ddl dml execute
-        const st = this.appSetting()
-        if (!st) {
+        if(!this.appSetting()) {
             this.addAppSetting(defaultSetting)
-            return
         }
-        if(st.version === version) {
-            return 
-        }
-        this.updateVersion(version, st.id)
     }
 
     private appSettingColumn =
-        'id, version, mcp_server as mcpServer, llm_setting as llmSetting, create_time as createTime'
+        'id, version, general_setting as generalSetting, mcp_server as mcpServer, llm_setting as llmSetting, create_time as createTime'
     private chatColumn =
         'id, name, "select", action_time as actionTime, select_time as selectTime'
     private chatMessageColumn =
         'id, chat_id as chatId, "role", content, pair_key as pairKey, action_time as actionTime'
     private chatConfigColumn =
-        'id, chat_id as chatId , sys_prompt as sysPrompt, with_context as withContext, interactive_output as interactiveOutput, with_mcp as withMCP, context_limit as contextLimit, llm_type as llmType, model, scenario_name as scenarioName, scenario, update_time as updateTime'
+        'id, chat_id as chatId , sys_prompt as sysPrompt, with_context as withContext, with_mcp as withMCP, context_limit as contextLimit, llm_type as llmType, model, scenario_name as scenarioName, scenario, update_time as updateTime'
     private chatPromptColumn =
         'name, version, role, content, modify_time as modifyTime'
     private chatPresetMessageColumn =
@@ -81,7 +74,7 @@ export class ChatStore implements IChatStore {
                 `INSERT INTO chat (id, name, "select", action_time, select_time) VALUES (?, ?, ?, ?, ?)`
             )
             const configStatement = this.db.prepare(
-                `INSERT INTO chat_config (id, chat_id, sys_prompt, with_context, context_limit, interactive_output, with_mcp, llm_type, model, scenario_name, scenario, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                `INSERT INTO chat_config (id, chat_id, sys_prompt, with_context, context_limit, with_mcp, llm_type, model, scenario_name, scenario, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             )
             const [scenarioName, scenario] = temperature.general
             this.db.transaction(() => {
@@ -95,9 +88,8 @@ export class ChatStore implements IChatStore {
                     chatId,
                     prompt,
                     true,
-                    true,
-                    false,
                     10,
+                    false,
                     llmType,
                     model,
                     scenarioName,
@@ -218,11 +210,6 @@ export class ChatStore implements IChatStore {
 
     modifyWithContext = () =>
         this.changeConfigBooleanType('with_context', (c) => c.withContext)
-    modifyInteractiveOutput = () =>
-        this.changeConfigBooleanType(
-            'interactive_output ',
-            (c) => c.interactiveOutput
-        )
     modifyWithMCP = () =>
         this.changeConfigBooleanType('with_mcp', (c) => c.withMCP)
 
@@ -310,18 +297,12 @@ export class ChatStore implements IChatStore {
     }
 
     addAppSetting = (setting: AppSettingContent) => {
-        const { version, mcpServer, llmSetting } = setting
+        const { version, generalSetting, mcpServer, llmSetting } = setting
         this.db
             .prepare(
-                `INSERT INTO app_setting (id, version, mcp_server, llm_setting, create_time) VALUES (?, ?, ?, ?, ?)`
+                `INSERT INTO app_setting (id, version, general_setting, mcp_server, llm_setting, create_time) VALUES (?, ?, ?, ?, ?, ?)`
             )
-            .run(uuid(), version, mcpServer, llmSetting, unixnow())
-    }
-
-    private updateVersion = (version: string, id: string) => {
-        this.db
-            .prepare('UPDATE app_setting SET version = ? WHERE id = ?')
-            .run(version, id)
+            .run(uuid(), version, generalSetting, mcpServer, llmSetting, unixnow())
     }
 
     private addPresetMessage = (

@@ -39,6 +39,16 @@ const editor = async (content: string, fileType: string = 'md') => {
     await Bun.file(tmpFile).delete()
     return editorText
 }
+
+const isTextSame = (sourceText: string, text: string) => {
+    const hasher = new Bun.CryptoHasher('sha256')
+    const digest = (str: string) => {
+        hasher.update(str)
+        return hasher.digest().toString()
+    }
+    return digest(sourceText) === digest(text)
+}
+
 const exit = () => process.exit()
 
 type IsEmpty = {
@@ -75,6 +85,7 @@ const groupBy = <T, R>(arr: T[], key: (i: T) => R) => {
 export {
     exit,
     editor,
+    isTextSame,
     stringWidth,
     stdin,
     uuid,

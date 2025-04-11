@@ -28,7 +28,6 @@ const chat_config = `
         chat_id TEXT,
         sys_prompt TEXT,
         with_context INTEGER,
-        interactive_output INTEGER,
         with_mcp INTEGER,
         context_limit INTEGER DEFAULT (30),
         llm_type TEXT,
@@ -66,6 +65,7 @@ const app_setting = `
     CREATE TABLE IF NOT EXISTS app_setting (
         id TEXT,
         version TEXT,
+        general_setting TEXT,
         mcp_server TEXT,
         llm_setting TEXT,
         create_time INTEGER,

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { chatAction } from './app-context'
+import { chatAction, settingAction, db } from './app-context'
 import { version } from './config/app-setting'
 import { editor, error, stdin } from './util/common-utils'
 
@@ -13,7 +13,7 @@ program
     .option('-s, --setting', 'ifcli setting edit')
     .action(async (option) => {
         if (option.setting) {
-            await chatAction.setting()
+            await settingAction.setting()
         }
     })
 
@@ -56,7 +56,7 @@ program
     .command('list')
     .alias('ls')
     .description('list all chats')
-    .action(() => chatAction.printChats())
+    .action(async () => await chatAction.printChats())
 
 program
     .command('history')
@@ -138,20 +138,12 @@ program
     .option('-c, --context-size <contextSize>', 'update context size')
     .option('-m, --model', `switch model`)
     .option('-w, --with-context', 'change with-context', false)
-    .option('-i, --interactive', 'set interactive-output', false)
     .option('-f, --with-mcp', 'set with-mcp (function call)', false)
     .option('-s, --scenario', 'select scenario')
     .option('-t, --tools', 'list useful tools')
     .action(async (option) => {
-        const {
-            contextSize,
-            model,
-            withContext,
-            interactive,
-            withMcp,
-            scenario,
-            tools,
-        } = option
+        const { contextSize, model, withContext, withMcp, scenario, tools } =
+            option
         if (contextSize) {
             chatAction.modifyContextSize(Number(contextSize))
         }
@@ -160,9 +152,6 @@ program
         }
         if (withContext) {
             chatAction.modifyWithContext()
-        }
-        if (interactive) {
-            chatAction.modifyInteractiveOutput()
         }
         if (withMcp) {
             chatAction.modifyWithMCP()
@@ -182,7 +171,10 @@ program
     .description('clear the current chat message')
     .action(() => chatAction.clearChatMessage())
 
-program.parseAsync().catch((e: unknown) => {
-    const { message } = e as Error
-    error(message)
-})
+program
+    .parseAsync()
+    .catch((e: unknown) => {
+        const { message } = e as Error
+        error(message)
+    })
+    .finally(() => db.close())

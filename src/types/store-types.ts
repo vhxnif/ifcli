@@ -24,7 +24,6 @@ export class ChatConfig {
     chatId!: string
     sysPrompt!: string
     withContext!: boolean
-    interactiveOutput!: boolean
     withMCP!: boolean
     contextLimit!: number
     llmType!: string
@@ -53,6 +52,7 @@ export class ChatPresetMessage {
 export class AppSetting {
     id!: string
     version!: string
+    generalSetting!: string
     mcpServer!: string
     llmSetting!: string
     create_time!: bigint
@@ -72,6 +72,7 @@ export type PresetMessageContent = {
 
 export type AppSettingContent = {
     version: string
+    generalSetting: string
     mcpServer: string
     llmSetting: string
 }
@@ -104,7 +105,6 @@ export interface IChatStore {
     modifyContextLimit: (contextLimit: number) => void
     modifyModel: (llm: string, model: string) => void
     modifyWithContext: () => void
-    modifyInteractiveOutput: () => void
     modifyWithMCP: () => void
     modifyScenario: (sc: [string, number]) => void
     queryChatConfig: (chatId: string) => ChatConfig

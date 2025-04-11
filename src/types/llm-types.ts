@@ -14,7 +14,6 @@ export type LLMResult = {
 
 export type LLMParam = {
     userMessage: LLMMessage,
-    interactiveOutput: boolean
     messages: LLMMessage[]
     model: string
     temperature: number

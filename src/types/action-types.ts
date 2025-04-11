@@ -7,7 +7,7 @@ export interface IChatAction {
     removeChat: () => void
     ask: (param: AskContent) => Promise<void>
     changeChat: () => void
-    printChats: () => void
+    printChats: () => Promise<void>
     clearChatMessage: () => void
     printChatConfig: () => void
     printChatHistory: (limit: number) => Promise<void>
@@ -15,7 +15,6 @@ export interface IChatAction {
     modifyModel: () => Promise<void>
     modifySystemPrompt: (prompt: string) => void
     modifyWithContext: () => void
-    modifyInteractiveOutput: () => void
     modifyWithMCP: () => void
     modifyScenario: () => Promise<void> 
     publishPrompt: () => Promise<void>
@@ -25,5 +24,8 @@ export interface IChatAction {
     editPresetMessage: () => Promise<void>
     clearPresetMessage: () => void
     printPresetMessage: () => void
+}
+
+export interface ISettingAction {
     setting: () => Promise<void>
 }

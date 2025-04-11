@@ -9,12 +9,21 @@ export type LLMSetting = {
     models: string[]
 }
 
+export type GeneralSetting = {
+    interactive: boolean
+}
+
 export type Setting = {
-    mcpServers: MCPConfig[] 
+    generalSetting: GeneralSetting
+    mcpServers: MCPConfig[]
     llmSettings: LLMSetting[]
 }
 
 export const version = '0.1.9'
+
+const defaultGeneralSetting: GeneralSetting = {
+    interactive: true
+} 
 
 export const defaultLLMSettings: LLMSetting[] = [
     {
@@ -39,6 +48,7 @@ export const defaultLLMSettings: LLMSetting[] = [
 
 export const defaultSetting: AppSettingContent = {
     version,
+    generalSetting: JSON.stringify(defaultGeneralSetting),
     mcpServer: '[]',
     llmSetting: '[]',
 }
@@ -51,6 +61,7 @@ export class AppSettingParse {
 
     setting = (withoutDefault: boolean = false): Setting => {
         return {
+            generalSetting: this.generalSetting(),
             mcpServers: this.mcpServers(),
             llmSettings: this.llmSettings(withoutDefault),
         }
@@ -58,6 +69,14 @@ export class AppSettingParse {
 
     editShow = (): string => {
         return JSON.stringify(this.setting(), null, 2)
+    }
+
+    private generalSetting = (): GeneralSetting => {
+        const st = this.appSetting.generalSetting
+        if(isEmpty(st)) {
+            return defaultGeneralSetting
+        }
+        return JSON.parse(st) as GeneralSetting
     }
 
     private mcpServers = (): MCPConfig[] => {
@@ -92,6 +111,7 @@ export class AppSettingParse {
             const st = JSON.parse(str) as Setting
             return {
                 version: this.appSetting.version,
+                generalSetting: this.generalSettingParse(st),
                 mcpServer: this.mcpServerParse(st),
                 llmSetting: this.llmSettingParse(st),
             } as AppSettingContent
@@ -100,6 +120,13 @@ export class AppSettingParse {
             error('Setting Format Error.')
             return
         }
+    }
+
+    private generalSettingParse = (st: Setting): string => {
+        if (!st.generalSetting) {
+            return JSON.stringify(defaultGeneralSetting)
+        }
+        return JSON.stringify(st.generalSetting)
     }
 
     private mcpServerParse = (st: Setting): string => {
