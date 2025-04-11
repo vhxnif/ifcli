@@ -21,7 +21,7 @@ program
     .command('new')
     .description('new chat')
     .argument('<string>')
-    .action((content) => chatAction.newChat(content))
+    .action(async (content) => await chatAction.newChat(content))
 
 program
     .command('ask')
@@ -75,20 +75,20 @@ program
     .command('switch')
     .alias('st')
     .description('switch to another chat')
-    .action(() => chatAction.changeChat())
+    .action(async () => await chatAction.changeChat())
 
 program
     .command('prompt')
     .alias('pt')
     .description('prompt manager')
-    .option('-s, --select <name>', 'select a prompt for the current chat')
+    .option('-q, --query <name>', 'query and set prompt for current chat')
     .option('-m, --modify', "modify the current chat's prompt")
     .option('-c, --cover [prompt]', "override the current chat's prompt")
     .option('-p, --publish', 'publish  prompt')
     .action(async (option) => {
-        const { select, modify, cover, publish } = option
-        if (select) {
-            await chatAction.selectPrompt(select)
+        const { query, modify, cover, publish } = option
+        if (query) {
+            await chatAction.selectPrompt(query)
         }
         if (modify) {
             await editor(chatAction.prompt()).then((text) => {
@@ -99,8 +99,8 @@ program
         }
         if (typeof cover === 'boolean') {
             const str = await stdin()
-            if (str) {
-                chatAction.modifySystemPrompt(str)
+            if (typeof str === 'string') {
+                chatAction.modifySystemPrompt(str.trim())
             }
             return
         }
@@ -120,13 +120,13 @@ program
     .option('-e, --edit', 'edit preset message')
     .option('-c, --clear', 'clear preset message')
     .action(async (option) => {
-        if (option.edit) {
-            await chatAction.editPresetMessage()
-            return
-        }
-        if (option.clear) {
+        const {edit, clear} = option
+        if (clear) {
             chatAction.clearPresetMessage()
             return
+        }
+        if (edit) {
+            await chatAction.editPresetMessage()
         }
         chatAction.printPresetMessage()
     })
@@ -139,10 +139,10 @@ program
     .option('-m, --model', `switch model`)
     .option('-w, --with-context', 'change with-context', false)
     .option('-f, --with-mcp', 'set with-mcp (function call)', false)
-    .option('-s, --scenario', 'select scenario')
+    .option('-u, --use-scenario', 'use scenario')
     .option('-t, --tools', 'list useful tools')
     .action(async (option) => {
-        const { contextSize, model, withContext, withMcp, scenario, tools } =
+        const { contextSize, model, withContext, withMcp, useScenario, tools } =
             option
         if (contextSize) {
             chatAction.modifyContextSize(Number(contextSize))
@@ -156,7 +156,7 @@ program
         if (withMcp) {
             chatAction.modifyWithMCP()
         }
-        if (scenario) {
+        if (useScenario) {
             await chatAction.modifyScenario()
         }
         if (tools) {

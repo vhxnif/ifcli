@@ -157,10 +157,10 @@ export class ChatAction implements IChatAction {
         await f(this.store.currentChatConfig())
     }
 
-    changeChat = () =>
-        this.selectChatRun(
+    changeChat = async () =>
+        await this.selectChatRun(
             'Select Chat:',
-            this.store.chats(),
+            this.store.chats().filter(it => !it.select),
             this.store.changeChat
         )
 
@@ -296,12 +296,10 @@ export class ChatAction implements IChatAction {
 
     modifyContextSize = (size: number) => {
         this.store.modifyContextLimit(size)
-        this.printChatConfig()
     }
 
     modifyModel = async () => {
         await this.modifyLLMAndModel()
-        this.printChatConfig()
     }
 
     private modifyLLMAndModel = async () => {
@@ -311,17 +309,14 @@ export class ChatAction implements IChatAction {
 
     modifySystemPrompt = (prompt: string) => {
         this.store.modifySystemPrompt(prompt)
-        this.printChatConfig()
     }
 
     modifyWithContext = () => {
         this.store.modifyWithContext()
-        this.printChatConfig()
     }
 
     modifyWithMCP = () => {
         this.store.modifyWithMCP()
-        this.printChatConfig()
     }
 
     modifyScenario = async () => {
@@ -333,7 +328,6 @@ export class ChatAction implements IChatAction {
             })),
             (answer) => {
                 this.store.modifyScenario(temperature[answer])
-                this.printChatConfig()
             }
         )
     }
@@ -360,6 +354,9 @@ export class ChatAction implements IChatAction {
     }
 
     usefulTools = async () => {
+        if (isEmpty(this.mcps)) {
+            throw Error(promptMessage.mcpMissing)
+        }
         const tools = this.mcps.reduce(
             (arr, it) => {
                 return [
@@ -398,6 +395,13 @@ export class ChatAction implements IChatAction {
             throw Error(promptMessage.noEdit)
         }
         const contents = this.parsePresetMessageText(text)
+        if(contents.length === 1) {
+            const { user, assistant } = contents[0]
+            const { userPreset, assistantPreset } = promptMessage 
+            if(user.trim() === userPreset && assistant.trim() === assistantPreset) {
+                throw Error(promptMessage.noEdit)
+            }
+        }
         this.store.createPresetMessage(contents)
     }
 
@@ -416,9 +420,9 @@ export class ChatAction implements IChatAction {
             `[${userType()}]\n${user}\n\n[${assistantType()}]\n${assistant}\n`
         const presetMessages = this.store.selectPresetMessage()
         if (isEmpty(presetMessages)) {
+            const {userPreset, assistantPreset } = promptMessage
             const dfText = pairMessage(
-                '<user message content>',
-                '<assistant message content>'
+                userPreset, assistantPreset
             )
             return {
                 isDefault: true,

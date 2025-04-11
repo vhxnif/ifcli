@@ -6,7 +6,7 @@ export interface IChatAction {
     newChat: (name: string) => Promise<void>
     removeChat: () => Promise<void>
     ask: (param: AskContent) => Promise<void>
-    changeChat: () => void
+    changeChat: () => Promise<void>
     printChats: () => Promise<void>
     clearChatMessage: () => void
     printChatConfig: () => void

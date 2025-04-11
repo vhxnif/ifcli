@@ -10,5 +10,8 @@ export const promptMessage = {
     oneChatRemain: 'At least one chat must remain.',
     noEdit: 'No content was edited.',
     presetMsgMissing: 'No preset message is configured.',
-    cfParseErr: 'Configuration parsing error',
+    cfParseErr: 'Configuration parsing error.',
+    mcpMissing: 'MCP Server is not configured.',
+    userPreset: '<user message content>',
+    assistantPreset: '<assistant message content>',
 }
