@@ -2,22 +2,22 @@ import type { LLMMessage, LLMRole } from '../types/llm-types'
 import { color } from '../util/color-utils'
 
 const llmNotifyMessage = {
-    waiting: color.blue(
+    waiting: color.teal(
         '[Quantum Channel Opening :: Bending Space-Time Continuum...]'
     ),
-    analyzing: color.blue(
+    analyzing: color.yellow(
         '[Semantic Gravity Well Locked :: Decrypting Hyperstring Resonance...]'
     ),
-    thinking: color.blue(
+    thinking: color.mauve(
         '[Neural Matrix Active :: Traversing Knowledge Nebula...]'
     ),
-    rendering: color.blue(
+    rendering: color.pink(
         '[Holographic Interface Online :: Rendering Multidimensional Data Streams—*]'
     ),
-    error: color.blue(
+    error: color.red(
         '[Unknown Particle Storm Detected :: Rebooting Chrono-Sync Protocols...]'
     ),
-    completed: color.blue(
+    completed: color.green(
         '[Cognitive Sync Module Engaged :: Neural Latency Neutralized—*]'
     ),
 }

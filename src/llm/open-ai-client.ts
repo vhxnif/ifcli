@@ -9,8 +9,8 @@ import type {
     LLMStreamParam,
 } from '../types/llm-types'
 import MCPClient from '../types/mcp-client'
-import { llmNotifyMessage } from './llm-utils'
 import { StreamDisplay } from './stream-display'
+import { llmNotifyMessage } from './llm-utils'
 
 export class OpenAiClient implements ILLMClient {
     client: OpenAi
@@ -98,11 +98,14 @@ export class OpenAiClient implements ILLMClient {
                     tools,
                     messages,
                 })
-                .on('functionCall', () => {
+                .on('tool_calls.function.arguments.delta', () => {
                     display.change(llmNotifyMessage.analyzing)
                 })
-                .on('functionCallResult', () => {
-                    display.change(llmNotifyMessage.thinking)
+                .on('tool_calls.function.arguments.done', (it) => {
+                    display.toolCall(it.name, it.arguments)
+                })
+                .on('functionCallResult', (it) => {
+                    display.toolCallReult(it)
                 })
                 .on('content', (it) => {
                     display.contentShow(it)

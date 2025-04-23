@@ -2,10 +2,10 @@ import { type ChalkInstance } from 'chalk'
 import type OpenAI from 'openai'
 import type { LLMMessage, LLMResult } from '../types/llm-types'
 import { color } from '../util/color-utils'
-import { terminal } from '../util/platform-utils'
+import { print } from '../util/common-utils'
 import { llmNotifyMessage } from './llm-utils'
 import { OraShow } from './ora-show'
-import { print } from '../util/common-utils'
+import { SplitLine } from './split-line'
 
 export class StreamDisplay {
     private hasReasoningContent: boolean = false
@@ -16,6 +16,10 @@ export class StreamDisplay {
     private oraShow = new OraShow(llmNotifyMessage.waiting)
     private reasoning: string[] = []
     private assistant: string[] = []
+    private tools: string[] = []
+    private assistantSplit: SplitLine = new SplitLine({ title: "Assistant Content" })
+    private thinkSplit: SplitLine = new SplitLine({ title: "Reasoning" })
+
     constructor({
         userMessage,
         messageStore,
@@ -58,7 +62,23 @@ export class StreamDisplay {
 
     contentShow = (content: string) => {
         this.oraShow.stop()
+        this.assistantSplit.draw()
         this.textShow(content, this.assistant, color.mauve)
+    }
+
+    toolCall = (name: string, args: string) => {
+        this.oraShow.stop()
+        this.tools.push(`**name**\n${name}\n\n**request**\n${args}\n\n`)
+        new SplitLine({ title: name, multiPrint: true}).draw()
+        print(`\n${color.green(args)}\n`)
+        this.oraShow.start(llmNotifyMessage.thinking)
+    }
+
+    toolCallReult = (content: string) => {
+        this.oraShow.stop()
+        this.tools.push(`**result**\n${content}\n\n`)
+        print(`\n${color.blue(content)}\n`)
+        this.oraShow.start(llmNotifyMessage.rendering)
     }
 
     stop = async () => {
@@ -76,6 +96,7 @@ export class StreamDisplay {
 
     private think = (reasoning: string) => {
         this.oraShow.stop()
+        this.thinkSplit.draw()
         this.textShow(reasoning, this.reasoning, color.green)
     }
 
@@ -94,14 +115,13 @@ export class StreamDisplay {
         }
         this.oraShow.stop()
         this.thinkStopFlag = true
-        print(color.yellow(`\n${'='.repeat(terminal.column)}\n`))
     }
 
     private doStoreMessage() {
         this.messageStore({
             userContent: this.userMessage.content,
             assistantContent: this.content(this.assistant),
-            thinkingReasoning: this.content(this.reasoning),
+            thinkingReasoning: `${this.content(this.reasoning)}${this.content(this.tools)}`,
         })
     }
 
