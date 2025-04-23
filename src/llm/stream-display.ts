@@ -68,7 +68,7 @@ export class StreamDisplay {
 
     toolCall = (name: string, args: string) => {
         this.oraShow.stop()
-        this.tools.push(`**name**\n${name}\n\n**request**\n${args}\n\n`)
+        this.tools.push(`- **name**\n - ${name}\n\n- **request**\n - ${args}\n\n`)
         new SplitLine({ title: name, multiPrint: true}).draw()
         print(`\n${color.green(args)}\n`)
         this.oraShow.start(llmNotifyMessage.thinking)
@@ -76,7 +76,7 @@ export class StreamDisplay {
 
     toolCallReult = (content: string) => {
         this.oraShow.stop()
-        this.tools.push(`**result**\n${content}\n\n`)
+        this.tools.push(`- **result**\n - ${content}\n\n`)
         print(`\n${color.blue(content)}\n`)
         this.oraShow.start(llmNotifyMessage.rendering)
     }
