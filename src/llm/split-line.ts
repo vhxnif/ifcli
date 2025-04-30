@@ -7,11 +7,13 @@ export class SplitLine {
     private multiPrint: boolean 
     private title: string
     private splitter: string
+    private newLine: boolean
 
-    constructor({title, multiPrint = false, splitter = '-' } :{title: string, multiPrint?: boolean, splitter?: string}) {
+    constructor({title, multiPrint = false, splitter = '-', newLine = false} :{title: string, multiPrint?: boolean, splitter?: string, newLine?: boolean}) {
         this.title = title
         this.multiPrint = multiPrint
         this.splitter = splitter
+        this.newLine = newLine
     }
 
     private canPrint = () => {
@@ -26,7 +28,7 @@ export class SplitLine {
         const prefix = Math.floor(fillSize / 2)
         const suffix = fillSize - prefix
         const fill = (n: number) => color.pink(this.splitter.repeat(n))
-        return `${fill(prefix)}${color.red.bold(this.title)}${fill(suffix)}\n`
+        return `${this.newLine ? '\n' : ''}${fill(prefix)}${color.red.bold(this.title)}${fill(suffix)}\n`
     }
 
     draw = () => {

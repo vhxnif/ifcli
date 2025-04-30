@@ -79,7 +79,12 @@ const groupBy = <T, R>(arr: T[], key: (i: T) => R) => {
     }, new Map<R, T[]>())
 }
 
+const jsonformat = (jsonString: string) => {
+    return JSON.stringify(JSON.parse(jsonString), null, 4)
+}
+
 export {
+    jsonformat,
     exit,
     editor,
     isTextSame,

@@ -1,35 +1,37 @@
 import { type ChalkInstance } from 'chalk'
 import type OpenAI from 'openai'
-import type { LLMMessage, LLMResult } from '../types/llm-types'
+import type { LLMResultChunk } from '../types/llm-types'
 import { color } from '../util/color-utils'
-import { print } from '../util/common-utils'
+import { jsonformat, print } from '../util/common-utils'
 import { llmNotifyMessage } from './llm-utils'
 import { OraShow } from './ora-show'
 import { SplitLine } from './split-line'
 
-export class StreamDisplay {
+export class Display {
+    private beforeAssistantDraw: boolean = false
     private hasReasoningContent: boolean = false
     private lastChunk: string = ''
     private thinkStopFlag: boolean = false
-    private messageStore: (result: LLMResult) => void
-    private userMessage: LLMMessage
     private oraShow = new OraShow(llmNotifyMessage.waiting)
     private reasoning: string[] = []
     private assistant: string[] = []
     private tools: string[] = []
-    private assistantSplit: SplitLine = new SplitLine({ title: "Assistant Content" })
-    private thinkSplit: SplitLine = new SplitLine({ title: "Reasoning" })
+    private assistantSplit: SplitLine = new SplitLine({
+        title: 'Assistant Content',
+        newLine: true,
+    })
+    private thinkSplit: SplitLine = new SplitLine({ title: 'Reasoning' })
 
-    constructor({
-        userMessage,
-        messageStore,
-    }: {
-        userMessage: LLMMessage
-        messageStore: (result: LLMResult) => void
-    }) {
-        this.userMessage = userMessage
-        this.messageStore = messageStore
+    constructor() {
         this.oraShow.start()
+    }
+
+    result = (): LLMResultChunk => {
+        return {
+            tools: this.tools,
+            assistant: this.assistant,
+            reasoning: this.reasoning,
+        }
     }
 
     thinkingShow = (chunk: OpenAI.Chat.Completions.ChatCompletionChunk) => {
@@ -62,28 +64,36 @@ export class StreamDisplay {
 
     contentShow = (content: string) => {
         this.oraShow.stop()
-        this.assistantSplit.draw()
+        if (this.beforeAssistantDraw) {
+            this.assistantSplit.draw()
+        }
         this.textShow(content, this.assistant, color.mauve)
     }
 
     toolCall = (name: string, args: string) => {
         this.oraShow.stop()
-        this.tools.push(`- **name**\n - ${name}\n\n- **request**\n - ${args}\n\n`)
-        new SplitLine({ title: name, multiPrint: true}).draw()
-        print(`\n${color.green(args)}\n`)
+        const argsStr = jsonformat(args)
+        this.tools.push(
+            `- **name**\n - ${name}\n\n- **request**\n - ${argsStr}\n\n`
+        )
+        new SplitLine({ title: name, multiPrint: true }).draw()
+        this.beforeAssistantDraw = true
+        print(`${color.yellow.bold('Request:')}\n${color.green(argsStr)}\n\n`)
         this.oraShow.start(llmNotifyMessage.thinking)
     }
 
     toolCallReult = (content: string) => {
         this.oraShow.stop()
-        this.tools.push(`- **result**\n - ${content}\n\n`)
-        print(`\n${color.blue(content)}\n`)
+        const ct = jsonformat(content)
+        this.tools.push(`- **result**\n - ${ct}\n`)
+        this.beforeAssistantDraw = true
+        print(`${color.yellow.bold('Response:')}\n${color.blue(ct)}\n`)
         this.oraShow.start(llmNotifyMessage.rendering)
     }
 
-    stop = async () => {
+    stop = () => {
         this.oraShow.stop()
-        this.doStoreMessage()
+        return this
     }
 
     change = (str: string) => {
@@ -97,6 +107,7 @@ export class StreamDisplay {
     private think = (reasoning: string) => {
         this.oraShow.stop()
         this.thinkSplit.draw()
+        this.beforeAssistantDraw = true
         this.textShow(reasoning, this.reasoning, color.green)
     }
 
@@ -115,17 +126,5 @@ export class StreamDisplay {
         }
         this.oraShow.stop()
         this.thinkStopFlag = true
-    }
-
-    private doStoreMessage() {
-        this.messageStore({
-            userContent: this.userMessage.content,
-            assistantContent: this.content(this.assistant),
-            thinkingReasoning: `${this.content(this.reasoning)}${this.content(this.tools)}`,
-        })
-    }
-
-    private content(arr: string[]) {
-        return arr.join('')
     }
 }

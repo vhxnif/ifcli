@@ -13,10 +13,7 @@ export class OraShow {
                 interval: 200,
             },
         })
-
     }
-
-
 
     start = (msg?: string) => {
         if(this.isStop) {

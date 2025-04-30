@@ -52,6 +52,8 @@ ifcli chat with LLM
 Options:
   -V, --version           output the version number
   -s, --setting           ifcli setting edit
+  -t, --server-test       test mcp server
+  -l, --list-mcp          list mcp server
   -h, --help              display help for command
 
 Commands:
@@ -68,10 +70,12 @@ Commands:
 ```
 ### AppSetting
 
+Turn `generalSetting.interactive` off if Bash shows display errors. On Nushell (Windows), you must disable it.
+
 ```json
 {
   "generalSetting": {
-    "interactive": true // Turn this off if Bash shows display errors. On Nushell (Windows), you must disable it.
+    "interactive": true 
   },
   "mcpServers": [
     {
@@ -121,7 +125,6 @@ Commands:
     }
   ]
 }
-
 ```
 
 **General Setting**

@@ -1,23 +1,21 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { AskContent, IChatAction } from '../types/action-types'
 import { temperature } from '../types/constant'
 import type {
-    ILLMClient,
-    LLMMessage,
-    LLMParam,
-    LLMResult,
-    LLMStreamParam,
+    ILLMClient
 } from '../types/llm-types'
 import MCPClient from '../types/mcp-client'
 
 import type { TableUserConfig } from 'table'
-import { assistant, system, user } from '../llm/llm-utils'
+import type { GeneralSetting } from '../config/app-setting'
+import { promptMessage } from '../config/prompt-message'
+import { askFlow } from '../llm/ask-flow'
 import {
     Chat,
     ChatMessage,
     type ChatConfig,
     type IChatStore,
-    type MessageContent,
-    type PresetMessageContent,
+    type PresetMessageContent
 } from '../types/store-types'
 import { color, display, wrapAnsi } from '../util/color-utils'
 import {
@@ -27,14 +25,11 @@ import {
     isEmpty,
     isTextSame,
     print,
-    println,
-    uuid,
+    println
 } from '../util/common-utils'
 import { input, select, selectRun, type Choice } from '../util/inquirer-utils'
 import { terminal } from '../util/platform-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
-import type { GeneralSetting } from '../config/app-setting'
-import { promptMessage } from '../config/prompt-message'
 
 export class ChatAction implements IChatAction {
     private clientMap: Map<string, ILLMClient> = new Map()
@@ -124,26 +119,13 @@ export class ChatAction implements IChatAction {
     ask = async ({ content, chatName }: AskContent) => {
         const f = async (cf: ChatConfig) => {
             const client = await this.client(cf.llmType)
-            const llmParam = this.llmParam(content, cf)
-            const streamParam = {
-                ...llmParam,
-                messageStore: (v) => this.storeMessage(cf.chatId, v),
-            } as LLMStreamParam
-            const streamRun = async () => await client.stream(streamParam)
-            if (!cf.withMCP) {
-                await streamRun()
-                return
-            }
-            if (isEmpty(this.mcps)) {
-                await streamRun()
-                return
-            }
-            const toolsRun = async (mcpClients: MCPClient[]) =>
-                await client.callWithTools({
-                    ...streamParam,
-                    mcpClients: mcpClients,
-                })
-            await toolsRun(this.mcps)
+            await askFlow({
+                client: client.openai,
+                store: this.store,
+                config: cf,
+                userContent: content,
+                mcps: this.mcps
+            })
         }
         if (chatName) {
             const chat = this.store.queryChat(chatName)
@@ -155,9 +137,10 @@ export class ChatAction implements IChatAction {
             return
         }
         await f(this.store.currentChatConfig())
+
     }
 
-    changeChat = async () =>
+   changeChat = async () =>
         await this.selectChatRun(
             'Select Chat:',
             this.store.chats().filter(it => !it.select),
@@ -353,20 +336,41 @@ export class ChatAction implements IChatAction {
         )
     }
 
-    usefulTools = async () => {
+    tools = async () => {
         if (isEmpty(this.mcps)) {
             throw Error(promptMessage.mcpMissing)
         }
-        const tools = this.mcps.reduce(
-            (arr, it) => {
-                return [
-                    ...arr,
-                    [it.name, it.version].map((s) => display.tip(s)),
-                ]
-            },
-            [['Name', 'Version'].map((it) => display.caution(it))]
+        const tools = await Promise.all(this.mcps.map(async it => {
+                let health = display.tip(`[✓]`) 
+                try {
+                    await it.connect()
+                } catch (e: unknown) { 
+                    health = display.warning(`[✗]`)
+                 } finally{
+                    await it.close()
+                }
+            return ([display.tip(it.name), display.tip(it.version), health])
+        }))
+        printTable([['Name', 'Version', 'Health'].map((it) => display.caution(it)), ...tools], tableConfig({ cols: [1, 1, 1] }))
+    }
+
+    testTool = async () => {
+        const f = (m: MCPClient) => `${m.name}/${m.version}`
+        await selectRun(
+            'Select Server',
+            this.mcps.map(it => ({ name: f(it), value: f(it)})),
+            async (v) => {
+                const m = this.mcps.find(it => v === f(it))!
+                try {
+                    await m.connect()
+                    const res = await m.listTools()
+                    const tools = res.tools.map(it => ([display.tip(it.name), it.description]))
+                    printTable([['Name', 'Description'].map((it) => display.caution(it)), ...tools], tableConfig({ cols: [1, 3], alignment: "left" }))
+                } finally {
+                    await m.close()
+                }
+            }
         )
-        printTable(tools, tableConfig({ cols: [1, 1] }))
     }
 
     prompt = () => {
@@ -526,51 +530,6 @@ export class ChatAction implements IChatAction {
         )
     }
 
-    private messages = (
-        content: string,
-        prompt: string,
-        withContext: boolean
-    ) => {
-        const context = withContext
-            ? this.store.contextMessage().map((it) => {
-                  if (it.role === 'user') {
-                      return user(it.content)
-                  }
-                  return assistant(it.content)
-              })
-            : []
-        const presetMessage = this.store.selectPresetMessage().flatMap(
-            (it) =>
-                [
-                    { role: 'user', content: it.user },
-                    { role: 'assistant', content: it.assistant },
-                ] as LLMMessage[]
-        )
-        const msg = [...presetMessage, ...context, user(content)]
-        if (isEmpty(prompt)) {
-            return msg
-        }
-        return [system(prompt), ...msg]
-    }
-
-    private storeMessage = (chatId: string, result: LLMResult): void => {
-        const { userContent, assistantContent, thinkingReasoning } = result
-        const pairKey = uuid()
-        const messages: MessageContent[] = [
-            { chatId, role: 'user', content: userContent, pairKey },
-            { chatId, role: 'assistant', content: assistantContent, pairKey },
-        ]
-        if (thinkingReasoning) {
-            messages.push({
-                chatId,
-                role: 'reasoning',
-                content: thinkingReasoning,
-                pairKey,
-            })
-        }
-        this.store.saveMessage(messages)
-    }
-
     private sortedChats = async (): Promise<Chat[]> => {
         const cts = this.store.chats()
         if (isEmpty(cts)) {
@@ -585,14 +544,4 @@ export class ChatAction implements IChatAction {
         return [st!, ...oths]
     }
 
-    private llmParam = (userMessage: string, config: ChatConfig) => {
-        const { sysPrompt, withContext, model, scenario } = config
-        const messages = this.messages(userMessage, sysPrompt, withContext)
-        return {
-            userMessage: user(userMessage),
-            messages,
-            model,
-            temperature: scenario,
-        } as LLMParam
-    }
 }
