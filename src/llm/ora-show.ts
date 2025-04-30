@@ -3,14 +3,26 @@ import ora from 'ora'
 
 export class OraShow {
     private spinner: Ora
-    private isStop: boolean = false
+    private isStop: boolean = true
 
     constructor(initMessage: string) {
-        this.spinner = ora(initMessage)
+        this.spinner = ora({
+            text: initMessage,
+            spinner: {
+                frames: ['▁','▂','▃', '▄','▅', '▆', '▇', '█', '▇', '▆', '▅', '▄', '▃', '▂'],
+                interval: 200,
+            },
+        })
     }
 
-    start = () => {
-        this.inProgressRun(() => this.spinner.start())
+    start = (msg?: string) => {
+        if(this.isStop) {
+            this.spinner.start()
+            this.isStop = false
+            if(msg) {
+               this.show(msg) 
+            }
+        }
     }
 
     stop = () => {

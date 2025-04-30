@@ -20,11 +20,11 @@ export type Setting = {
     llmSettings: LLMSetting[]
 }
 
-export const version = '0.1.9'
+export const version = '0.1.10'
 
 const defaultGeneralSetting: GeneralSetting = {
-    interactive: true
-} 
+    interactive: true,
+}
 
 export const defaultLLMSettings: LLMSetting[] = [
     {
@@ -74,7 +74,7 @@ export class AppSettingParse {
 
     private generalSetting = (): GeneralSetting => {
         const st = this.appSetting.generalSetting
-        if(isEmpty(st)) {
+        if (isEmpty(st)) {
             return defaultGeneralSetting
         }
         return JSON.parse(st) as GeneralSetting

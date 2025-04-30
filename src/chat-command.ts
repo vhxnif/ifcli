@@ -23,9 +23,18 @@ program
     .description('ifcli chat with LLM')
     .version(`${version}`)
     .option('-s, --setting', 'ifcli setting edit')
+    .option('-t, --server-test', 'test mcp server')
+    .option('-l, --list-mcp', 'list mcp server')
     .action(async (option) => {
-        if (option.setting) {
+        const {setting, serverTest, listMcp} = option
+        if (setting) {
             await settingAction.setting()
+        }
+        if (serverTest) {
+            await chatAction.testTool()
+        }
+        if(listMcp) {
+            await chatAction.tools()
         }
     })
 
@@ -152,10 +161,8 @@ program
     .option('-o, --with-context', 'change with-context', false)
     .option('-p, --with-mcp', 'change with-mcp', false)
     .option('-u, --use-scenario', 'use scenario')
-    .option('-t, --tools', 'list useful tools')
     .action(async (option) => {
-        const { contextSize, model, withContext, withMcp, useScenario, tools } =
-            option
+        const { contextSize, model, withContext, withMcp, useScenario } = option
         if (contextSize) {
             chatAction.modifyContextSize(Number(contextSize))
         }
@@ -170,9 +177,6 @@ program
         }
         if (useScenario) {
             await chatAction.modifyScenario()
-        }
-        if (tools) {
-            await chatAction.usefulTools()
         }
         chatAction.printChatConfig()
     })
