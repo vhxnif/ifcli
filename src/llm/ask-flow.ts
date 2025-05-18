@@ -185,7 +185,6 @@ class ToolsCallNode extends Node<AskShare> {
             return display.stop().result()
         } catch (err: unknown) {
             display.error()
-            console.log(err)
             throw err
         }
     }
