@@ -148,10 +148,14 @@ class ToolsCallNode extends Node<AskShare> {
 
     override async exec(prepRes: LLMToolsCallParam): Promise<LLMResultChunk> {
         const display = new Display()
+        const { model, temperature, tools, messages } = prepRes
         try {
             const runner = this.client.beta.chat.completions
                 .runTools({
-                    ...prepRes,
+                    model,
+                    temperature,
+                    tools,
+                    messages,
                     stream: true,
                 })
                 .on('tool_calls.function.arguments.delta', () => {

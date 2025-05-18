@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type { AskContent, IChatAction } from '../types/action-types'
 import { temperature } from '../types/constant'
-import type {
-    ILLMClient
-} from '../types/llm-types'
+import type { ILLMClient } from '../types/llm-types'
 import MCPClient from '../types/mcp-client'
 
 import type { TableUserConfig } from 'table'
@@ -15,7 +13,7 @@ import {
     ChatMessage,
     type ChatConfig,
     type IChatStore,
-    type PresetMessageContent
+    type PresetMessageContent,
 } from '../types/store-types'
 import { color, display, wrapAnsi } from '../util/color-utils'
 import {
@@ -25,7 +23,7 @@ import {
     isEmpty,
     isTextSame,
     print,
-    println
+    println,
 } from '../util/common-utils'
 import { input, select, selectRun, type Choice } from '../util/inquirer-utils'
 import { terminal } from '../util/platform-utils'
@@ -124,7 +122,7 @@ export class ChatAction implements IChatAction {
                 store: this.store,
                 config: cf,
                 userContent: content,
-                mcps: this.mcps
+                mcps: this.mcps,
             })
         }
         if (chatName) {
@@ -137,13 +135,12 @@ export class ChatAction implements IChatAction {
             return
         }
         await f(this.store.currentChatConfig())
-
     }
 
-   changeChat = async () =>
+    changeChat = async () =>
         await this.selectChatRun(
             'Select Chat:',
-            this.store.chats().filter(it => !it.select),
+            this.store.chats().filter((it) => !it.select),
             this.store.changeChat
         )
 
@@ -197,7 +194,7 @@ export class ChatAction implements IChatAction {
                     wrapAnsi(
                         display.note,
                         isEmpty(cf.sysPrompt)
-                            ? promptMessage.systemPromptMissing 
+                            ? promptMessage.systemPromptMissing
                             : cf.sysPrompt,
                         ext.colNum
                     ),
@@ -340,32 +337,51 @@ export class ChatAction implements IChatAction {
         if (isEmpty(this.mcps)) {
             throw Error(promptMessage.mcpMissing)
         }
-        const tools = await Promise.all(this.mcps.map(async it => {
-                let health = display.tip(`[✓]`) 
+        const tools = await Promise.all(
+            this.mcps.map(async (it) => {
+                let health = display.tip(`[✓]`)
                 try {
                     await it.connect()
-                } catch (e: unknown) { 
+                } catch (e: unknown) {
                     health = display.warning(`[✗]`)
-                 } finally{
+                } finally {
                     await it.close()
                 }
-            return ([display.tip(it.name), display.tip(it.version), health])
-        }))
-        printTable([['Name', 'Version', 'Health'].map((it) => display.caution(it)), ...tools], tableConfig({ cols: [1, 1, 1] }))
+                return [display.tip(it.name), display.tip(it.version), health]
+            })
+        )
+        printTable(
+            [
+                ['Name', 'Version', 'Health'].map((it) => display.caution(it)),
+                ...tools,
+            ],
+            tableConfig({ cols: [1, 1, 1] })
+        )
     }
 
     testTool = async () => {
         const f = (m: MCPClient) => `${m.name}/${m.version}`
         await selectRun(
             'Select Server',
-            this.mcps.map(it => ({ name: f(it), value: f(it)})),
+            this.mcps.map((it) => ({ name: f(it), value: f(it) })),
             async (v) => {
-                const m = this.mcps.find(it => v === f(it))!
+                const m = this.mcps.find((it) => v === f(it))!
                 try {
                     await m.connect()
                     const res = await m.listTools()
-                    const tools = res.tools.map(it => ([display.tip(it.name), it.description]))
-                    printTable([['Name', 'Description'].map((it) => display.caution(it)), ...tools], tableConfig({ cols: [1, 3], alignment: "left" }))
+                    const tools = res.tools.map((it) => [
+                        display.tip(it.name),
+                        it.description,
+                    ])
+                    printTable(
+                        [
+                            ['Name', 'Description'].map((it) =>
+                                display.caution(it)
+                            ),
+                            ...tools,
+                        ],
+                        tableConfig({ cols: [1, 3], alignment: 'left' })
+                    )
                 } finally {
                     await m.close()
                 }
@@ -399,10 +415,13 @@ export class ChatAction implements IChatAction {
             throw Error(promptMessage.noEdit)
         }
         const contents = this.parsePresetMessageText(text)
-        if(contents.length === 1) {
+        if (contents.length === 1) {
             const { user, assistant } = contents[0]
-            const { userPreset, assistantPreset } = promptMessage 
-            if(user.trim() === userPreset && assistant.trim() === assistantPreset) {
+            const { userPreset, assistantPreset } = promptMessage
+            if (
+                user.trim() === userPreset &&
+                assistant.trim() === assistantPreset
+            ) {
                 throw Error(promptMessage.noEdit)
             }
         }
@@ -424,10 +443,8 @@ export class ChatAction implements IChatAction {
             `[${userType()}]\n${user}\n\n[${assistantType()}]\n${assistant}\n`
         const presetMessages = this.store.selectPresetMessage()
         if (isEmpty(presetMessages)) {
-            const {userPreset, assistantPreset } = promptMessage
-            const dfText = pairMessage(
-                userPreset, assistantPreset
-            )
+            const { userPreset, assistantPreset } = promptMessage
+            const dfText = pairMessage(userPreset, assistantPreset)
             return {
                 isDefault: true,
                 content: dfText,
@@ -543,5 +560,4 @@ export class ChatAction implements IChatAction {
         ])
         return [st!, ...oths]
     }
-
 }
