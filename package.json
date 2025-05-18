@@ -1,6 +1,6 @@
 {
     "name": "@vhxnif/ifcli",
-    "version": "0.1.10",
+    "version": "0.1.11",
     "description": "Chat with AI via CLI",
     "keywords": [
         "deepseek",
@@ -51,7 +51,7 @@
         "@inquirer/core": "^10.1.9",
         "@inquirer/input": "^4.1.8",
         "@inquirer/select": "^4.1.0",
-        "@modelcontextprotocol/sdk": "^1.8.0",
+        "@modelcontextprotocol/sdk": "^1.11.4",
         "chalk": "^5.4.1",
         "commander": "^13.1.0",
         "openai": "^4.89.1",
