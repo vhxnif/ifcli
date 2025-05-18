@@ -28,7 +28,7 @@ export class SplitLine {
         const prefix = Math.floor(fillSize / 2)
         const suffix = fillSize - prefix
         const fill = (n: number) => color.pink(this.splitter.repeat(n))
-        return `${this.newLine ? '\n' : ''}${fill(prefix)}${color.red.bold(this.title)}${fill(suffix)}\n`
+        return `${this.newLine ? '\n' : ''}${fill(prefix -1 )}[${color.green.bold(this.title)}]${fill(suffix -1)}\n`
     }
 
     draw = () => {

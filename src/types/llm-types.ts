@@ -30,7 +30,7 @@ export type LLMResultChunk = {
 export type LLMStreamCallParam = LLMParam
 
 export type LLMToolsCallParam = LLMParam & {
-    tools: RunnableToolFunctionWithoutParse[] 
+    tools: { id: string, name: string, f: RunnableToolFunctionWithoutParse}[]
     mcps: MCPClient[]
 }
 

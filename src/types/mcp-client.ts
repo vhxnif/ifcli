@@ -8,10 +8,14 @@ import {
     StdioClientTransport,
     type StdioServerParameters,
 } from '@modelcontextprotocol/sdk/client/stdio.js'
-import { StreamableHTTPClientTransport, type StreamableHTTPClientTransportOptions } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+import {
+    StreamableHTTPClientTransport,
+    type StreamableHTTPClientTransportOptions,
+} from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js'
 import type { RunnableToolFunction } from 'openai/lib/RunnableFunction.mjs'
+import { uuid } from '../util/common-utils'
 
 export type MCPConnectType = 'streamable' | 'sse' | 'stdio'
 
@@ -35,7 +39,7 @@ export interface StdioConfig extends MCPConfig {
 export interface StreamableConfig extends MCPConfig {
     type: 'streamable'
     url: string
-    opts?: StreamableHTTPClientTransportOptions 
+    opts?: StreamableHTTPClientTransportOptions
 }
 
 export default class MCPClient {
@@ -65,8 +69,11 @@ export default class MCPClient {
         }
         const { url, opts } = config as SSEConfig
         if (config.type === 'streamable') {
-            this.transport = new StreamableHTTPClientTransport(new URL(url), opts)
-            return 
+            this.transport = new StreamableHTTPClientTransport(
+                new URL(url),
+                opts
+            )
+            return
         }
         this.transport = new SSEClientTransport(new URL(url), opts)
     }
@@ -77,25 +84,29 @@ export default class MCPClient {
 
     tools = async () =>
         await this.listTools().then((res) =>
-            res.tools.map(
-                (t) =>
-                    ({
-                        type: 'function',
-                        function: {
-                            name: t.name,
-                            description: t.description,
-                            parameters: {
-                                ...t.inputSchema,
-                            },
-                            function: async (args: any) =>
-                                await this.callTool(t.name, args),
-                            parse: JSON.parse,
+            res.tools.map((t) => {
+                const nameId = uuid()
+                const f = {
+                    type: 'function',
+                    function: {
+                        name: nameId,
+                        description: t.description,
+                        parameters: {
+                            ...t.inputSchema,
                         },
-                    } as RunnableToolFunction<any>)
-            )
+                        function: async (args: any) => await this.callTool(t.name, args),
+                        parse: JSON.parse,
+                    },
+                } as RunnableToolFunction<any>
+                return {
+                    id: nameId,
+                    name: `${this.name}/${this.version}-${t.name}`,
+                    f: f,
+                }
+            })
         )
 
-    callTool = async (name: string, args: any) =>
+    callTool = async (name: string, args: any) => 
         await this.client.callTool(
             { name, arguments: { ...args } },
             CallToolResultSchema
