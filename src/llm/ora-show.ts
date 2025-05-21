@@ -1,3 +1,4 @@
+import { sleep } from 'bun'
 import type { Ora } from 'ora'
 import ora from 'ora'
 
@@ -9,18 +10,32 @@ export class OraShow {
         this.spinner = ora({
             text: initMessage,
             spinner: {
-                frames: ['▁','▂','▃', '▄','▅', '▆', '▇', '█', '▇', '▆', '▅', '▄', '▃', '▂'],
-                interval: 200,
+                frames: [
+                    '▁',
+                    '▂',
+                    '▃',
+                    '▄',
+                    '▅',
+                    '▆',
+                    '▇',
+                    '█',
+                    '▇',
+                    '▆',
+                    '▅',
+                    '▄',
+                    '▃',
+                    '▂',
+                ],
             },
         })
     }
 
     start = (msg?: string) => {
-        if(this.isStop) {
+        if (this.isStop) {
             this.spinner.start()
             this.isStop = false
-            if(msg) {
-               this.show(msg) 
+            if (msg) {
+                this.show(msg)
             }
         }
     }
@@ -29,6 +44,7 @@ export class OraShow {
         this.inProgressRun(() => {
             this.spinner.stop()
             this.isStop = true
+            sleep(100)
         })
     }
 

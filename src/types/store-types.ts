@@ -60,7 +60,7 @@ export class AppSetting {
 
 export type MessageContent = {
     chatId: string
-    role: 'user' | 'assistant' | 'reasoning'
+    role: 'user' | 'assistant' | 'reasoning' | 'toolscall'
     content: string
     pairKey: string
 }

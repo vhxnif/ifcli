@@ -2,8 +2,8 @@
 import { Command } from '@commander-js/extra-typings'
 import { chatAction, settingAction } from './app-context'
 import { version } from './config/app-setting'
-import { editor, error, stdin } from './util/common-utils'
 import { color } from './util/color-utils'
+import { editor, error, stdin } from './util/common-utils'
 
 const program = new Command()
 
@@ -15,26 +15,30 @@ program.configureHelp({
     styleOptionText: (str) => color.green(str),
     styleArgumentText: (str) => color.pink(str),
     styleSubcommandText: (str) => color.sapphire.italic(str),
-    styleOptionTerm: (str) => color.mauve.italic(str)
+    styleOptionTerm: (str) => color.mauve.italic(str),
 })
 
 program
-    .name('ifct')
+    .name('ifcli')
     .description('ifcli chat with LLM')
     .version(`${version}`)
-    .option('-s, --setting', 'ifcli setting edit')
-    .option('-t, --server-test', 'test mcp server')
-    .option('-l, --list-mcp', 'list mcp server')
+    .option('--setting', 'ifcli setting edit')
+    .option('--server-test', 'test mcp server')
+    .option('--ls-mcp', 'list mcp server')
+    .option('--theme', 'switch theme. default: violet_tides')
     .action(async (option) => {
-        const {setting, serverTest, listMcp} = option
+        const { setting, serverTest, lsMcp, theme } = option
         if (setting) {
             await settingAction.setting()
         }
         if (serverTest) {
             await chatAction.testTool()
         }
-        if(listMcp) {
+        if (lsMcp) {
             await chatAction.tools()
+        }
+        if (theme) {
+            await settingAction.theme()
         }
     })
 
@@ -47,13 +51,18 @@ program
 program
     .command('ask')
     .description('chat with AI')
+    .option('-s, --sync-call', 'sync call')
     .option('-c, --chat-name <string>', 'ask with other chat')
     .option('-e, --edit', 'use editor')
     .argument('[string]')
     .action(async (content, option) => {
-        const { chatName, edit } = option
+        const { chatName, edit, syncCall } = option
         const ask = async (ct: string) =>
-            await chatAction.ask({ content: ct, chatName })
+            await chatAction.ask({
+                content: ct,
+                chatName,
+                noStream: syncCall ? true : false,
+            })
         if (content) {
             await ask(content)
             return
@@ -141,7 +150,7 @@ program
     .option('-e, --edit', 'edit preset message')
     .option('-c, --clear', 'clear preset message')
     .action(async (option) => {
-        const {edit, clear} = option
+        const { edit, clear } = option
         if (clear) {
             chatAction.clearPresetMessage()
             return
@@ -187,9 +196,7 @@ program
     .description('clear the current chat message')
     .action(() => chatAction.clearChatMessage())
 
-program
-    .parseAsync()
-    .catch((e: unknown) => {
-        const { message } = e as Error
-        error(message)
-    })
+program.parseAsync().catch((e: unknown) => {
+    const { message } = e as Error
+    error(message)
+})

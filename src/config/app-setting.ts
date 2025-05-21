@@ -11,7 +11,7 @@ export type LLMSetting = {
 }
 
 export type GeneralSetting = {
-    interactive: boolean
+    theme: string 
 }
 
 export type Setting = {
@@ -20,10 +20,10 @@ export type Setting = {
     llmSettings: LLMSetting[]
 }
 
-export const version = '0.1.11'
+export const version = '0.1.12'
 
 const defaultGeneralSetting: GeneralSetting = {
-    interactive: true,
+    theme: `violet_tides`,
 }
 
 export const defaultLLMSettings: LLMSetting[] = [
@@ -72,7 +72,7 @@ export class AppSettingParse {
         return JSON.stringify(this.setting(), null, 2)
     }
 
-    private generalSetting = (): GeneralSetting => {
+    generalSetting = (): GeneralSetting => {
         const st = this.appSetting.generalSetting
         if (isEmpty(st)) {
             return defaultGeneralSetting
@@ -80,7 +80,7 @@ export class AppSettingParse {
         return JSON.parse(st) as GeneralSetting
     }
 
-    private mcpServers = (): MCPConfig[] => {
+    mcpServers = (): MCPConfig[] => {
         const mcpServerJson = this.appSetting.mcpServer
         if (isEmpty(mcpServerJson)) {
             return []
@@ -88,7 +88,7 @@ export class AppSettingParse {
         return JSON.parse(mcpServerJson) as MCPConfig[]
     }
 
-    private llmSettings = (withoutDefault: boolean = false): LLMSetting[] => {
+    llmSettings = (withoutDefault: boolean = false): LLMSetting[] => {
         const llmSettingJosn = this.appSetting.llmSetting
         if (isEmpty(llmSettingJosn)) {
             return defaultLLMSettings
@@ -109,12 +109,14 @@ export class AppSettingParse {
 
     editParse = (str: string): AppSettingContent | undefined => {
         try {
-            const st = JSON.parse(str) as Setting
+            const { generalSetting, mcpServers, llmSettings } = JSON.parse(
+                str
+            ) as Setting
             return {
-                version: this.appSetting.version,
-                generalSetting: this.generalSettingParse(st),
-                mcpServer: this.mcpServerParse(st),
-                llmSetting: this.llmSettingParse(st),
+                version,
+                generalSetting: this.generalSettingParse(generalSetting),
+                mcpServer: this.mcpServerParse(mcpServers),
+                llmSetting: this.llmSettingParse(llmSettings),
             } as AppSettingContent
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e: unknown) {
@@ -123,23 +125,23 @@ export class AppSettingParse {
         }
     }
 
-    private generalSettingParse = (st: Setting): string => {
-        if (!st.generalSetting) {
+    generalSettingParse = (generalSetting: GeneralSetting): string => {
+        if (!generalSetting) {
             return JSON.stringify(defaultGeneralSetting)
         }
-        return JSON.stringify(st.generalSetting)
+        return JSON.stringify(generalSetting)
     }
 
-    private mcpServerParse = (st: Setting): string => {
-        if (!st.mcpServers) {
+    mcpServerParse = (mcpServers: MCPConfig[]): string => {
+        if (!mcpServers) {
             return JSON.stringify([])
         }
-        return JSON.stringify(st.mcpServers)
+        return JSON.stringify(mcpServers)
     }
 
-    private llmSettingParse = (st: Setting): string => {
+    llmSettingParse = (llmSettings: LLMSetting[]): string => {
         return JSON.stringify(
-            st.llmSettings.filter((it) => {
+            llmSettings.filter((it) => {
                 if (it.name === 'deepseek') {
                     return !isEmpty(it.apiKey)
                 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import path from 'path'
 import { env, tmpPath } from './platform-utils'
 import { color } from './color-utils'
@@ -80,7 +81,11 @@ const groupBy = <T, R>(arr: T[], key: (i: T) => R) => {
 }
 
 const jsonformat = (jsonString: string) => {
-    return JSON.stringify(JSON.parse(jsonString), null, 4)
+    try {
+        return JSON.stringify(JSON.parse(jsonString), null, 4)
+    } catch (err: unknown) {
+        return jsonString
+    }
 }
 
 export {
