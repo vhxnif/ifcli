@@ -28,7 +28,7 @@
         "bun": ">=1.2.6"
     },
     "bin": {
-        "ifct": "build/chat-command.js"
+        "ifcli": "build/chat-command.js"
     },
     "scripts": {
         "build": "bun build ./src/chat-command.ts --outdir ./build --target bun --minify"
