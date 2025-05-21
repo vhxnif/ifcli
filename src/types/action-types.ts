@@ -1,6 +1,7 @@
 export type AskContent = {
     content: string
     chatName?: string
+    noStream?: boolean
 }
 export interface IChatAction {
     newChat: (name: string) => Promise<void>
@@ -16,12 +17,12 @@ export interface IChatAction {
     modifySystemPrompt: (prompt: string) => void
     modifyWithContext: () => void
     modifyWithMCP: () => void
-    modifyScenario: () => Promise<void> 
+    modifyScenario: () => Promise<void>
     publishPrompt: () => Promise<void>
     selectPrompt: (name: string) => Promise<void>
     tools: () => Promise<void>
     testTool: () => Promise<void>
-    
+
     prompt: () => string
     editPresetMessage: () => Promise<void>
     clearPresetMessage: () => void
@@ -30,4 +31,5 @@ export interface IChatAction {
 
 export interface ISettingAction {
     setting: () => Promise<void>
+    theme: () => Promise<void>
 }

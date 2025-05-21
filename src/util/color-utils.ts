@@ -30,7 +30,6 @@ const color = {
     crust: hex('#11111B'),
 }
 
-
 // ---- display ---- //
 const display = {
     note: color.sky,
@@ -68,9 +67,4 @@ const wrapAnsi = (c: ChalkInstance, str: string, width: number) => {
     f(strArr, str)
     return strArr.map((it) => c(it)).join('\n')
 }
-export {
-    color,
-    style,
-    display,
-    wrapAnsi,
-}
+export { color, style, display, wrapAnsi, hex }

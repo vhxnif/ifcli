@@ -4,11 +4,11 @@ Chat with AI via CLI.
 
 **Features:**
 
-- System prompt settings and management.
-- Support preset message settings.
-- History chat record management and viewing.
-- MCP(tools) Supported.
-- Supports diverse gameplay with `alias`.
+-   System prompt settings and management.
+-   Support preset message settings.
+-   History chat record management and viewing.
+-   MCP(tools) Supported.
+-   Supports diverse gameplay with `alias`.
 
 ## Install
 
@@ -28,9 +28,9 @@ bun install && bun run build && bun link
 
 ## Config
 
-To configure various application settings using the `ifct -s` command.**Please configure the large model settings before use.**
+To configure various application settings using the `ifcli -s` command.**Please configure the large model settings before use.**
 
-To use MCP Server, you must first configure the relevant information and enable MCP functionality for the current chat session `ifct cf -p`.
+To use MCP Server, you must first configure the relevant information and enable MCP functionality for the current chat session `ifcli cf -p`.
 
 The `EDITOR` environment variable must be configured to enable configuration editing and related system functions.If not configured, `vim` will be used as the default editor.
 
@@ -40,20 +40,21 @@ The `EDITOR` environment variable must be configured to enable configuration edi
 
 **macOS/Linux:** They are located in $HOME/.config/ifcli.
 
-Every release includes a version-specific data file (ifcli_\<version\>.sqlite). You will need to handle data migration separately.
+Every release includes a version-specific data file (ifcli\_\<version\>.sqlite). You will need to handle data migration separately.
 
 ## Command
 
 ```bash
-Usage: ifct [options] [command]
+Usage: ifcli [options] [command]
 
 ifcli chat with LLM
 
 Options:
   -V, --version           output the version number
-  -s, --setting           ifcli setting edit
-  -t, --server-test       test mcp server
-  -l, --list-mcp          list mcp server
+  --setting               ifcli setting edit
+  --server-test           test mcp server
+  --ls-mcp                list mcp server
+  --theme                 switch theme. default: ethereal_golw
   -h, --help              display help for command
 
 Commands:
@@ -68,103 +69,119 @@ Commands:
   config|cf [options]     manage chat config
   clear|cl                clear the current chat message
 ```
-### AppSetting
 
-Turn `generalSetting.interactive` off if Bash shows display errors. On Nushell (Windows), you must disable it.
+### AppSetting
 
 ```json
 {
-  "generalSetting": {
-    "interactive": true 
-  },
-  "mcpServers": [
-    {
-      "name": "weather",
-      "version": "v1",
-      "type": "sse",
-      "url": "http://localhost:3000/sse"
+    "generalSetting": {
+        "theme": "ethereal_glow"
     },
-    {
-      "name": "weather",
-      "version": "v2",
-      "type": "stdio",
-      "params": {
-        "command": "bun",
-        "args": [
-          "run",
-          "/Users/chen/workspace/weather-mcp/src/mcp/stdio-server.ts"
-        ]
-      }
-    }
-  ],
-  "llmSettings": [
-    {
-      "name": "deepseek",
-      "baseUrl": "https://api.deepseek.com",
-      "apiKey": "<your deepseek api key>",
-      "models": [
-        "deepseek-chat",
-        "deepseek-reasoner"
-      ]
-    },
-    {
-      "name": "ollama",
-      "baseUrl": "http://localhost:11434/v1/",
-      "apiKey": "",
-      "models": [
-        "gemma3:latest"
-      ]
-    },
-    {
-      "name": "openai",
-      "baseUrl": "https://api.openai.com/v1",
-      "apiKey": "<your openai key>",
-      "models": [
-        "gpt-4o"
-      ]
-    }
-  ]
+    "mcpServers": [
+        {
+            "name": "weather",
+            "version": "v1",
+            "type": "sse",
+            "url": "http://localhost:3000/sse"
+        },
+        {
+            "name": "weather",
+            "version": "v2",
+            "type": "steamable",
+            "url": "http://localhost:3000/mcp"
+        },
+        {
+            "name": "weather",
+            "version": "v3",
+            "type": "stdio",
+            "params": {
+                "command": "bun",
+                "args": [
+                    "run",
+                    "/Users/chen/workspace/weather-mcp/src/mcp/stdio-server.ts"
+                ]
+            }
+        }
+    ],
+    "llmSettings": [
+        {
+            "name": "deepseek",
+            "baseUrl": "https://api.deepseek.com",
+            "apiKey": "<your deepseek api key>",
+            "models": ["deepseek-chat", "deepseek-reasoner"]
+        },
+        {
+            "name": "ollama",
+            "baseUrl": "http://localhost:11434/v1/",
+            "apiKey": "",
+            "models": ["gemma3:latest"]
+        },
+        {
+            "name": "openai",
+            "baseUrl": "https://api.openai.com/v1",
+            "apiKey": "<your openai key>",
+            "models": ["gpt-4o"]
+        }
+    ]
 }
 ```
 
 **General Setting**
-| column name | type    | required |
+| column name | type | required |
 | :-----------| :-------| :--------|
-| interactive | boolean | true     |
+| interactive | boolean | true |
 
 **LLM Setting**
-| column name | type     | required | 
+| column name | type | required |
 |:------------|:---------|:---------|
-| name        | string   | true     |
-| baseUrl     | string   | true     |
-| apiKey      | string   | false    |
-| models      | string[] | true     |
+| name | string | true |
+| baseUrl | string | true |
+| apiKey | string | false |
+| models | string[] | true |
 
+**MCP Server(Streamable)**
+| column name | type | required |
+|:------------|:-------------------------------------|:---------|
+| name | string | true |  
+| version | string | true |  
+| type | 'streamable' | true |  
+| url | string | true |
+| opts | StreamableHTTPClientTransportOptions | false |
 
 **MCP Server(SSE)**
-| column name | type                      | required | 
+| column name | type | required |
 |:------------|:--------------------------|:---------|
-| name        | string                    | true     |  
-| version     | string                    | true     |  
-| type        | 'sse'                     | true     |  
-| url         | string                    | true     | 
-| opts        | SSEClientTransportOptions | false    |
+| name | string | true |  
+| version | string | true |  
+| type | 'sse' | true |  
+| url | string | true |
+| opts | SSEClientTransportOptions | false |
 
 **MCP Server(Stdio)**
-| column name | type                  | required | 
+| column name | type | required |
 |:------------|:----------------------|:---------|
-| name        | string                | true     |  
-| version     | string                | true     |  
-| type        | 'stdio'               | true     | 
-| params      | StdioServerParameters | true     |
+| name | string | true |  
+| version | string | true |  
+| type | 'stdio' | true |
+| params | StdioServerParameters | true |
 
 ## Tips
 
-### Chat without `ifct switch`
+### Chat without `ifcli switch`
 
 ```bash
 # the `ts` is another chat that supports translation.
-alias ts = ifct ask -c 'ts'
+alias ts = ifcli ask -c 'ts'
+```
+
+### Close Stream Output
+
+```bash
+# sync call ifcli use `helix editor` for simple task
+ifcli ask -sc 'ts'
+# create your own command
+alias sts = ifcli ask -sc 'ts'
+cat system_prompt.md | sts | save system_prompt.txt
 ```
 
 ### Edit System Prompt
@@ -172,11 +189,11 @@ alias ts = ifct ask -c 'ts'
 Pipe symbols are supported
 
 ```bash
-cat system_prompt.md | ifct pt -c
+cat system_prompt.md | ifcli pt -c
 ```
 
 Use the editor
 
 ```bash
-ifct pt -m
+ifcli pt -m
 ```

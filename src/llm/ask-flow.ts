@@ -2,6 +2,7 @@
 import type OpenAI from 'openai'
 import type { RunnableToolFunctionWithoutParse } from 'openai/lib/RunnableFunction.mjs'
 import { Flow, Node } from 'pocketflow'
+import type { GeneralSetting } from '../config/app-setting'
 import type {
     LLMMessage,
     LLMParam,
@@ -14,15 +15,22 @@ import type {
     IChatStore,
     MessageContent,
 } from '../types/store-types'
-import { isEmpty, uuid } from '../util/common-utils'
+import { isEmpty, println, uuid } from '../util/common-utils'
 import { Display } from './display'
-import { assistant, llmNotifyMessage, system, user } from './llm-utils'
+import { assistant, system, user } from './llm-utils'
 
 export type AskShare = LLMParam & {
     config: ChatConfig
     resultChunk?: LLMResultChunk
-    tools?: { id: string; name: string; f: RunnableToolFunctionWithoutParse }[]
+    tools?: {
+        id: string
+        mcpServer: string
+        mcpVersion: string
+        funName: string
+        f: RunnableToolFunctionWithoutParse
+    }[]
     mcps?: MCPClient[]
+    generalSetting?: GeneralSetting
 }
 
 class SystemPromptNode extends Node<AskShare> {
@@ -144,19 +152,17 @@ class ToolsCallNode extends Node<AskShare> {
     }
 
     override async prep(shared: AskShare): Promise<LLMToolsCallParam> {
-        const { mcps, tools, messages, model, temperature } = shared
-        return {
-            mcps,
-            tools,
-            messages,
-            model,
-            temperature,
-        } as LLMToolsCallParam
+        return { ...shared } as LLMToolsCallParam
     }
 
     override async exec(prepRes: LLMToolsCallParam): Promise<LLMResultChunk> {
-        const display = new Display()
-        const { model, temperature, tools, messages } = prepRes
+        const { model, temperature, tools, messages, theme, noStream } = prepRes
+        const render = !noStream
+        const display = new Display({
+            theme,
+            textShowRender: render,
+            enableSpinner: render,
+        })
         try {
             const runner = this.client.beta.chat.completions
                 .runTools({
@@ -167,11 +173,14 @@ class ToolsCallNode extends Node<AskShare> {
                     stream: true,
                 })
                 .on('tool_calls.function.arguments.delta', () => {
-                    display.change(llmNotifyMessage.analyzing)
+                    display.change('analyzing')
                 })
                 .on('tool_calls.function.arguments.done', (it) => {
+                    const f = tools.find((i) => i.id == it.name)!
                     display.toolCall(
-                        tools.find((i) => i.id == it.name)?.name ?? it.name,
+                        f?.mcpServer,
+                        f?.mcpVersion,
+                        f?.funName,
                         it.arguments
                     )
                 })
@@ -182,7 +191,11 @@ class ToolsCallNode extends Node<AskShare> {
                     display.contentShow(it)
                 })
             await runner.finalChatCompletion()
-            return display.stop().result()
+            const res = display.contentStop().result()
+            if (noStream) {
+                println(res.assistant.join(''))
+            }
+            return res
         } catch (err: unknown) {
             display.error()
             throw err
@@ -223,16 +236,28 @@ class StreamCallNode extends Node<AskShare> {
     }
 
     override async exec(prepRes: LLMParam): Promise<LLMResultChunk> {
-        const display = new Display()
+        const { messages, model, temperature, theme, noStream } = prepRes
+        const render = !noStream
+        const display = new Display({
+            theme,
+            textShowRender: render,
+            enableSpinner: render,
+        })
         try {
             const stream = await this.client.chat.completions.create({
-                ...prepRes,
+                messages,
+                model,
+                temperature,
                 stream: true,
             })
             for await (const chunk of stream) {
                 display.thinkingShow(chunk)
             }
-            return display.stop().result()
+            const res = display.contentStop().result()
+            if (noStream) {
+                println(res.assistant.join(''))
+            }
+            return res
         } catch (e: unknown) {
             display.error()
             throw e
@@ -269,14 +294,19 @@ class StoreNode extends Node<AskShare> {
             { chatId, role: 'user', content: userContent, pairKey },
             { chatId, role: 'assistant', content: assistant.join(''), pairKey },
         ]
-        if (!isEmpty(tools) || !isEmpty(reasoning)) {
-            const thinkingReasoning = `${reasoning.join('')}\n\n${tools.join(
-                ''
-            )}`
+        if (!isEmpty(reasoning)) {
             messages.push({
                 chatId,
                 role: 'reasoning',
-                content: thinkingReasoning,
+                content: reasoning.join(''),
+                pairKey,
+            })
+        }
+        if (!isEmpty(tools)) {
+            messages.push({
+                chatId,
+                role: 'toolscall',
+                content: JSON.stringify(tools),
                 pairKey,
             })
         }
@@ -291,12 +321,16 @@ async function askFlow({
     config,
     userContent,
     mcps,
+    generalSetting,
+    noStream = false,
 }: {
     client: OpenAI
     store: IChatStore
     config: ChatConfig
     userContent: string
     mcps: MCPClient[]
+    generalSetting: GeneralSetting
+    noStream?: boolean
 }) {
     const share: AskShare = {
         userContent,
@@ -304,6 +338,9 @@ async function askFlow({
         model: config.model,
         temperature: config.scenario,
         config,
+        generalSetting,
+        theme: generalSetting.theme,
+        noStream,
     }
 
     const systemPrompt = new SystemPromptNode()

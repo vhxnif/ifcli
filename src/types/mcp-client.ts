@@ -100,7 +100,9 @@ export default class MCPClient {
                 } as RunnableToolFunction<any>
                 return {
                     id: nameId,
-                    name: `${this.name}/${this.version}-${t.name}`,
+                    mcpServer: this.name,
+                    mcpVersion: this.version,
+                    funName: t.name,
                     f: f,
                 }
             })

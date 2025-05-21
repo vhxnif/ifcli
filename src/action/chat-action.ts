@@ -8,6 +8,7 @@ import type { TableUserConfig } from 'table'
 import type { GeneralSetting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { askFlow } from '../llm/ask-flow'
+import { Display } from '../llm/display'
 import {
     Chat,
     ChatMessage,
@@ -22,11 +23,9 @@ import {
     groupBy,
     isEmpty,
     isTextSame,
-    print,
-    println,
+    println
 } from '../util/common-utils'
 import { input, select, selectRun, type Choice } from '../util/inquirer-utils'
-import { terminal } from '../util/platform-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 
 export class ChatAction implements IChatAction {
@@ -114,15 +113,17 @@ export class ChatAction implements IChatAction {
         )
     }
 
-    ask = async ({ content, chatName }: AskContent) => {
+    ask = async ({ content, chatName, noStream = false }: AskContent) => {
         const f = async (cf: ChatConfig) => {
             const client = await this.client(cf.llmType)
             await askFlow({
+                generalSetting: this.generalSetting,
                 client: client.openai,
                 store: this.store,
                 config: cf,
                 userContent: content,
                 mcps: this.mcps,
+                noStream,
             })
         }
         if (chatName) {
@@ -220,6 +221,7 @@ export class ChatAction implements IChatAction {
         const findUser = findRole('user')
         const findAssistant = findRole('assistant')
         const findReasoning = findRole('reasoning')
+        const findToolscall = findRole('toolscall')
         const subUserContent = (str: string) => {
             const s = JSON.stringify(str).slice(1, -1)
             if (s.length <= 25) {
@@ -245,33 +247,50 @@ export class ChatAction implements IChatAction {
             if (!msgs) {
                 throw Error(promptMessage.assistantMissing)
             }
-            const text = (print: boolean = false) => {
-                const reasoning = findReasoning(msgs)
-                const assistant = findAssistant(msgs) ?? ''
-                if (!reasoning) {
-                    if (print) {
-                        return color.mauve(assistant)
-                    }
-                    return assistant
-                }
-                if (print) {
-                    return `${color.green(reasoning)}\n${color.yellow(
-                        '='.repeat(terminal.column)
-                    )}\n${color.mauve(assistant)}`
-                }
-                return `**Reasoning: **\n\n${reasoning}\n\n**Assistant: **\n\n${assistant}`
+            const reasoning = findReasoning(msgs)
+            const toolsCall = findToolscall(msgs)
+            const assistant = findAssistant(msgs) ?? ''
+            const display = new Display({ theme: this.generalSetting.theme, enableSpinner: false })
+            if (reasoning) {
+                display.think(reasoning)
+                display.stopThink()
             }
-            if (this.generalSetting.interactive) {
-                await editor(text())
-                if (choices.length <= 1) {
+            if (toolsCall) {
+                const res = this.parseToolsCall(toolsCall)
+                if (typeof res === 'string') {
+                    display.think(res)
+                    display.stopThink()
                     return
                 }
-                await show(value)
-                return
+                res.forEach(it => {
+                    const { mcpServer, mcpVersion, toolName, args, response } = it
+                    display.toolCall(mcpServer, mcpVersion, toolName, args)
+                    display.toolCallReult(response)
+                })
             }
-            print(text(true))
+            display.contentShow(assistant)
+            display.contentStop()
+            await show(value)
         }
         await show()
+    }
+
+    private parseToolsCall = (toolsCall: string) => {
+        try {
+            const itemStr: string[] = JSON.parse(toolsCall)
+            return itemStr.map((it) => {
+                const i: {
+                    mcpServer: string
+                    mcpVersion: string
+                    toolName: string
+                    args: string
+                    response: string
+                } = JSON.parse(it)
+                return i
+            })
+        } catch (err: unknown) {
+            return toolsCall
+        }
     }
 
     modifyContextSize = (size: number) => {

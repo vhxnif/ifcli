@@ -1,22 +1,20 @@
 {
     "name": "@vhxnif/ifcli",
-    "version": "0.1.11",
+    "version": "0.1.12",
     "description": "Chat with AI via CLI",
     "keywords": [
+        "ai",
+        "cli",
         "deepseek",
         "ollama",
-        "reasoning",
-        "deepseek-reasoner",
-        "deepseek-r1",
         "openai",
+        "reasoning",
         "MCP Client",
-        "MCP-tools",
         "MCP-sse",
         "MCP-stdio",
-        "ai",
+        "MCP-streamable",
         "bun",
-        "chat",
-        "cli"
+        "chat"
     ],
     "license": "MIT",
     "type": "module",

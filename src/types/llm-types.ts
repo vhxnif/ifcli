@@ -1,6 +1,6 @@
+import type OpenAI from 'openai'
 import type { RunnableToolFunctionWithoutParse } from 'openai/lib/RunnableFunction.mjs'
 import type MCPClient from './mcp-client'
-import type OpenAI from 'openai'
 
 export type LLMRole = 'system' | 'user' | 'assistant'
 export type LLMMessage = {
@@ -9,34 +9,42 @@ export type LLMMessage = {
 }
 
 export type LLMResult = {
-    userContent: string,
-    assistantContent: string,
-    thinkingReasoning? :string
+    userContent: string
+    assistantContent: string
+    thinkingReasoning?: string
 }
 
 export type LLMParam = {
-    userContent: string,
+    userContent: string
     messages: LLMMessage[]
     model: string
     temperature: number
+    theme?: string
+    noStream?: boolean
 }
 
 export type LLMResultChunk = {
-    reasoning: string[],
-    assistant: string[],
-    tools: string[],
+    reasoning: string[]
+    assistant: string[]
+    tools: string[]
 }
 
 export type LLMStreamCallParam = LLMParam
 
 export type LLMToolsCallParam = LLMParam & {
-    tools: { id: string, name: string, f: RunnableToolFunctionWithoutParse}[]
+    tools: {
+        id: string
+        mcpServer: string
+        mcpVersion: string
+        funName: string
+        f: RunnableToolFunctionWithoutParse
+    }[]
     mcps: MCPClient[]
 }
 
 export interface ILLMClient {
     openai: OpenAI
-    type: string 
+    type: string
     models: string[]
-    defaultModel: string 
+    defaultModel: string
 }
