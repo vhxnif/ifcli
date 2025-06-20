@@ -3,7 +3,8 @@ import { Command } from '@commander-js/extra-typings'
 import { chatAction, settingAction } from './app-context'
 import { version } from './config/app-setting'
 import { color } from './util/color-utils'
-import { editor, error, stdin } from './util/common-utils'
+import { editor, error, print, stdin } from './util/common-utils'
+import { promptMessage } from './config/prompt-message'
 
 const program = new Command()
 
@@ -63,7 +64,7 @@ program
                 content: ct,
                 chatName,
                 noStream: syncCall ? true : false,
-                newTopic
+                newTopic,
             })
         if (content) {
             await ask(content)
@@ -143,6 +144,12 @@ program
         if (publish) {
             await chatAction.publishPrompt()
         }
+        const pt = chatAction.prompt()
+        if (pt) {
+            print(pt)
+            return
+        }
+        error(promptMessage.systemPromptMissing)
     })
 
 program
