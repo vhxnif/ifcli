@@ -54,14 +54,16 @@ program
     .option('-s, --sync-call', 'sync call')
     .option('-c, --chat-name <string>', 'ask with other chat')
     .option('-e, --edit', 'use editor')
+    .option('-t, --new-topic', 'start new topic')
     .argument('[string]')
     .action(async (content, option) => {
-        const { chatName, edit, syncCall } = option
+        const { chatName, edit, syncCall, newTopic } = option
         const ask = async (ct: string) =>
             await chatAction.ask({
                 content: ct,
                 chatName,
                 noStream: syncCall ? true : false,
+                newTopic
             })
         if (content) {
             await ask(content)
@@ -189,12 +191,6 @@ program
         }
         chatAction.printChatConfig()
     })
-
-program
-    .command('clear')
-    .alias('cl')
-    .description('clear the current chat message')
-    .action(() => chatAction.clearChatMessage())
 
 program.parseAsync().catch((e: unknown) => {
     const { message } = e as Error

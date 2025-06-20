@@ -23,7 +23,7 @@ import {
     groupBy,
     isEmpty,
     isTextSame,
-    println
+    println,
 } from '../util/common-utils'
 import { input, select, selectRun, type Choice } from '../util/inquirer-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
@@ -113,7 +113,12 @@ export class ChatAction implements IChatAction {
         )
     }
 
-    ask = async ({ content, chatName, noStream = false }: AskContent) => {
+    ask = async ({
+        content,
+        chatName,
+        noStream = false,
+        newTopic,
+    }: AskContent) => {
         const f = async (cf: ChatConfig) => {
             const client = await this.client(cf.llmType)
             await askFlow({
@@ -124,6 +129,7 @@ export class ChatAction implements IChatAction {
                 userContent: content,
                 mcps: this.mcps,
                 noStream,
+                newTopic,
             })
         }
         if (chatName) {
@@ -157,20 +163,12 @@ export class ChatAction implements IChatAction {
         )
     }
 
-    clearChatMessage = () => this.store.clearMessage()
-
     printChatConfig = () => {
         const f = (cf: ChatConfig) => {
-            const [ext, myConfig] = tableConfigWithExt({
+            const [ext, config] = tableConfigWithExt({
                 cols: [1, 1, 1, 1],
                 alignment: 'left',
             })
-            const config: TableUserConfig = {
-                ...myConfig,
-                spanningCells: [
-                    { col: 0, row: 3, colSpan: 4, alignment: 'left' },
-                ],
-            }
             const booleanPrettyFormat = (v: boolean) => (v ? 'true' : 'false')
             const data = [
                 [
@@ -190,18 +188,6 @@ export class ChatAction implements IChatAction {
                     display.tip(cf.llmType),
                     display.caution('Model:'),
                     display.tip(cf.model),
-                ],
-                [
-                    wrapAnsi(
-                        display.note,
-                        isEmpty(cf.sysPrompt)
-                            ? promptMessage.systemPromptMissing
-                            : cf.sysPrompt,
-                        ext.colNum
-                    ),
-                    '',
-                    '',
-                    '',
                 ],
             ]
             printTable(data, config)
@@ -250,7 +236,10 @@ export class ChatAction implements IChatAction {
             const reasoning = findReasoning(msgs)
             const toolsCall = findToolscall(msgs)
             const assistant = findAssistant(msgs) ?? ''
-            const display = new Display({ theme: this.generalSetting.theme, enableSpinner: false })
+            const display = new Display({
+                theme: this.generalSetting.theme,
+                enableSpinner: false,
+            })
             if (reasoning) {
                 display.think(reasoning)
                 display.stopThink()
@@ -262,8 +251,9 @@ export class ChatAction implements IChatAction {
                     display.stopThink()
                     return
                 }
-                res.forEach(it => {
-                    const { mcpServer, mcpVersion, toolName, args, response } = it
+                res.forEach((it) => {
+                    const { mcpServer, mcpVersion, toolName, args, response } =
+                        it
                     display.toolCall(mcpServer, mcpVersion, toolName, args)
                     display.toolCallReult(response)
                 })

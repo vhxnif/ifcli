@@ -8,6 +8,7 @@ import {
     ChatMessage,
     ChatPresetMessage,
     ChatPrompt,
+    ChatTopic,
     SqliteTable,
     type AppSettingContent,
     type IChatStore,
@@ -25,9 +26,6 @@ export class ChatStore implements IChatStore {
         this.db = db
         this.init()
     }
-
-    clearMessage = () =>
-        this.currentChatRun((c) => this.deleteChatMessage(c.id))
 
     init = () => {
         const tables = this.db
@@ -50,13 +48,15 @@ export class ChatStore implements IChatStore {
     private chatColumn =
         'id, name, "select", action_time as actionTime, select_time as selectTime'
     private chatMessageColumn =
-        'id, chat_id as chatId, "role", content, pair_key as pairKey, action_time as actionTime'
+        'id, topic_id as topicId, "role", content, pair_key as pairKey, action_time as actionTime'
     private chatConfigColumn =
         'id, chat_id as chatId , sys_prompt as sysPrompt, with_context as withContext, with_mcp as withMCP, context_limit as contextLimit, llm_type as llmType, model, scenario_name as scenarioName, scenario, update_time as updateTime'
     private chatPromptColumn =
         'name, version, role, content, modify_time as modifyTime'
     private chatPresetMessageColumn =
         'id, chat_id, user, assistant, create_time as createTime'
+    private chatTopicColumn =
+        'id, chat_id as chatId, content, "select", select_time as selectTime, create_time as createTime'
 
     chats = () =>
         this.db.query(`SELECT ${this.chatColumn} FROM chat`).as(Chat).all()
@@ -107,7 +107,20 @@ export class ChatStore implements IChatStore {
             this.db.transaction(() => {
                 this.db.prepare(`DELETE FROM chat WHERE id = ?`).run(chatId)
                 this.db
-                    .prepare(`DELETE FROM chat_message WHERE chat_id = ?`)
+                    .query(
+                        `select ${this.chatTopicColumn} FROM chat_topic WHERE chat_id = ?`
+                    )
+                    .as(ChatTopic)
+                    .all(chatId)
+                    .forEach((it) => {
+                        this.db
+                            .prepare(
+                                `DELETE FROM chat_message WHERE topic_id = ?`
+                            )
+                            .run(it.id)
+                    })
+                this.db
+                    .prepare(`DELETE FROM chat_topic WHERE chat_id = ?`)
                     .run(chatId)
                 this.db
                     .prepare(`DELETE FROM chat_config WHERE chat_id = ?`)
@@ -143,16 +156,36 @@ export class ChatStore implements IChatStore {
         throw Error(promptMessage.chatMissing)
     }
 
+    selectTopic = (chatId: string) => {
+        return this.db
+            .query(
+                `SELECT ${this.chatTopicColumn} FROM chat_topic WHERE "select" = ? and chat_id = ? limit 1`
+            )
+            .as(ChatTopic)
+            .get(true, chatId)
+    }
+
+    createTopic = (chatId: string, content: string) => {
+        const id = uuid()
+        const now = unixnow()
+        this.db
+            .prepare(
+                `INSERT INTO chat_topic (id, chat_id, content, "select", select_time, create_time) VALUES (?, ?, ?, ?, ?, ?)`
+            )
+            .run(id, chatId, content, true, now, now)
+        return id
+    }
+
     saveMessage = (messages: MessageContent[]) => {
         const statement = this.db.prepare(
-            `INSERT INTO chat_message (id, chat_id, "role", content, pair_key, action_time) VALUES (?, ?, ?, ?, ?, ?)`
+            `INSERT INTO chat_message (id, topic_id, "role", content, pair_key, action_time) VALUES (?, ?, ?, ?, ?, ?)`
         )
         this.db.transaction(() => {
             messages
                 .filter((it) => !isEmpty(it.role) && !isEmpty(it.content))
                 .map((it) => [
                     uuid(),
-                    it.chatId,
+                    it.topicId,
                     it.role,
                     it.content,
                     it.pairKey,
@@ -162,13 +195,18 @@ export class ChatStore implements IChatStore {
         })()
     }
 
-    contextMessage = () =>
-        this.currentChatConfigRun((c, cf) =>
-            this.queryMessage(c.id, cf.contextLimit)
-        )
+    contextMessage = (topicId: string, limit: number) =>
+        this.queryMessage(topicId, limit)
 
-    historyMessage = (count: number) =>
-        this.currentChatRun((c) => this.queryMessage(c.id, count, true))
+    historyMessage = (count: number) => {
+        return this.currentChatRun((c) => {
+            const stp = this.selectTopic(c.id)
+            if (stp) {
+                return this.queryMessage(stp.id, count, true)
+            }
+            return []
+        })
+    }
 
     selectMessage = (messageId: string) =>
         this.db
@@ -372,7 +410,7 @@ export class ChatStore implements IChatStore {
         this.currentChatRun((c) => f(c, this.queryChatConfig(c.id)))
 
     private queryMessage = (
-        chatId: string,
+        topicId: string,
         count: number,
         withReasoning: boolean = false
     ) =>
@@ -381,7 +419,7 @@ export class ChatStore implements IChatStore {
                 `
                 select ${
                     this.chatMessageColumn
-                } from chat_message where chat_id = ? ${
+                } from chat_message where topic_id = ? ${
                     withReasoning ? '' : "and role != 'reasoning'"
                 } and pair_key in (
                     select pair_key from chat_message group by pair_key order by max(action_time) desc limit ?
@@ -389,7 +427,7 @@ export class ChatStore implements IChatStore {
                 `
             )
             .as(ChatMessage)
-            .all(chatId, count)
+            .all(topicId, count)
 
     queryChatConfig = (id: string): ChatConfig =>
         this.db

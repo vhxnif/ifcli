@@ -21,6 +21,7 @@ export type LLMParam = {
     temperature: number
     theme?: string
     noStream?: boolean
+    newTopic?: boolean
 }
 
 export type LLMResultChunk = {

@@ -10,9 +10,18 @@ export class Chat {
     selectTime!: bigint
 }
 
-export class ChatMessage {
+export class ChatTopic {
     id!: string
     chatId!: string
+    content!: string
+    select!: boolean
+    selectTime!: bigint
+    createTime!: string
+}
+
+export class ChatMessage {
+    id!: string
+    topicId!: string
     role!: string
     content!: string
     pairKey!: string
@@ -43,7 +52,7 @@ export class ChatPrompt {
 
 export class ChatPresetMessage {
     id!: string
-    chat_id!: string
+    chatId!: string
     user!: string
     assistant!: string
     create_time!: bigint
@@ -55,11 +64,11 @@ export class AppSetting {
     generalSetting!: string
     mcpServer!: string
     llmSetting!: string
-    create_time!: bigint
+    createTime!: bigint
 }
 
 export type MessageContent = {
-    chatId: string
+    topicId: string
     role: 'user' | 'assistant' | 'reasoning' | 'toolscall'
     content: string
     pairKey: string
@@ -92,10 +101,13 @@ export interface IChatStore {
     changeChat: (name: string) => void
     currentChat: () => Chat | null
 
+    // ---- topic ---- //
+    selectTopic: (chatId: string) => ChatTopic | null
+    createTopic: (chatId: string, content: string) => string 
+
     // ---- message ---- //
     saveMessage: (messages: MessageContent[]) => void
-    clearMessage: () => void
-    contextMessage: () => ChatMessage[]
+    contextMessage: (topicId: string, limit: number) => ChatMessage[]
     historyMessage: (count: number) => ChatMessage[]
     selectMessage: (messageId: string) => ChatMessage
 

@@ -2,6 +2,7 @@ export type AskContent = {
     content: string
     chatName?: string
     noStream?: boolean
+    newTopic?: boolean
 }
 export interface IChatAction {
     newChat: (name: string) => Promise<void>
@@ -9,7 +10,6 @@ export interface IChatAction {
     ask: (param: AskContent) => Promise<void>
     changeChat: () => Promise<void>
     printChats: () => Promise<void>
-    clearChatMessage: () => void
     printChatConfig: () => void
     printChatHistory: (limit: number) => Promise<void>
     modifyContextSize: (size: number) => void

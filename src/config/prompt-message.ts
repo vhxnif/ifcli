@@ -1,6 +1,6 @@
 export const promptMessage = {
     chatMissing: 'Execute `ifct new <chatName>` first.',
-    settingMissing: 'Execute `ifct -s` first to configure LLMSetting.',
+    settingMissing: 'Execute `ifct --setting` first to configure LLMSetting.',
     providerMissing: 'At least one provider must be selected.',
     modelMissing: 'At least one model must be selected.',
     systemPromptNoMatching: 'No matching system prompt found.',
