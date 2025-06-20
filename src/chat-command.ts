@@ -89,7 +89,14 @@ program
     .command('list')
     .alias('ls')
     .description('list all chats')
-    .action(async () => await chatAction.printChats())
+    .option('-t, --topic', 'list all topics')
+    .action(async ({ topic }) => {
+        if (topic) {
+            await chatAction.printTopics()
+            return
+        }
+        await chatAction.printChats()
+    })
 
 program
     .command('history')
@@ -107,8 +114,15 @@ program
 program
     .command('switch')
     .alias('st')
-    .description('switch to another chat')
-    .action(async () => await chatAction.changeChat())
+    .description('switch to another chat or topic')
+    .option('-t, --topic', 'switch to anther topic')
+    .action(async ({ topic }) => {
+        if (topic) {
+            await chatAction.changeTopic()
+            return
+        }
+        await chatAction.changeChat()
+    })
 
 program
     .command('prompt')

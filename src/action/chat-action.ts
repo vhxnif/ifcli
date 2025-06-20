@@ -4,7 +4,6 @@ import { temperature } from '../types/constant'
 import type { ILLMClient } from '../types/llm-types'
 import MCPClient from '../types/mcp-client'
 
-import type { TableUserConfig } from 'table'
 import type { GeneralSetting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { askFlow } from '../llm/ask-flow'
@@ -12,11 +11,12 @@ import { Display } from '../llm/display'
 import {
     Chat,
     ChatMessage,
+    ChatTopic,
     type ChatConfig,
     type IChatStore,
     type PresetMessageContent,
 } from '../types/store-types'
-import { color, display, wrapAnsi } from '../util/color-utils'
+import { color, display } from '../util/color-utils'
 import {
     editor,
     error,
@@ -151,16 +151,50 @@ export class ChatAction implements IChatAction {
             this.store.changeChat
         )
 
-    printChats = async () => {
-        await this.sortedChats().then((chats) =>
-            chats.forEach((it, idx) => {
-                println(
-                    `[${idx === 0 ? color.green('*') : color.pink(idx)}] ${
-                        it.select ? color.yellow(it.name) : this.text(it.name)
-                    }`
-                )
-            })
+    changeTopic = async () => {
+        const choices = this.store
+            .currentChatTopics()
+            .filter((it) => !it.select)
+            .map((it) => ({ name: it.content, value: it.id }))
+        if (isEmpty(choices)) {
+            error(promptMessage.onlyOneTopic)
+            return
+        }
+        await selectRun('Select Topic', choices, this.store.changeTopic)
+    }
+
+    printTopics = async () => {
+        await this.sortedTopics().then((it) =>
+            this.listItems(
+                it,
+                (s) => s.select,
+                (s) => s.content
+            )
         )
+    }
+
+    printChats = async () => {
+        await this.sortedChats().then((it) =>
+            this.listItems(
+                it,
+                (s) => s.select,
+                (s) => s.name
+            )
+        )
+    }
+
+    private listItems = <T>(
+        ts: T[],
+        s: (s: T) => boolean,
+        n: (n: T) => string
+    ) => {
+        ts.forEach((it, idx) => {
+            println(
+                `[${idx === 0 ? color.green('*') : color.pink(idx)}] ${
+                    s(it) ? color.yellow(n(it)) : this.text(n(it))
+                }`
+            )
+        })
     }
 
     printChatConfig = () => {
@@ -561,11 +595,35 @@ export class ChatAction implements IChatAction {
         if (isEmpty(cts)) {
             throw Error(promptMessage.chatMissing)
         }
+        return this.sortedItem(
+            cts,
+            (s) => s.select,
+            (s) => s.actionTime
+        )
+    }
+
+    private sortedTopics = async (): Promise<ChatTopic[]> => {
+        const tps = this.store.currentChatTopics()
+        if (isEmpty(tps)) {
+            throw Error(promptMessage.topicMissing)
+        }
+        return this.sortedItem(
+            tps,
+            (s) => s.select,
+            (s) => s.createTime
+        )
+    }
+
+    private sortedItem = async <T>(
+        arr: T[],
+        selected: (s: T) => boolean,
+        time: (s: T) => bigint
+    ): Promise<T[]> => {
         const [st, oths] = await Promise.all([
-            cts.find((it) => it.select),
-            cts
-                .filter((it) => !it.select)
-                .sort((a, b) => Number(b.actionTime) - Number(a.actionTime)),
+            arr.find((it) => selected(it)),
+            arr
+                .filter((it) => !selected(it))
+                .sort((a, b) => Number(time(b) - time(a))),
         ])
         return [st!, ...oths]
     }

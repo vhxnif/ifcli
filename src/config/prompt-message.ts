@@ -14,4 +14,6 @@ export const promptMessage = {
     mcpMissing: 'MCP Server is not configured.',
     userPreset: '<user message content>',
     assistantPreset: '<assistant message content>',
+    onlyOneTopic: 'There is currently only one topic.',
+    topicMissing: 'There are no topics.'
 }

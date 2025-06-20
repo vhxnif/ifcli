@@ -9,6 +9,8 @@ export interface IChatAction {
     removeChat: () => Promise<void>
     ask: (param: AskContent) => Promise<void>
     changeChat: () => Promise<void>
+    changeTopic: () => Promise<void>
+    printTopics: () => Promise<void>
     printChats: () => Promise<void>
     printChatConfig: () => void
     printChatHistory: (limit: number) => Promise<void>

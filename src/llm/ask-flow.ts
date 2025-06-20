@@ -77,7 +77,7 @@ class ContextNode extends Node<AskShare> {
     override async prep(shared: AskShare): Promise<void> {
         const { userContent, config, messages } = shared
         const { withContext, chatId, contextLimit } = config
-        const tp = this.store.selectTopic(chatId)
+        const tp = this.store.selectedTopic(chatId)
         if (!tp || shared.newTopic) {
             shared.topicId = this.store.createTopic(chatId, userContent)
         } else {

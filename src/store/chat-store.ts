@@ -156,7 +156,7 @@ export class ChatStore implements IChatStore {
         throw Error(promptMessage.chatMissing)
     }
 
-    selectTopic = (chatId: string) => {
+    selectedTopic = (chatId: string) => {
         return this.db
             .query(
                 `SELECT ${this.chatTopicColumn} FROM chat_topic WHERE "select" = ? and chat_id = ? limit 1`
@@ -168,12 +168,41 @@ export class ChatStore implements IChatStore {
     createTopic = (chatId: string, content: string) => {
         const id = uuid()
         const now = unixnow()
-        this.db
-            .prepare(
-                `INSERT INTO chat_topic (id, chat_id, content, "select", select_time, create_time) VALUES (?, ?, ?, ?, ?, ?)`
-            )
-            .run(id, chatId, content, true, now, now)
+        this.db.transaction(() => {
+            this.unselectTopic()
+            this.db
+                .prepare(
+                    `INSERT INTO chat_topic (id, chat_id, content, "select", select_time, create_time) VALUES (?, ?, ?, ?, ?, ?)`
+                )
+                .run(id, chatId, content, true, now, now)
+        })()
         return id
+    }
+
+    currentChatTopics = () => {
+        return this.currentChatRun((it) => {
+            return this.db
+                .query(
+                    `SELECT ${this.chatTopicColumn} FROM chat_topic WHERE chat_id = ?`
+                )
+                .as(ChatTopic)
+                .all(it.id)
+        })
+    }
+
+    changeTopic = (topicId: string) => {
+        this.db.transaction(() => {
+            this.unselectTopic()
+            this.db
+                .prepare(`UPDATE chat_topic SET "select" = ? where id = ?`)
+                .run(true, topicId)
+        })()
+    }
+
+    private unselectTopic = () => {
+        this.db
+            .prepare(`UPDATE chat_topic SET "select" = ? where "select" = ?`)
+            .run(false, true)
     }
 
     saveMessage = (messages: MessageContent[]) => {
@@ -200,7 +229,7 @@ export class ChatStore implements IChatStore {
 
     historyMessage = (count: number) => {
         return this.currentChatRun((c) => {
-            const stp = this.selectTopic(c.id)
+            const stp = this.selectedTopic(c.id)
             if (stp) {
                 return this.queryMessage(stp.id, count, true)
             }
