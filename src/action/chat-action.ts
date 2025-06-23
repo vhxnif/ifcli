@@ -3,7 +3,7 @@ import type { AskContent, IChatAction } from '../types/action-types'
 import { temperature } from '../types/constant'
 import type { ILLMClient } from '../types/llm-types'
 import MCPClient from '../types/mcp-client'
-
+import path from 'path'
 import { stringWidth } from 'bun'
 import { color, display } from '../app-context'
 import type { GeneralSetting } from '../config/app-setting'
@@ -35,6 +35,7 @@ import { terminal } from '../util/platform-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { TextShow } from '../util/text-show'
 import { themes } from '../util/theme'
+import { RootSchema } from '@modelcontextprotocol/sdk/types.js'
 
 export class ChatAction implements IChatAction {
     private clientMap: Map<string, ILLMClient> = new Map()
@@ -245,34 +246,14 @@ export class ChatAction implements IChatAction {
         f(this.store.currentChatConfig())
     }
 
-    printChatHistory = async (limit: number) => {
+    printChatHistory = async (limit: number, exp?: boolean) => {
         const messages = this.store.historyMessage(limit)
         if (isEmpty(messages)) {
             throw Error(promptMessage.hisMsgMissing)
         }
         const msp = groupBy(messages, (m: ChatMessage) => m.pairKey)
-        const findRole = (role: string) => (arr: ChatMessage[]) => {
-            return arr.find((it) => it.role === role)?.content
-        }
-        const findUser = findRole('user')
-        const findAssistant = findRole('assistant')
-        const findReasoning = findRole('reasoning')
-        const findToolscall = findRole('toolscall')
-        const subUserContent = (str: string) => {
-            const s = JSON.stringify(str).slice(1, -1)
-            if (s.length <= 25) {
-                return s
-            }
-            return `${s.substring(0, 20)}...`
-        }
-        const choices = msp.entries().reduce((arr, it) => {
-            const userContent = findUser(it[1])
-            if (!userContent) {
-                return arr
-            }
-            arr.push({ name: subUserContent(userContent), value: it[0] })
-            return arr
-        }, [] as Choice[])
+        const choices = this.historyChoice(msp)
+        const cacheExportPairKey: string[] = []
         const show = async (df?: string) => {
             const value = await select({
                 message: 'View Message:',
@@ -283,36 +264,132 @@ export class ChatAction implements IChatAction {
             if (!msgs) {
                 throw Error(promptMessage.assistantMissing)
             }
-            const reasoning = findReasoning(msgs)
-            const toolsCall = findToolscall(msgs)
-            const assistant = findAssistant(msgs) ?? ''
+            const expInfo: { role: string; content: string }[] = [
+                {
+                    role: 'user',
+                    content: this.findRoleMessage('user')(msgs) ?? '',
+                },
+            ]
+            const colExpInfo = (role: string, content: string) =>
+                expInfo.push({ role, content })
+            const { reasoning, toolsCall, assistant } =
+                this.partMessageByRole(msgs)
             const display = new Display({
                 theme: this.generalSetting.theme,
                 enableSpinner: false,
             })
-            if (reasoning) {
-                display.think(reasoning)
-                display.stopThink()
-            }
-            if (toolsCall) {
-                const res = this.parseToolsCall(toolsCall)
-                if (typeof res === 'string') {
-                    display.think(res)
-                    display.stopThink()
-                    return
-                }
-                res.forEach((it) => {
-                    const { mcpServer, mcpVersion, toolName, args, response } =
-                        it
-                    display.toolCall(mcpServer, mcpVersion, toolName, args)
-                    display.toolCallReult(response)
-                })
-            }
+            this.historyReasoningPrint(reasoning, display, colExpInfo)
+            this.historyToolsCallPrint(toolsCall, display, colExpInfo)
             display.contentShow(assistant)
             display.contentStop()
+            colExpInfo('assistant', assistant)
+            await this.exportHistory(value, exp, cacheExportPairKey, expInfo)
             await show(value)
         }
         await show()
+    }
+
+    private exportHistory = async (
+        pairKey: string,
+        exp: boolean | undefined,
+        cacheExportPairKey: string[],
+        expInfo: { role: string; content: string }[]
+    ) => {
+        if (!exp) {
+            return
+        }
+        if (cacheExportPairKey.find((it) => it === pairKey)) {
+            return
+        }
+        cacheExportPairKey.push(pairKey)
+        await Promise.all(
+            expInfo.map((it) =>
+                this.exprotHistory(it.role, pairKey, it.content)
+            )
+        )
+    }
+
+    private historyReasoningPrint = (
+        reasoning: string,
+        display: Display,
+        f: (role: string, content: string) => void
+    ) => {
+        if (reasoning) {
+            display.think(reasoning)
+            display.stopThink()
+            f('reasoning', reasoning)
+        }
+    }
+
+    private historyToolsCallPrint = (
+        toolsCall: string,
+        display: Display,
+        f: (role: string, content: string) => void
+    ) => {
+        const res = this.parseToolsCall(toolsCall)
+        if (typeof res === 'string') {
+            display.think(res)
+            display.stopThink()
+            f('toolsCall', toolsCall)
+            return
+        }
+        res.forEach((it) => {
+            const { mcpServer, mcpVersion, toolName, args, response } = it
+            display.toolCall(mcpServer, mcpVersion, toolName, args)
+            display.toolCallReult(response)
+        })
+    }
+
+    private historyChoice = (msp: Map<string, ChatMessage[]>) => {
+        const subUserContent = (str: string) => {
+            const s = JSON.stringify(str).slice(1, -1)
+            if (s.length <= 25) {
+                return s
+            }
+            return `${s.substring(0, 20)}...`
+        }
+        return msp.entries().reduce((arr, it) => {
+            const userContent = this.findRoleMessage('user')(it[1])
+            if (!userContent) {
+                return arr
+            }
+            arr.push({ name: subUserContent(userContent), value: it[0] })
+            return arr
+        }, [] as Choice[])
+    }
+
+    private exprotHistory = async (
+        role: string,
+        key: string,
+        content: string
+    ) => {
+        const fileName = `${key}_${role}.md`
+        await Bun.write(fileName, content)
+    }
+
+    private partMessageByRole = (
+        msgs: ChatMessage[] | undefined
+    ): {
+        assistant: string
+        reasoning: string
+        toolsCall: string
+    } => {
+        if (!msgs) {
+            return {
+                assistant: '',
+                reasoning: '',
+                toolsCall: '',
+            }
+        }
+        return {
+            assistant: this.findRoleMessage('assistant')(msgs) ?? '',
+            reasoning: this.findRoleMessage('reasoning')(msgs) ?? '',
+            toolsCall: this.findRoleMessage('toolscall')(msgs) ?? '',
+        }
+    }
+
+    private findRoleMessage = (role: string) => (arr: ChatMessage[]) => {
+        return arr.find((it) => it.role === role)?.content
     }
 
     private parseToolsCall = (toolsCall: string) => {
@@ -450,18 +527,12 @@ export class ChatAction implements IChatAction {
                 } finally {
                     await it.close()
                 }
-                return [
-                    display.tip(it.name),
-                    display.tip(it.version),
-                    health,
-                ]
+                return [display.tip(it.name), display.tip(it.version), health]
             })
         )
         printTable(
             [
-                ['Name', 'Version', 'Health'].map((it) =>
-                    display.caution(it)
-                ),
+                ['Name', 'Version', 'Health'].map((it) => display.caution(it)),
                 ...tools,
             ],
             tableConfig({ cols: [1, 1, 1] })

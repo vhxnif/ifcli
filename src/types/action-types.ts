@@ -13,7 +13,7 @@ export interface IChatAction {
     printTopics: () => Promise<void>
     printChats: () => Promise<void>
     printChatConfig: () => void
-    printChatHistory: (limit: number) => Promise<void>
+    printChatHistory: (limit: number, exp?: boolean) => Promise<void>
     modifyContextSize: (size: number) => void
     modifyModel: () => Promise<void>
     modifySystemPrompt: (prompt: string) => void

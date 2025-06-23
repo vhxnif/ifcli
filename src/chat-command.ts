@@ -104,7 +104,8 @@ program
     .alias('hs')
     .description('view chat history')
     .option('-l, --limit <limit>', 'history message limit', '100')
-    .action(async ({ limit }) => chatAction.printChatHistory(Number(limit)))
+    .option('-e, --exp', 'export history in current dir')
+    .action(async ({ limit, exp}) => chatAction.printChatHistory(Number(limit), exp))
 
 program
     .command('remove')
