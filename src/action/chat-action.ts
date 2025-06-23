@@ -314,11 +314,12 @@ export class ChatAction implements IChatAction {
         display: Display,
         f: (role: string, content: string) => void
     ) => {
-        if (reasoning) {
-            display.think(reasoning)
-            display.stopThink()
-            f('reasoning', reasoning)
+        if (!reasoning) {
+            return
         }
+        display.think(reasoning)
+        display.stopThink()
+        f('reasoning', reasoning)
     }
 
     private historyToolsCallPrint = (
@@ -326,6 +327,9 @@ export class ChatAction implements IChatAction {
         display: Display,
         f: (role: string, content: string) => void
     ) => {
+        if (!toolsCall) {
+            return
+        }
         const res = this.parseToolsCall(toolsCall)
         if (typeof res === 'string') {
             display.think(res)
