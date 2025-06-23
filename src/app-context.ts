@@ -9,13 +9,27 @@ import type { IChatAction, ISettingAction } from './types/action-types'
 import type { IConfig } from './types/config-types'
 import MCPClient from './types/mcp-client'
 import type { IChatStore } from './types/store-types'
+import { themes } from './util/theme'
+import {
+    catppuccinColorSchema,
+    chalkColor,
+    displaySchema,
+} from './util/color-schema'
 
 const config: IConfig = new AppConfig()
 const db = new Database(config.dataPath(), { strict: true })
 const store: IChatStore = new ChatStore(db)
+// setting
 const settingAction: ISettingAction = new SettingAction(store)
 const settingParse = new AppSettingParse(store.appSetting()!)
 const { generalSetting, mcpServers, llmSettings } = settingParse.setting(true)
+
+// theme
+const { palette } = themes[generalSetting.theme]
+const color = chalkColor(catppuccinColorSchema[palette])
+const display = displaySchema(color)
+
+// command action
 const chatAction: IChatAction = new ChatAction({
     generalSetting,
     llmClients: llmSettings.map((it) => new OpenAiClient(it)),
@@ -23,4 +37,12 @@ const chatAction: IChatAction = new ChatAction({
     store,
 })
 
-export { settingAction, chatAction, store as chatStore, db }
+export {
+    settingAction,
+    chatAction,
+    store as chatStore,
+    db,
+    generalSetting,
+    color,
+    display,
+}

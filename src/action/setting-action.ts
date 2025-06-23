@@ -1,6 +1,6 @@
 import { AppSettingParse, type GeneralSetting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
-import { themes } from '../llm/theme'
+import { themes } from '../util/theme'
 import type { ISettingAction } from '../types/action-types'
 import type { IChatStore } from '../types/store-types'
 import { editor, isTextSame } from '../util/common-utils'

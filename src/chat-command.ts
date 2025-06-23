@@ -1,10 +1,9 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { chatAction, settingAction } from './app-context'
+import { chatAction, color, display, settingAction } from './app-context'
 import { version } from './config/app-setting'
-import { color } from './util/color-utils'
-import { editor, error, print, stdin } from './util/common-utils'
 import { promptMessage } from './config/prompt-message'
+import { editor, print, stdin } from './util/common-utils'
 
 const program = new Command()
 
@@ -30,15 +29,19 @@ program
     .action(async ({ setting, serverTest, lsMcp, theme }) => {
         if (setting) {
             await settingAction.setting()
+            return
         }
         if (serverTest) {
             await chatAction.testTool()
+            return
         }
         if (lsMcp) {
             await chatAction.tools()
+            return
         }
         if (theme) {
             await settingAction.theme()
+            return
         }
     })
 
@@ -137,7 +140,7 @@ program
                 await chatAction.listPrompt()
                 return
             }
-            await chatAction.listPrompt(list) 
+            await chatAction.listPrompt(list)
             return
         }
         if (query) {
@@ -172,7 +175,7 @@ program
             print(pt)
             return
         }
-        error(promptMessage.systemPromptMissing)
+        display.error(promptMessage.systemPromptMissing)
     })
 
 program
@@ -224,5 +227,5 @@ program
 
 program.parseAsync().catch((e: unknown) => {
     const { message } = e as Error
-    error(message)
+    display.error(message)
 })

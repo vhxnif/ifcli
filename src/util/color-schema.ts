@@ -1,3 +1,6 @@
+import type { ChalkInstance } from 'chalk'
+import chalk from 'chalk'
+
 export type CatppuccinColorTheme = 'latte' | 'frappe' | 'macchiato' | 'mocha'
 
 export type CatppuccinColorName =
@@ -27,7 +30,6 @@ export type CatppuccinColorName =
     | 'base'
     | 'mantle'
     | 'crust'
-
 
 const latte: Record<CatppuccinColorName, string> = {
     rosewater: '#DC8A78',
@@ -145,9 +147,45 @@ const mocha: Record<CatppuccinColorName, string> = {
     crust: '#11111B',
 }
 
-export const catppuccinColorSchema: Record<CatppuccinColorTheme, Record<CatppuccinColorName, string>> = {
+const chalkColor = (
+    schema: Record<CatppuccinColorName, string>
+): Record<CatppuccinColorName, ChalkInstance> => {
+    return Object.keys(schema).reduce((obj, it) => {
+        const k = it as CatppuccinColorName
+        obj[k] = chalk.hex(schema[k])
+        return obj
+    }, {} as Record<CatppuccinColorName, ChalkInstance>)
+}
+
+const catppuccinColorSchema: Record<
+    CatppuccinColorTheme,
+    Record<CatppuccinColorName, string>
+> = {
     latte,
     frappe,
     macchiato,
     mocha,
-} 
+}
+
+const displayDef: Record<string, CatppuccinColorName> = {
+    note: 'sky',
+    important: 'pink',
+    tip: 'green',
+    caution: 'mauve',
+    warning: 'peach',
+    error: 'red',
+}
+
+const displaySchema = (
+    cl: Record<CatppuccinColorName, ChalkInstance>
+): Record<string, ChalkInstance> => {
+    return Object.keys(displayDef).reduce((obj, it) => {
+        const k = displayDef[it]
+        obj[it] = cl[k]
+        return obj
+    }, {} as Record<string, ChalkInstance>)
+}
+
+const hex = (color: string): ChalkInstance => chalk.hex(color)
+
+export { catppuccinColorSchema, displaySchema, chalkColor, hex }

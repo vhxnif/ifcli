@@ -5,6 +5,7 @@ import type { ILLMClient } from '../types/llm-types'
 import MCPClient from '../types/mcp-client'
 
 import { stringWidth } from 'bun'
+import { color, display } from '../app-context'
 import type { GeneralSetting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { askFlow } from '../llm/ask-flow'
@@ -17,26 +18,23 @@ import {
     type IChatStore,
     type PresetMessageContent,
 } from '../types/store-types'
-import { color, display, hex } from '../util/color-utils'
+import {
+    catppuccinColorSchema,
+    hex,
+    type CatppuccinColorName,
+} from '../util/color-schema'
 import {
     editor,
-    error,
     groupBy,
     isEmpty,
     isTextSame,
-    print,
     println,
 } from '../util/common-utils'
 import { input, select, selectRun, type Choice } from '../util/inquirer-utils'
 import { terminal } from '../util/platform-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { TextShow } from '../util/text-show'
-import { themes } from '../llm/theme'
-import {
-    catppuccinColorSchema,
-    type CatppuccinColorName,
-} from '../util/color-schema'
-import { colors } from 'chalk'
+import { themes } from '../util/theme'
 
 export class ChatAction implements IChatAction {
     private clientMap: Map<string, ILLMClient> = new Map()
@@ -145,7 +143,7 @@ export class ChatAction implements IChatAction {
         if (chatName) {
             const chat = this.store.queryChat(chatName)
             if (!chat) {
-                error(`The ${chatName} not found.`)
+                display.error(`The ${chatName} not found.`)
                 return
             }
             await f(this.store.queryChatConfig(chat.id))
@@ -168,13 +166,13 @@ export class ChatAction implements IChatAction {
             .map(this.topicName)
         const choices = topics.map((it) => ({ name: it.content, value: it.id }))
         if (isEmpty(choices)) {
-            error(promptMessage.onlyOneTopic)
+            display.error(promptMessage.onlyOneTopic)
             return
         }
         await selectRun('Select Topic', choices, (topicId) => {
             const tp = topics.find((it) => topicId === it.id)
             if (!tp) {
-                error(promptMessage.topicIdMissing)
+                display.error(promptMessage.topicIdMissing)
                 return
             }
             this.store.changeTopic(topicId, tp?.chatId)
@@ -401,7 +399,7 @@ export class ChatAction implements IChatAction {
             prompts = this.store.listPrompt()
         }
         if (isEmpty(prompts)) {
-            error(promptMessage.systemPromptNoMatching)
+            display.error(promptMessage.systemPromptNoMatching)
             return
         }
         const choices = prompts.map((it) => ({ name: it.name, value: it.name }))
@@ -412,12 +410,12 @@ export class ChatAction implements IChatAction {
                 default: df,
             })
             if (!value) {
-                error(promptMessage.systemPromptNoMatching)
+                display.error(promptMessage.systemPromptNoMatching)
                 return
             }
             const p = prompts.find((it) => it.name === value)
             if (!p) {
-                error(promptMessage.systemPromptNoMatching)
+                display.error(promptMessage.systemPromptNoMatching)
                 return
             }
             const { palette, assistant } = themes[this.generalSetting.theme]
@@ -452,12 +450,18 @@ export class ChatAction implements IChatAction {
                 } finally {
                     await it.close()
                 }
-                return [display.tip(it.name), display.tip(it.version), health]
+                return [
+                    display.tip(it.name),
+                    display.tip(it.version),
+                    health,
+                ]
             })
         )
         printTable(
             [
-                ['Name', 'Version', 'Health'].map((it) => display.caution(it)),
+                ['Name', 'Version', 'Health'].map((it) =>
+                    display.caution(it)
+                ),
                 ...tools,
             ],
             tableConfig({ cols: [1, 1, 1] })
