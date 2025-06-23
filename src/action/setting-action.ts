@@ -56,7 +56,14 @@ export class SettingAction implements ISettingAction {
         if (isTextSame(sourceText, text)) {
             throw Error(promptMessage.noEdit)
         }
-        const add = parse.editParse(text)
+        const setting = parse.editSettingParse(text)
+        if (!setting) {
+            return
+        }
+        if (isTextSame(sourceText, parse.editShow(setting))) {
+            throw Error(promptMessage.noEdit)
+        }
+        const add = parse.editParse(setting)
         if (!add) {
             return
         }

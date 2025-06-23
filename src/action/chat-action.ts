@@ -642,9 +642,9 @@ export class ChatAction implements IChatAction {
             return str
         }
         return this.subStr(
-            str.substring(0, wd),
+            `${str.substring(0, wd)}...`,
             targetWd,
-            Math.floor(targetWd * 0.75)
+            Math.floor(targetWd * 0.7)
         )
     }
 }
