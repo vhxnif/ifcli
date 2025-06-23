@@ -154,16 +154,23 @@ export class ChatAction implements IChatAction {
         )
 
     changeTopic = async () => {
-        const choices = this.store
+        const topics = this.store
             .currentChatTopics()
             .filter((it) => !it.select)
             .map(this.topicName)
-            .map((it) => ({ name: it.content, value: it.id }))
+        const choices = topics.map((it) => ({ name: it.content, value: it.id }))
         if (isEmpty(choices)) {
             error(promptMessage.onlyOneTopic)
             return
         }
-        await selectRun('Select Topic', choices, this.store.changeTopic)
+        await selectRun('Select Topic', choices, (topicId) => {
+            const tp = topics.find(it => topicId === it.id)
+            if(!tp) {
+                error(promptMessage.topicIdMissing)
+                return
+            }
+            this.store.changeTopic(topicId, tp?.chatId)
+        })
     }
 
     printTopics = async () => {

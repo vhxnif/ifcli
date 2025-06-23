@@ -16,7 +16,7 @@ export class ChatTopic {
     content!: string
     select!: boolean
     selectTime!: bigint
-    createTime!: bigint 
+    createTime!: bigint
 }
 
 export class ChatMessage {
@@ -105,7 +105,7 @@ export interface IChatStore {
     selectedTopic: (chatId: string) => ChatTopic | null
     createTopic: (chatId: string, content: string) => string
     currentChatTopics: () => ChatTopic[]
-    changeTopic: (topicId: string) => void
+    changeTopic: (topicId: string, chatId: string) => void
 
     // ---- message ---- //
     saveMessage: (messages: MessageContent[]) => void

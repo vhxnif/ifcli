@@ -169,7 +169,7 @@ export class ChatStore implements IChatStore {
         const id = uuid()
         const now = unixnow()
         this.db.transaction(() => {
-            this.unselectTopic()
+            this.unselectTopic(chatId)
             this.db
                 .prepare(
                     `INSERT INTO chat_topic (id, chat_id, content, "select", select_time, create_time) VALUES (?, ?, ?, ?, ?, ?)`
@@ -190,19 +190,21 @@ export class ChatStore implements IChatStore {
         })
     }
 
-    changeTopic = (topicId: string) => {
+    changeTopic = (topicId: string, chatId: string) => {
         this.db.transaction(() => {
-            this.unselectTopic()
+            this.unselectTopic(chatId)
             this.db
                 .prepare(`UPDATE chat_topic SET "select" = ? where id = ?`)
                 .run(true, topicId)
         })()
     }
 
-    private unselectTopic = () => {
+    private unselectTopic = (chatId: string) => {
         this.db
-            .prepare(`UPDATE chat_topic SET "select" = ? where "select" = ?`)
-            .run(false, true)
+            .prepare(
+                `UPDATE chat_topic SET "select" = ? where "select" = ? and chat_id = ?`
+            )
+            .run(false, true, chatId)
     }
 
     saveMessage = (messages: MessageContent[]) => {
