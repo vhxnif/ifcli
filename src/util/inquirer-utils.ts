@@ -4,6 +4,7 @@ import select from '@inquirer/select'
 export type Choice = {
     name: string,
     value: string,
+    description?: string,
 }
 
 const selectRun = async (
