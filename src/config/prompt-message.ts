@@ -15,6 +15,6 @@ export const promptMessage = {
     userPreset: '<user message content>',
     assistantPreset: '<assistant message content>',
     onlyOneTopic: 'There is currently only one topic.',
-    topicMissing: 'There are no topics.',
-    topicIdMissing: 'There are no selected topic.',
+    topicMissing: 'No topics are available.',
+    topicIdMissing: 'No Topic is Selected.',
 }
