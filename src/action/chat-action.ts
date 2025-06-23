@@ -27,6 +27,8 @@ import {
 } from '../util/common-utils'
 import { input, select, selectRun, type Choice } from '../util/inquirer-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
+import { platform, terminal } from '../util/platform-utils'
+import { stringWidth } from 'bun'
 
 export class ChatAction implements IChatAction {
     private clientMap: Map<string, ILLMClient> = new Map()
@@ -155,6 +157,7 @@ export class ChatAction implements IChatAction {
         const choices = this.store
             .currentChatTopics()
             .filter((it) => !it.select)
+            .map(this.topicName)
             .map((it) => ({ name: it.content, value: it.id }))
         if (isEmpty(choices)) {
             error(promptMessage.onlyOneTopic)
@@ -603,7 +606,7 @@ export class ChatAction implements IChatAction {
     }
 
     private sortedTopics = async (): Promise<ChatTopic[]> => {
-        const tps = this.store.currentChatTopics()
+        const tps = this.store.currentChatTopics().map(this.topicName)
         if (isEmpty(tps)) {
             throw Error(promptMessage.topicMissing)
         }
@@ -626,5 +629,22 @@ export class ChatAction implements IChatAction {
                 .sort((a, b) => Number(time(b) - time(a))),
         ])
         return [st!, ...oths]
+    }
+
+    private topicName = (tp: ChatTopic) => {
+        const wd = Math.floor(terminal.column * 0.75)
+        tp.content = this.subStr(tp.content, wd, wd)
+        return tp
+    }
+
+    private subStr = (str: string, targetWd: number, wd: number): string => {
+        if (stringWidth(str) <= targetWd) {
+            return str
+        }
+        return this.subStr(
+            str.substring(0, wd),
+            targetWd,
+            Math.floor(targetWd * 0.75)
+        )
     }
 }
