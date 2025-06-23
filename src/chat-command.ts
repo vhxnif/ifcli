@@ -27,8 +27,7 @@ program
     .option('--server-test', 'test mcp server')
     .option('--ls-mcp', 'list mcp server')
     .option('--theme', 'switch theme. default: violet_tides')
-    .action(async (option) => {
-        const { setting, serverTest, lsMcp, theme } = option
+    .action(async ({ setting, serverTest, lsMcp, theme }) => {
         if (setting) {
             await settingAction.setting()
         }
@@ -57,8 +56,7 @@ program
     .option('-e, --edit', 'use editor')
     .option('-t, --new-topic', 'start new topic')
     .argument('[string]')
-    .action(async (content, option) => {
-        const { chatName, edit, syncCall, newTopic } = option
+    .action(async (content, { chatName, edit, syncCall, newTopic }) => {
         const ask = async (ct: string) =>
             await chatAction.ask({
                 content: ct,
@@ -103,7 +101,7 @@ program
     .alias('hs')
     .description('view chat history')
     .option('-l, --limit <limit>', 'history message limit', '100')
-    .action(async (option) => chatAction.printChatHistory(Number(option.limit)))
+    .action(async ({ limit }) => chatAction.printChatHistory(Number(limit)))
 
 program
     .command('remove')
@@ -128,14 +126,23 @@ program
     .command('prompt')
     .alias('pt')
     .description('prompt manager')
+    .option('-l, --list [name]', 'list all prompts')
     .option('-q, --query <name>', 'query and set prompt for current chat')
     .option('-m, --modify', "modify the current chat's prompt")
     .option('-c, --cover [prompt]', "override the current chat's prompt")
     .option('-p, --publish', 'publish  prompt')
-    .action(async (option) => {
-        const { query, modify, cover, publish } = option
+    .action(async ({ list, query, modify, cover, publish }) => {
+        if (list) {
+            if (typeof list === 'boolean') {
+                await chatAction.listPrompt()
+                return
+            }
+            await chatAction.listPrompt(list) 
+            return
+        }
         if (query) {
             await chatAction.selectPrompt(query)
+            return
         }
         if (modify) {
             await editor(chatAction.prompt()).then((text) => {
@@ -143,6 +150,7 @@ program
                     chatAction.modifySystemPrompt(text)
                 }
             })
+            return
         }
         if (typeof cover === 'boolean') {
             const str = await stdin()
@@ -157,6 +165,7 @@ program
         }
         if (publish) {
             await chatAction.publishPrompt()
+            return
         }
         const pt = chatAction.prompt()
         if (pt) {
@@ -172,8 +181,7 @@ program
     .description('preset message manager')
     .option('-e, --edit', 'edit preset message')
     .option('-c, --clear', 'clear preset message')
-    .action(async (option) => {
-        const { edit, clear } = option
+    .action(async ({ edit, clear }) => {
         if (clear) {
             chatAction.clearPresetMessage()
             return
@@ -193,25 +201,26 @@ program
     .option('-o, --with-context', 'change with-context', false)
     .option('-p, --with-mcp', 'change with-mcp', false)
     .option('-u, --use-scenario', 'use scenario')
-    .action(async (option) => {
-        const { contextSize, model, withContext, withMcp, useScenario } = option
-        if (contextSize) {
-            chatAction.modifyContextSize(Number(contextSize))
+    .action(
+        async ({ contextSize, model, withContext, withMcp, useScenario }) => {
+            if (contextSize) {
+                chatAction.modifyContextSize(Number(contextSize))
+            }
+            if (model) {
+                await chatAction.modifyModel()
+            }
+            if (withContext) {
+                chatAction.modifyWithContext()
+            }
+            if (withMcp) {
+                chatAction.modifyWithMCP()
+            }
+            if (useScenario) {
+                await chatAction.modifyScenario()
+            }
+            chatAction.printChatConfig()
         }
-        if (model) {
-            await chatAction.modifyModel()
-        }
-        if (withContext) {
-            chatAction.modifyWithContext()
-        }
-        if (withMcp) {
-            chatAction.modifyWithMCP()
-        }
-        if (useScenario) {
-            await chatAction.modifyScenario()
-        }
-        chatAction.printChatConfig()
-    })
+    )
 
 program.parseAsync().catch((e: unknown) => {
     const { message } = e as Error

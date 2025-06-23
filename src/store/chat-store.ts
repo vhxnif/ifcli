@@ -341,6 +341,13 @@ export class ChatStore implements IChatStore {
             .all(`%${name}%`)
     }
 
+    listPrompt = () => {
+        return this.db
+            .query(`SELECT ${this.chatPromptColumn} FROM chat_prompt`)
+            .as(ChatPrompt)
+            .all()
+    }
+
     createPresetMessage = (params: PresetMessageContent[]) => {
         const { id } = this.existCurrentChat()
         this.db.transaction(() => {

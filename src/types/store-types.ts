@@ -126,6 +126,7 @@ export interface IChatStore {
     // ---- prompt ---- //
     publishPrompt: (name: string, version: string, content: string) => void
     searchPrompt: (name: string, version?: string) => ChatPrompt[]
+    listPrompt: () => ChatPrompt[]
 
     // ---- preset message ---- //
     createPresetMessage: (params: PresetMessageContent[]) => void

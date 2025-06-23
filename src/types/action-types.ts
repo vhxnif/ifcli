@@ -22,6 +22,7 @@ export interface IChatAction {
     modifyScenario: () => Promise<void>
     publishPrompt: () => Promise<void>
     selectPrompt: (name: string) => Promise<void>
+    listPrompt: (name?: string) => Promise<void>
     tools: () => Promise<void>
     testTool: () => Promise<void>
 

@@ -4,6 +4,7 @@ import { temperature } from '../types/constant'
 import type { ILLMClient } from '../types/llm-types'
 import MCPClient from '../types/mcp-client'
 
+import { stringWidth } from 'bun'
 import type { GeneralSetting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { askFlow } from '../llm/ask-flow'
@@ -16,19 +17,26 @@ import {
     type IChatStore,
     type PresetMessageContent,
 } from '../types/store-types'
-import { color, display } from '../util/color-utils'
+import { color, display, hex } from '../util/color-utils'
 import {
     editor,
     error,
     groupBy,
     isEmpty,
     isTextSame,
+    print,
     println,
 } from '../util/common-utils'
 import { input, select, selectRun, type Choice } from '../util/inquirer-utils'
+import { terminal } from '../util/platform-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
-import { platform, terminal } from '../util/platform-utils'
-import { stringWidth } from 'bun'
+import { TextShow } from '../util/text-show'
+import { themes } from '../llm/theme'
+import {
+    catppuccinColorSchema,
+    type CatppuccinColorName,
+} from '../util/color-schema'
+import { colors } from 'chalk'
 
 export class ChatAction implements IChatAction {
     private clientMap: Map<string, ILLMClient> = new Map()
@@ -164,8 +172,8 @@ export class ChatAction implements IChatAction {
             return
         }
         await selectRun('Select Topic', choices, (topicId) => {
-            const tp = topics.find(it => topicId === it.id)
-            if(!tp) {
+            const tp = topics.find((it) => topicId === it.id)
+            if (!tp) {
                 error(promptMessage.topicIdMissing)
                 return
             }
@@ -384,6 +392,50 @@ export class ChatAction implements IChatAction {
             prompts.map((it) => ({ name: it.name, value: it.content })),
             (v) => this.modifySystemPrompt(v)
         )
+    }
+    listPrompt = async (name?: string) => {
+        let prompts
+        if (name) {
+            prompts = this.store.searchPrompt(name)
+        } else {
+            prompts = this.store.listPrompt()
+        }
+        if (isEmpty(prompts)) {
+            error(promptMessage.systemPromptNoMatching)
+            return
+        }
+        const choices = prompts.map((it) => ({ name: it.name, value: it.name }))
+        const ptShow = async (df?: string) => {
+            const value = await select({
+                message: 'System Prompt:',
+                choices,
+                default: df,
+            })
+            if (!value) {
+                error(promptMessage.systemPromptNoMatching)
+                return
+            }
+            const p = prompts.find((it) => it.name === value)
+            if (!p) {
+                error(promptMessage.systemPromptNoMatching)
+                return
+            }
+            const { palette, assistant } = themes[this.generalSetting.theme]
+            const colorSchema = catppuccinColorSchema[palette]
+            const c = (color: CatppuccinColorName) => hex(colorSchema[color])
+            const textShow = new TextShow({
+                title: 'Promot',
+                titleColor: c(assistant.titleColor),
+                bolderColor: c(assistant.bolderColor),
+                textColor: c(assistant.textColor),
+                render: true,
+            })
+            textShow.start()
+            textShow.append(p.content)
+            textShow.stop()
+            await ptShow(p.name)
+        }
+        await ptShow()
     }
 
     tools = async () => {
