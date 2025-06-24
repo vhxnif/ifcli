@@ -27,6 +27,7 @@ import {
     groupBy,
     isEmpty,
     isTextSame,
+    print,
     println,
 } from '../util/common-utils'
 import { input, select, selectRun, type Choice } from '../util/inquirer-utils'
@@ -142,7 +143,7 @@ export class ChatAction implements IChatAction {
         if (chatName) {
             const chat = this.store.queryChat(chatName)
             if (!chat) {
-                display.error(`The ${chatName} not found.`)
+                print(display.error(`The ${chatName} not found.`))
                 return
             }
             await f(this.store.queryChatConfig(chat.id))
@@ -165,13 +166,13 @@ export class ChatAction implements IChatAction {
             value: it.id,
         }))
         if (isEmpty(choices)) {
-            display.error(promptMessage.onlyOneTopic)
+            print(display.error(promptMessage.onlyOneTopic))
             return
         }
         await selectRun('Select Topic', choices, (topicId) => {
             const tp = topics.find((it) => topicId === it.id)
             if (!tp) {
-                display.error(promptMessage.topicIdMissing)
+                print(display.error(promptMessage.topicIdMissing))
                 return
             }
             this.store.changeTopic(topicId, tp?.chatId)
@@ -501,7 +502,7 @@ export class ChatAction implements IChatAction {
             prompts = this.store.listPrompt()
         }
         if (isEmpty(prompts)) {
-            display.error(promptMessage.systemPromptNoMatching)
+            print(display.error(promptMessage.systemPromptNoMatching))
             return
         }
         const choices = prompts.map((it) => ({ name: it.name, value: it.name }))
@@ -512,30 +513,34 @@ export class ChatAction implements IChatAction {
                 default: df,
             })
             if (!value) {
-                display.error(promptMessage.systemPromptNoMatching)
+                print(display.error(promptMessage.systemPromptNoMatching))
                 return
             }
             const p = prompts.find((it) => it.name === value)
             if (!p) {
-                display.error(promptMessage.systemPromptNoMatching)
+                print(display.error(promptMessage.systemPromptNoMatching))
                 return
             }
-            const { palette, assistant } = themes[this.generalSetting.theme]
-            const colorSchema = catppuccinColorSchema[palette]
-            const c = (color: CatppuccinColorName) => hex(colorSchema[color])
-            const textShow = new TextShow({
-                title: 'Promot',
-                titleColor: c(assistant.titleColor),
-                bolderColor: c(assistant.bolderColor),
-                textColor: c(assistant.textColor),
-                render: true,
-            })
-            textShow.start()
-            textShow.append(p.content)
-            textShow.stop()
+            this.showPrompt(p.content)
             await ptShow(p.name)
         }
         await ptShow()
+    }
+
+    private showPrompt = (pt: string) => {
+        const { palette, assistant } = themes[this.generalSetting.theme]
+        const colorSchema = catppuccinColorSchema[palette]
+        const c = (color: CatppuccinColorName) => hex(colorSchema[color])
+        const textShow = new TextShow({
+            title: 'Promot',
+            titleColor: c(assistant.titleColor),
+            bolderColor: c(assistant.bolderColor),
+            textColor: c(assistant.textColor),
+            render: true,
+        })
+        textShow.start()
+        textShow.append(pt)
+        textShow.stop()
     }
 
     tools = async () => {
@@ -596,6 +601,14 @@ export class ChatAction implements IChatAction {
 
     prompt = () => {
         return this.store.currentChatConfig().sysPrompt
+    }
+
+    printPrompt = () => {
+        const pt = this.prompt()
+        if (!pt) {
+            print(display.error(promptMessage.systemPromptMissing))
+        }
+        this.showPrompt(pt)
     }
 
     clearPresetMessage = () => {
@@ -796,10 +809,7 @@ export class ChatAction implements IChatAction {
         return this.loopSubStr(s, wd)
     }
 
-    private loopSubStr = (
-        str: string,
-        targetWd: number
-    ): string => {
+    private loopSubStr = (str: string, targetWd: number): string => {
         if (stringWidth(str) <= targetWd) {
             return str
         }
@@ -809,7 +819,7 @@ export class ChatAction implements IChatAction {
         let result = ''
         for (let i = 0; i < maxLoop && low <= high; i++) {
             const mid = Math.floor((low + high) / 2)
-            const candidate = str.substring(0, mid) + "..."
+            const candidate = str.substring(0, mid) + '...'
             if (stringWidth(candidate) <= targetWd) {
                 result = candidate
                 low = mid + 1

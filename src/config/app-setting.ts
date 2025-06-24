@@ -1,7 +1,7 @@
 import { display } from '../app-context'
 import type { MCPConfig } from '../types/mcp-client'
 import type { AppSetting, AppSettingContent } from '../types/store-types'
-import { isEmpty } from '../util/common-utils'
+import { isEmpty, print } from '../util/common-utils'
 import { promptMessage } from './prompt-message'
 
 export type LLMSetting = {
@@ -123,7 +123,7 @@ export class AppSettingParse {
             } as AppSettingContent
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e: unknown) {
-            display.error(promptMessage.cfParseErr)
+            print(display.error(promptMessage.cfParseErr))
             return
         }
     }
@@ -133,7 +133,7 @@ export class AppSettingParse {
             return JSON.parse(str) as Setting
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e: unknown) {
-            display.error(promptMessage.cfParseErr)
+            print(display.error(promptMessage.cfParseErr))
             return
         }
     }

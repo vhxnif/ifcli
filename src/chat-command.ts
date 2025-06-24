@@ -2,7 +2,6 @@
 import { Command } from '@commander-js/extra-typings'
 import { chatAction, color, display, settingAction } from './app-context'
 import { version } from './config/app-setting'
-import { promptMessage } from './config/prompt-message'
 import { editor, print, println, stdin } from './util/common-utils'
 
 const program = new Command()
@@ -106,7 +105,9 @@ program
     .description('view chat history')
     .option('-l, --limit <limit>', 'history message limit', '100')
     .option('-e, --exp', 'export history in current dir')
-    .action(async ({ limit, exp}) => chatAction.printChatHistory(Number(limit), exp))
+    .action(async ({ limit, exp }) =>
+        chatAction.printChatHistory(Number(limit), exp)
+    )
 
 program
     .command('remove')
@@ -172,12 +173,7 @@ program
             await chatAction.publishPrompt()
             return
         }
-        const pt = chatAction.prompt()
-        if (pt) {
-            print(pt)
-            return
-        }
-        display.error(promptMessage.systemPromptMissing)
+        chatAction.printPrompt()
     })
 
 program
@@ -229,5 +225,5 @@ program
 
 program.parseAsync().catch((e: unknown) => {
     const { message } = e as Error
-    display.error(message)
+    print(display.error(message))
 })

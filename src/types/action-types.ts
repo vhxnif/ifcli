@@ -27,6 +27,7 @@ export interface IChatAction {
     testTool: () => Promise<void>
 
     prompt: () => string
+    printPrompt: () => void 
     editPresetMessage: () => Promise<void>
     clearPresetMessage: () => void
     printPresetMessage: () => void
