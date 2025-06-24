@@ -3,7 +3,7 @@ import { Command } from '@commander-js/extra-typings'
 import { chatAction, color, display, settingAction } from './app-context'
 import { version } from './config/app-setting'
 import { promptMessage } from './config/prompt-message'
-import { editor, print, stdin } from './util/common-utils'
+import { editor, print, println, stdin } from './util/common-utils'
 
 const program = new Command()
 
@@ -43,6 +43,7 @@ program
             await settingAction.theme()
             return
         }
+        println(version)
     })
 
 program
