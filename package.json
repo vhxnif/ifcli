@@ -28,10 +28,13 @@
         "bun": ">=1.2.6"
     },
     "bin": {
-        "ifcli": "build/chat-command.js"
+        "ict": "build/chat-command.js",
+        "ifchat": "build/chat-command.js",
+        "ist": "build/setting-command.js",
+        "ifsetting": "build/setting-command.js"
     },
     "scripts": {
-        "build": "bun build ./src/chat-command.ts --outdir ./build --target bun --minify"
+        "build": "bun build ./src/*-command.ts --outdir ./build --target bun --minify"
     },
     "devDependencies": {
         "@commander-js/extra-typings": "^13.1.0",

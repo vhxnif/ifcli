@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { chatAction, color, display, settingAction } from './app-context'
+import { chatAction, color, display } from './app-context'
 import { version } from './config/app-setting'
-import { editor, print, println, stdin } from './util/common-utils'
+import { editor, print, stdin } from './util/common-utils'
 
 const program = new Command()
 
@@ -18,61 +18,10 @@ program.configureHelp({
 })
 
 program
-    .name('ifcli')
+    .name('ifchat')
+    .alias('ict')
     .description('ifcli chat with LLM')
     .version(`${version}`)
-    .option('--setting', 'ifcli setting edit')
-    .option('--server-test', 'test mcp server')
-    .option('--ls-mcp', 'list mcp server')
-    .option('--theme', 'switch theme. default: violet_tides')
-    .option('--prompt [name]', 'list all prompts')
-    .option('--prompt-export', 'system prompt export')
-    .option('--prompt-import <file>', 'system prompt import')
-    .action(
-        async ({
-            setting,
-            serverTest,
-            lsMcp,
-            theme,
-            prompt,
-            promptExport,
-            promptImport,
-        }) => {
-            if (setting) {
-                await settingAction.setting()
-                return
-            }
-            if (serverTest) {
-                await chatAction.testTool()
-                return
-            }
-            if (lsMcp) {
-                await chatAction.tools()
-                return
-            }
-            if (theme) {
-                await settingAction.theme()
-                return
-            }
-            if (prompt) {
-                if (typeof prompt === 'boolean') {
-                    await chatAction.listPrompt()
-                    return
-                }
-                await chatAction.listPrompt(prompt)
-                return
-            }
-            if (promptExport) {
-                await chatAction.exportPrompt()
-                return
-            }
-            if (promptImport) {
-                await chatAction.importPrompt(promptImport)
-                return
-            }
-            println(version)
-        }
-    )
 
 program
     .command('new')

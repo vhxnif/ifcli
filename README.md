@@ -28,9 +28,9 @@ bun install && bun run build && bun link
 
 ## Config
 
-To configure various application settings using the `ifcli --setting` command.**Please configure the large model settings before use.**
+To configure various application settings using the `ist cf -e` command.**Please configure the large model settings before use.**
 
-To use MCP Server, you must first configure the relevant information and enable MCP functionality for the current chat session `ifcli cf -p`.
+To use MCP Server, you must first configure the relevant information and enable MCP functionality for the current chat session `ict cf -p`.
 
 The `EDITOR` environment variable must be configured to enable configuration editing and related system functions.If not configured, `vim` will be used as the default editor.
 
@@ -44,30 +44,46 @@ Every release includes a version-specific data file (ifcli\_\<version\>.sqlite).
 
 ## Command
 
+`setting` command
+
 ```bash
-Usage: ifcli [options] [command]
+Usage: ifsetting|ist [options] [command]
+
+ifcli setting
+
+Options:
+  -V, --version        output the version number
+  -h, --help           display help for command
+
+Commands:
+  config|cf [options]  config management
+  mcp [options]        mcp server management
+  prompt|pt [options]  system prompt management
+  help [command]       display help for command
+```
+
+`chat` command
+
+```bash
+Usage: ifchat|ict [options] [command]
 
 ifcli chat with LLM
 
 Options:
   -V, --version           output the version number
-  --setting               ifcli setting edit
-  --server-test           test mcp server
-  --ls-mcp                list mcp server
-  --theme                 switch theme. default: ethereal_golw
   -h, --help              display help for command
 
 Commands:
   new <string>            new chat
   ask [options] [string]  chat with AI
-  list|ls                 list all chats
+  list|ls [options]       list all chats
   history|hs [options]    view chat history
   remove|rm               remove chat
-  switch|st               switch to another chat
+  switch|st [options]     switch to another chat or topic
   prompt|pt [options]     prompt manager
   preset|ps [options]     preset message manager
   config|cf [options]     manage chat config
-  clear|cl                clear the current chat message
+  help [command]          display help for command
 ```
 
 ### AppSetting
