@@ -254,39 +254,59 @@ export class ChatAction implements IChatAction {
         const msp = groupBy(messages, (m: ChatMessage) => m.pairKey)
         const choices = this.historyChoice(msp)
         const cacheExportPairKey: string[] = []
-        const show = async (df?: string) => {
-            const value = await select({
-                message: 'View Message:',
+        const loopShow = async (df?: string) => {
+            const v = await this.historyShow({
                 choices,
-                default: df,
+                msp,
+                cacheExportPairKey,
+                exp,
+                df,
             })
-            const msgs = msp.get(value)
-            if (!msgs) {
-                throw Error(promptMessage.assistantMissing)
-            }
-            const expInfo: { role: string; content: string }[] = [
-                {
-                    role: 'user',
-                    content: this.findRoleMessage('user')(msgs) ?? '',
-                },
-            ]
-            const colExpInfo = (role: string, content: string) =>
-                expInfo.push({ role, content })
-            const { reasoning, toolsCall, assistant } =
-                this.partMessageByRole(msgs)
-            const display = new Display({
-                theme: this.generalSetting.theme,
-                enableSpinner: false,
-            })
-            this.historyReasoningPrint(reasoning, display, colExpInfo)
-            this.historyToolsCallPrint(toolsCall, display, colExpInfo)
-            display.contentShow(assistant)
-            display.contentStop()
-            colExpInfo('assistant', assistant)
-            await this.exportHistory(value, exp, cacheExportPairKey, expInfo)
-            await show(value)
+            await loopShow(v)
         }
-        await show()
+        await loopShow()
+    }
+
+    private historyShow = async ({
+        choices,
+        msp,
+        cacheExportPairKey,
+        exp,
+        df,
+    }: {
+        choices: Choice[]
+        msp: Map<string, ChatMessage[]>
+        cacheExportPairKey: string[]
+        exp: boolean | undefined
+        df?: string
+    }) => {
+        const value = await select({
+            message: 'View Message:',
+            choices,
+            default: df,
+        })
+        const msgs = msp.get(value)
+        if (!msgs) {
+            throw Error(promptMessage.assistantMissing)
+        }
+        const expInfo: { role: string; content: string }[] = [
+            {
+                role: 'user',
+                content: this.findRoleMessage('user')(msgs) ?? '',
+            },
+        ]
+        const colExpInfo = (role: string, content: string) =>
+            expInfo.push({ role, content })
+        const { reasoning, toolsCall, assistant } = this.partMessageByRole(msgs)
+        const display = new Display({
+            theme: this.generalSetting.theme,
+            enableSpinner: false,
+        })
+        this.historyReasoningPrint(reasoning, display, colExpInfo)
+        this.historyToolsCallPrint(toolsCall, display, colExpInfo)
+        this.historyAssistantPrint(assistant, display, colExpInfo)
+        await this.exportHistory(value, exp, cacheExportPairKey, expInfo)
+        return value
     }
 
     private exportHistory = async (
@@ -307,6 +327,16 @@ export class ChatAction implements IChatAction {
                 this.exprotHistory(it.role, pairKey, it.content)
             )
         )
+    }
+
+    private historyAssistantPrint = (
+        assistant: string,
+        display: Display,
+        f: (role: string, content: string) => void
+    ) => {
+        display.contentShow(assistant)
+        display.contentStop()
+        f('assistant', assistant)
     }
 
     private historyReasoningPrint = (
