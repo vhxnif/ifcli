@@ -4,7 +4,7 @@ import { promptMessage } from '../config/prompt-message'
 import type { ISettingAction } from '../types/action-types'
 import type { IChatStore } from '../types/store-types'
 import { editor, isTextSame } from '../util/common-utils'
-import { select, type Choice } from '../util/inquirer-utils'
+import { select, themeStyle, type Choice } from '../util/inquirer-utils'
 import { themes } from '../util/theme'
 
 export class SettingAction implements ISettingAction {
@@ -36,7 +36,7 @@ export class SettingAction implements ISettingAction {
         f,
     }: {
         message: string
-        choices: Choice[]
+        choices: Choice<string>[]
         df?: string
         f: (value: string) => {
             [K in keyof GeneralSetting]?: GeneralSetting[K]
@@ -49,11 +49,7 @@ export class SettingAction implements ISettingAction {
             message,
             choices,
             default: df,
-            theme: {
-                style: {
-                    description: (t: string) => color.mauve.bold(t),
-                },
-            },
+            theme: themeStyle(color),
         })
         const newSetting = parse.generalSettingParse({
             ...generalSetting,

@@ -25,6 +25,7 @@ program
     .option('--server-test', 'test mcp server')
     .option('--ls-mcp', 'list mcp server')
     .option('--theme', 'switch theme. default: violet_tides')
+    .option('--prompt [name]', 'list all prompts')
     .option('--prompt-export', 'system prompt export')
     .option('--prompt-import <file>', 'system prompt import')
     .action(
@@ -33,6 +34,7 @@ program
             serverTest,
             lsMcp,
             theme,
+            prompt,
             promptExport,
             promptImport,
         }) => {
@@ -50,6 +52,14 @@ program
             }
             if (theme) {
                 await settingAction.theme()
+                return
+            }
+            if (prompt) {
+                if (typeof prompt === 'boolean') {
+                    await chatAction.listPrompt()
+                    return
+                }
+                await chatAction.listPrompt(prompt)
                 return
             }
             if (promptExport) {
@@ -151,20 +161,11 @@ program
     .command('prompt')
     .alias('pt')
     .description('prompt manager')
-    .option('-l, --list [name]', 'list all prompts')
     .option('-q, --query <name>', 'query and set prompt for current chat')
     .option('-m, --modify', "modify the current chat's prompt")
     .option('-c, --cover [prompt]', "override the current chat's prompt")
     .option('-p, --publish', 'publish  prompt')
-    .action(async ({ list, query, modify, cover, publish }) => {
-        if (list) {
-            if (typeof list === 'boolean') {
-                await chatAction.listPrompt()
-                return
-            }
-            await chatAction.listPrompt(list)
-            return
-        }
+    .action(async ({ query, modify, cover, publish }) => {
         if (query) {
             await chatAction.selectPrompt(query)
             return

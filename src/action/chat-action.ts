@@ -28,10 +28,15 @@ import {
     groupBy,
     isEmpty,
     isTextSame,
-    print,
     println,
 } from '../util/common-utils'
-import { input, select, selectRun, type Choice } from '../util/inquirer-utils'
+import {
+    input,
+    select,
+    selectRun,
+    themeStyle,
+    type Choice,
+} from '../util/inquirer-utils'
 import { terminal } from '../util/platform-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { TextShow } from '../util/text-show'
@@ -161,19 +166,15 @@ export class ChatAction implements IChatAction {
 
     changeTopic = async () => {
         const topics = this.store.currentChatTopics().filter((it) => !it.select)
-        const choices = topics.map((it) => ({
+        const choices: Choice<ChatTopic>[] = topics.map((it) => ({
             name: this.subStr(it.content),
-            value: it.id,
+            value: it,
         }))
         if (isEmpty(choices)) {
             throw Error(promptMessage.onlyOneTopic)
         }
-        await selectRun('Select Topic', choices, (topicId) => {
-            const tp = topics.find((it) => topicId === it.id)
-            if (!tp) {
-                throw Error(promptMessage.topicIdMissing)
-            }
-            this.store.changeTopic(topicId, tp?.chatId)
+        await selectRun('Select Topic', choices, ({ id, chatId }) => {
+            this.store.changeTopic(id, chatId)
         })
     }
 
@@ -271,7 +272,7 @@ export class ChatAction implements IChatAction {
         exp,
         df,
     }: {
-        choices: Choice[]
+        choices: Choice<string>[]
         msp: Map<string, ChatMessage[]>
         cacheExportPairKey: string[]
         exp: boolean | undefined
@@ -379,7 +380,7 @@ export class ChatAction implements IChatAction {
             }
             arr.push({ name: this.subStr(userContent), value: it[0] })
             return arr
-        }, [] as Choice[])
+        }, [] as Choice<string>[])
     }
 
     private exprotHistory = async (
@@ -486,12 +487,19 @@ export class ChatAction implements IChatAction {
         if (isEmpty(prompts)) {
             throw Error(promptMessage.systemPromptNoMatching)
         }
-        await selectRun(
-            'System Prompt:',
-            prompts.map((it) => ({ name: it.name, value: it.content })),
-            (v) => this.modifySystemPrompt(v)
-        )
+        const choices: Choice<ChatPrompt>[] = prompts.map((it) => ({
+            name: it.name,
+            value: it,
+            description: this.promptChoiceDesc(it),
+        }))
+        const v = await select({
+            message: 'System Prompt:',
+            choices,
+            theme: themeStyle(color),
+        })
+        this.modifySystemPrompt(v.content)
     }
+
     listPrompt = async (name?: string) => {
         let prompts
         if (name) {
@@ -502,24 +510,30 @@ export class ChatAction implements IChatAction {
         if (isEmpty(prompts)) {
             throw Error(promptMessage.systemPromptNoMatching)
         }
-        const choices = prompts.map((it) => ({ name: it.name, value: it.name }))
+        const choices: Choice<ChatPrompt>[] = prompts.map((it) => ({
+            name: it.name,
+            value: it,
+            description: this.promptChoiceDesc(it),
+        }))
         const ptShow = async (df?: string) => {
             const value = await select({
                 message: 'System Prompt:',
                 choices,
                 default: df,
+                theme: themeStyle(color),
             })
             if (!value) {
                 throw Error(promptMessage.systemPromptNoMatching)
             }
-            const p = prompts.find((it) => it.name === value)
-            if (!p) {
-                throw Error(promptMessage.systemPromptNoMatching)
-            }
-            this.showPrompt(p.content)
-            await ptShow(p.name)
+            const { content, name } = value
+            this.showPrompt(content)
+            await ptShow(name)
         }
         await ptShow()
+    }
+
+    private promptChoiceDesc = (pt: ChatPrompt) => {
+        return `${pt.name}@${pt.version}`
     }
 
     private showPrompt = (pt: string) => {
@@ -613,13 +627,13 @@ export class ChatAction implements IChatAction {
     }
 
     importPrompt = async (file: string) => {
-        const fileName = file.substring(0, file.lastIndexOf("."))
-        const idx = fileName.lastIndexOf("_")
-        const promptName = fileName.substring(0, idx)  
+        const fileName = file.substring(0, file.lastIndexOf('.'))
+        const idx = fileName.lastIndexOf('_')
+        const promptName = fileName.substring(0, idx)
         const version = fileName.substring(idx + 1, fileName.length)
         const content = await Bun.file(file).text()
         this.store.publishPrompt(promptName, version, content)
-    } 
+    }
 
     clearPresetMessage = () => {
         this.store.clearPresetMessage()
