@@ -12,6 +12,7 @@ import MCPClient from '../types/mcp-client'
 import {
     Chat,
     ChatMessage,
+    ChatPrompt,
     ChatTopic,
     type ChatConfig,
     type IChatStore,
@@ -604,6 +605,21 @@ export class ChatAction implements IChatAction {
         }
         this.showPrompt(pt)
     }
+
+    exportPrompt = async () => {
+        const pts = this.store.listPrompt()
+        const fileName = (pt: ChatPrompt) => `${pt.name}_${pt.version}.md`
+        await Promise.all(pts.map((it) => Bun.write(fileName(it), it.content)))
+    }
+
+    importPrompt = async (file: string) => {
+        const fileName = file.substring(0, file.lastIndexOf("."))
+        const idx = fileName.lastIndexOf("_")
+        const promptName = fileName.substring(0, idx)  
+        const version = fileName.substring(idx + 1, fileName.length)
+        const content = await Bun.file(file).text()
+        this.store.publishPrompt(promptName, version, content)
+    } 
 
     clearPresetMessage = () => {
         this.store.clearPresetMessage()

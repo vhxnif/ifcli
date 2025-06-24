@@ -25,25 +25,44 @@ program
     .option('--server-test', 'test mcp server')
     .option('--ls-mcp', 'list mcp server')
     .option('--theme', 'switch theme. default: violet_tides')
-    .action(async ({ setting, serverTest, lsMcp, theme }) => {
-        if (setting) {
-            await settingAction.setting()
-            return
+    .option('--prompt-export', 'system prompt export')
+    .option('--prompt-import <file>', 'system prompt import')
+    .action(
+        async ({
+            setting,
+            serverTest,
+            lsMcp,
+            theme,
+            promptExport,
+            promptImport,
+        }) => {
+            if (setting) {
+                await settingAction.setting()
+                return
+            }
+            if (serverTest) {
+                await chatAction.testTool()
+                return
+            }
+            if (lsMcp) {
+                await chatAction.tools()
+                return
+            }
+            if (theme) {
+                await settingAction.theme()
+                return
+            }
+            if (promptExport) {
+                await chatAction.exportPrompt()
+                return
+            }
+            if (promptImport) {
+                await chatAction.importPrompt(promptImport)
+                return
+            }
+            println(version)
         }
-        if (serverTest) {
-            await chatAction.testTool()
-            return
-        }
-        if (lsMcp) {
-            await chatAction.tools()
-            return
-        }
-        if (theme) {
-            await settingAction.theme()
-            return
-        }
-        println(version)
-    })
+    )
 
 program
     .command('new')

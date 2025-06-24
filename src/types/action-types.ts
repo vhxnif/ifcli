@@ -28,6 +28,8 @@ export interface IChatAction {
 
     prompt: () => string
     printPrompt: () => void 
+    exportPrompt: () => Promise<void> 
+    importPrompt: (file: string) => Promise<void>
     editPresetMessage: () => Promise<void>
     clearPresetMessage: () => void
     printPresetMessage: () => void

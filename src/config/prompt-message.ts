@@ -5,6 +5,7 @@ export const promptMessage = {
     modelMissing: 'At least one model must be selected.',
     systemPromptNoMatching: 'No matching system prompt found.',
     systemPromptMissing: 'The system prompt has not been configured.',
+    systemPromotExits: '',
     assistantMissing: 'Assistant Content Missing.',
     hisMsgMissing: 'No message history found.',
     oneChatRemain: 'At least one chat must remain.',
