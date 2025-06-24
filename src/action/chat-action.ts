@@ -812,7 +812,6 @@ export class ChatAction implements IChatAction {
             const candidate = str.substring(0, mid) + "..."
             if (stringWidth(candidate) <= targetWd) {
                 result = candidate
-                console.log(`low: ${low}, high: ${high}, mid: ${mid} res: ${result}`)
                 low = mid + 1
             } else {
                 high = mid - 1
