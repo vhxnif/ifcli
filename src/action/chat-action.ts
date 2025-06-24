@@ -143,8 +143,7 @@ export class ChatAction implements IChatAction {
         if (chatName) {
             const chat = this.store.queryChat(chatName)
             if (!chat) {
-                print(display.error(`The ${chatName} not found.`))
-                return
+                throw Error(`The ${chatName} not found.`)
             }
             await f(this.store.queryChatConfig(chat.id))
             return
@@ -166,14 +165,12 @@ export class ChatAction implements IChatAction {
             value: it.id,
         }))
         if (isEmpty(choices)) {
-            print(display.error(promptMessage.onlyOneTopic))
-            return
+            throw Error(promptMessage.onlyOneTopic)
         }
         await selectRun('Select Topic', choices, (topicId) => {
             const tp = topics.find((it) => topicId === it.id)
             if (!tp) {
-                print(display.error(promptMessage.topicIdMissing))
-                return
+                throw Error(promptMessage.topicIdMissing)
             }
             this.store.changeTopic(topicId, tp?.chatId)
         })
@@ -502,8 +499,7 @@ export class ChatAction implements IChatAction {
             prompts = this.store.listPrompt()
         }
         if (isEmpty(prompts)) {
-            print(display.error(promptMessage.systemPromptNoMatching))
-            return
+            throw Error(promptMessage.systemPromptNoMatching)
         }
         const choices = prompts.map((it) => ({ name: it.name, value: it.name }))
         const ptShow = async (df?: string) => {
@@ -513,13 +509,11 @@ export class ChatAction implements IChatAction {
                 default: df,
             })
             if (!value) {
-                print(display.error(promptMessage.systemPromptNoMatching))
-                return
+                throw Error(promptMessage.systemPromptNoMatching)
             }
             const p = prompts.find((it) => it.name === value)
             if (!p) {
-                print(display.error(promptMessage.systemPromptNoMatching))
-                return
+                throw Error(promptMessage.systemPromptNoMatching)
             }
             this.showPrompt(p.content)
             await ptShow(p.name)
@@ -606,7 +600,7 @@ export class ChatAction implements IChatAction {
     printPrompt = () => {
         const pt = this.prompt()
         if (!pt) {
-            print(display.error(promptMessage.systemPromptMissing))
+            throw Error(promptMessage.systemPromptMissing)
         }
         this.showPrompt(pt)
     }
