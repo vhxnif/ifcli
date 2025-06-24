@@ -793,34 +793,31 @@ export class ChatAction implements IChatAction {
     private subStr = (str: string) => {
         const wd = Math.floor(terminal.column * 0.7)
         const s = JSON.stringify(str)
-        return this.loopSubStr(s, s, wd)
+        return this.loopSubStr(s, wd)
     }
 
     private loopSubStr = (
         str: string,
-        source: string,
         targetWd: number
     ): string => {
         if (stringWidth(str) <= targetWd) {
-            if (str === source) {
-                return str
-            }
-            return this.loopSubStr(
-                source.substring(0, str.length + 10),
-                source,
-                targetWd
-            )
+            return str
         }
-        let wdl = 0
-        const arr: string[] = []
-        for (let index = 0; index < str.length; index++) {
-            if (wdl >= targetWd) {
-                break
+        const maxLoop = 20
+        let low = 0
+        let high = str.length
+        let result = ''
+        for (let i = 0; i < maxLoop && low <= high; i++) {
+            const mid = Math.floor((low + high) / 2)
+            const candidate = str.substring(0, mid) + "..."
+            if (stringWidth(candidate) <= targetWd) {
+                result = candidate
+                console.log(`low: ${low}, high: ${high}, mid: ${mid} res: ${result}`)
+                low = mid + 1
+            } else {
+                high = mid - 1
             }
-            const s = str[index]
-            arr.push(s)
-            wdl += stringWidth(s)
         }
-        return `${arr.join('')}...`
+        return result
     }
 }
