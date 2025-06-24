@@ -580,32 +580,32 @@ export class ChatAction implements IChatAction {
 
     testTool = async () => {
         const f = (m: MCPClient) => `${m.name}/${m.version}`
-        await selectRun(
-            'Select Server',
-            this.mcps.map((it) => ({ name: f(it), value: f(it) })),
-            async (v) => {
-                const m = this.mcps.find((it) => v === f(it))!
-                try {
-                    await m.connect()
-                    const res = await m.listTools()
-                    const tools = res.tools.map((it) => [
-                        display.tip(it.name),
-                        it.description,
-                    ])
-                    printTable(
-                        [
-                            ['Name', 'Description'].map((it) =>
-                                display.caution(it)
-                            ),
-                            ...tools,
-                        ],
-                        tableConfig({ cols: [1, 3], alignment: 'left' })
-                    )
-                } finally {
-                    await m.close()
-                }
+        const choices = this.mcps.map((it) => ({ name: f(it), value: f(it) }))
+        if (isEmpty(choices)) {
+            throw Error(promptMessage.mcpMissing)
+        }
+        await selectRun('Select Server', choices, async (v) => {
+            const m = this.mcps.find((it) => v === f(it))!
+            try {
+                await m.connect()
+                const res = await m.listTools()
+                const tools = res.tools.map((it) => [
+                    display.tip(it.name),
+                    it.description,
+                ])
+                printTable(
+                    [
+                        ['Name', 'Description'].map((it) =>
+                            display.caution(it)
+                        ),
+                        ...tools,
+                    ],
+                    tableConfig({ cols: [1, 3], alignment: 'left' })
+                )
+            } finally {
+                await m.close()
             }
-        )
+        })
     }
 
     prompt = () => {
