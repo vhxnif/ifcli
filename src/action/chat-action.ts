@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import type { AskContent, IChatAction } from '../types/action-types'
-import { temperature } from '../types/constant'
-import type { ILLMClient } from '../types/llm-types'
-import MCPClient from '../types/mcp-client'
-import path from 'path'
 import { stringWidth } from 'bun'
 import { color, display } from '../app-context'
 import type { GeneralSetting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { askFlow } from '../llm/ask-flow'
 import { Display } from '../llm/display'
+import type { AskContent, IChatAction } from '../types/action-types'
+import { temperature } from '../types/constant'
+import type { ILLMClient } from '../types/llm-types'
+import MCPClient from '../types/mcp-client'
 import {
     Chat,
     ChatMessage,
@@ -35,7 +34,6 @@ import { terminal } from '../util/platform-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { TextShow } from '../util/text-show'
 import { themes } from '../util/theme'
-import { RootSchema } from '@modelcontextprotocol/sdk/types.js'
 
 export class ChatAction implements IChatAction {
     private clientMap: Map<string, ILLMClient> = new Map()
@@ -161,11 +159,11 @@ export class ChatAction implements IChatAction {
         )
 
     changeTopic = async () => {
-        const topics = this.store
-            .currentChatTopics()
-            .filter((it) => !it.select)
-            .map(this.topicName)
-        const choices = topics.map((it) => ({ name: it.content, value: it.id }))
+        const topics = this.store.currentChatTopics().filter((it) => !it.select)
+        const choices = topics.map((it) => ({
+            name: this.subStr(it.content),
+            value: it.id,
+        }))
         if (isEmpty(choices)) {
             display.error(promptMessage.onlyOneTopic)
             return
@@ -185,7 +183,7 @@ export class ChatAction implements IChatAction {
             this.listItems(
                 it,
                 (s) => s.select,
-                (s) => s.content
+                (s) => this.subStr(s.content)
             )
         )
     }
@@ -375,19 +373,12 @@ export class ChatAction implements IChatAction {
     }
 
     private historyChoice = (msp: Map<string, ChatMessage[]>) => {
-        const subUserContent = (str: string) => {
-            const s = JSON.stringify(str).slice(1, -1)
-            if (s.length <= 25) {
-                return s
-            }
-            return `${s.substring(0, 20)}...`
-        }
         return msp.entries().reduce((arr, it) => {
             const userContent = this.findRoleMessage('user')(it[1])
             if (!userContent) {
                 return arr
             }
-            arr.push({ name: subUserContent(userContent), value: it[0] })
+            arr.push({ name: this.subStr(userContent), value: it[0] })
             return arr
         }, [] as Choice[])
     }
@@ -774,7 +765,7 @@ export class ChatAction implements IChatAction {
     }
 
     private sortedTopics = async (): Promise<ChatTopic[]> => {
-        const tps = this.store.currentChatTopics().map(this.topicName)
+        const tps = this.store.currentChatTopics()
         if (isEmpty(tps)) {
             throw Error(promptMessage.topicMissing)
         }
@@ -799,20 +790,24 @@ export class ChatAction implements IChatAction {
         return [st!, ...oths]
     }
 
-    private topicName = (tp: ChatTopic) => {
-        const wd = Math.floor(terminal.column * 0.75)
-        tp.content = this.subStr(tp.content, wd, wd)
-        return tp
+    private subStr = (str: string) => {
+        const wd = Math.floor(terminal.column * 0.7)
+        return this.loopSubStr(JSON.stringify(str), wd, wd)
     }
 
-    private subStr = (str: string, targetWd: number, wd: number): string => {
+    private loopSubStr = (
+        str: string,
+        targetWd: number,
+        wd: number
+    ): string => {
         if (stringWidth(str) <= targetWd) {
             return str
         }
-        return this.subStr(
+        return this.loopSubStr(
             `${str.substring(0, wd)}...`,
             targetWd,
             Math.floor(targetWd * 0.7)
         )
     }
 }
+
