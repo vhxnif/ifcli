@@ -76,7 +76,6 @@ Options:
 Commands:
   new <string>            new chat
   ask [options] [string]  chat with AI
-  list|ls [options]       list all chats
   history|hs [options]    view chat history
   remove|rm               remove chat
   switch|st [options]     switch to another chat or topic
