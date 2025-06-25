@@ -22,7 +22,7 @@ const selectRun = async <V>(
 const themeStyle = (ds: Record<CatppuccinColorName, ChalkInstance>) => {
     return {
         style: {
-            disabled: (text: string) => `- ${ds.maroon(text)}`,
+            disabled: (text: string) => `- ${ds.yellow(text)}`,
             description: (text: string) => ds.mauve(text),
         },
     }

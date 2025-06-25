@@ -179,7 +179,7 @@ export class ChatAction implements IChatAction {
         const choices: Choice<string>[] = chats.map((it) => ({
             name: it.name,
             value: it.name,
-            disabled: it.select ? '(*)' : false,
+            disabled: it.select ? ' ' : false,
         }))
         if (isEmpty(choices.filter((it) => !it.disabled))) {
             throw Error(promptMessage.onlyOneChat)
@@ -242,7 +242,7 @@ export class ChatAction implements IChatAction {
             name: this.subStr(it.content),
             value: it,
             description: it.content,
-            disabled: it.select ? '(*)' : false,
+            disabled: it.select ? ' ' : false,
         }))
         if (isEmpty(choices.filter((it) => !it.disabled))) {
             throw Error(promptMessage.onlyOneTopic)

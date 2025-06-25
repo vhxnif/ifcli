@@ -188,7 +188,7 @@ export class Store implements IStore {
         return this.currentChatRun((it) => {
             return this.db
                 .query(
-                    `SELECT ${this.chatTopicColumn} FROM chat_topic WHERE chat_id = ?`
+                    `SELECT ${this.chatTopicColumn} FROM chat_topic WHERE chat_id = ? order by create_time desc`
                 )
                 .as(ChatTopic)
                 .all(it.id)
