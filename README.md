@@ -162,6 +162,7 @@ Commands:
 |:------------|:-------------------------------------|:---------|
 | name | string | true |  
 | version | string | true |  
+| enable | boolean | true |
 | type | 'streamable' | true |  
 | url | string | true |
 | opts | StreamableHTTPClientTransportOptions | false |
@@ -170,7 +171,8 @@ Commands:
 | column name | type | required |
 |:------------|:--------------------------|:---------|
 | name | string | true |  
-| version | string | true |  
+| version | string | true |
+| enable | boolean | true |
 | type | 'sse' | true |  
 | url | string | true |
 | opts | SSEClientTransportOptions | false |
@@ -179,7 +181,8 @@ Commands:
 | column name | type | required |
 |:------------|:----------------------|:---------|
 | name | string | true |  
-| version | string | true |  
+| version | string | true |
+| enable | boolean | true |
 | type | 'stdio' | true |
 | params | StdioServerParameters | true |
 
