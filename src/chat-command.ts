@@ -1,9 +1,8 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { chatAction, settingAction } from './app-context'
+import { chatAction, color, display } from './app-context'
 import { version } from './config/app-setting'
-import { color } from './util/color-utils'
-import { editor, error, stdin } from './util/common-utils'
+import { editor, print, stdin } from './util/common-utils'
 
 const program = new Command()
 
@@ -19,28 +18,10 @@ program.configureHelp({
 })
 
 program
-    .name('ifcli')
+    .name('ifchat')
+    .alias('ict')
     .description('ifcli chat with LLM')
     .version(`${version}`)
-    .option('--setting', 'ifcli setting edit')
-    .option('--server-test', 'test mcp server')
-    .option('--ls-mcp', 'list mcp server')
-    .option('--theme', 'switch theme. default: violet_tides')
-    .action(async (option) => {
-        const { setting, serverTest, lsMcp, theme } = option
-        if (setting) {
-            await settingAction.setting()
-        }
-        if (serverTest) {
-            await chatAction.testTool()
-        }
-        if (lsMcp) {
-            await chatAction.tools()
-        }
-        if (theme) {
-            await settingAction.theme()
-        }
-    })
 
 program
     .command('new')
@@ -54,14 +35,15 @@ program
     .option('-s, --sync-call', 'sync call')
     .option('-c, --chat-name <string>', 'ask with other chat')
     .option('-e, --edit', 'use editor')
+    .option('-t, --new-topic', 'start new topic')
     .argument('[string]')
-    .action(async (content, option) => {
-        const { chatName, edit, syncCall } = option
+    .action(async (content, { chatName, edit, syncCall, newTopic }) => {
         const ask = async (ct: string) =>
             await chatAction.ask({
                 content: ct,
                 chatName,
                 noStream: syncCall ? true : false,
+                newTopic,
             })
         if (content) {
             await ask(content)
@@ -83,17 +65,14 @@ program
     })
 
 program
-    .command('list')
-    .alias('ls')
-    .description('list all chats')
-    .action(async () => await chatAction.printChats())
-
-program
     .command('history')
     .alias('hs')
     .description('view chat history')
     .option('-l, --limit <limit>', 'history message limit', '100')
-    .action(async (option) => chatAction.printChatHistory(Number(option.limit)))
+    .option('-e, --exp', 'export history in current dir')
+    .action(async ({ limit, exp }) =>
+        chatAction.printChatHistory(Number(limit), exp)
+    )
 
 program
     .command('remove')
@@ -104,8 +83,16 @@ program
 program
     .command('switch')
     .alias('st')
-    .description('switch to another chat')
-    .action(async () => await chatAction.changeChat())
+    .description('switch to another chat or topic')
+    .option('-t, --topic', 'switch to anther topic')
+    .argument('[name]')
+    .action(async (name, { topic }) => {
+        if (topic) {
+            await chatAction.changeTopic()
+            return
+        }
+        await chatAction.changeChat(name)
+    })
 
 program
     .command('prompt')
@@ -115,10 +102,10 @@ program
     .option('-m, --modify', "modify the current chat's prompt")
     .option('-c, --cover [prompt]', "override the current chat's prompt")
     .option('-p, --publish', 'publish  prompt')
-    .action(async (option) => {
-        const { query, modify, cover, publish } = option
+    .action(async ({ query, modify, cover, publish }) => {
         if (query) {
             await chatAction.selectPrompt(query)
+            return
         }
         if (modify) {
             await editor(chatAction.prompt()).then((text) => {
@@ -126,6 +113,7 @@ program
                     chatAction.modifySystemPrompt(text)
                 }
             })
+            return
         }
         if (typeof cover === 'boolean') {
             const str = await stdin()
@@ -140,7 +128,9 @@ program
         }
         if (publish) {
             await chatAction.publishPrompt()
+            return
         }
+        chatAction.printPrompt()
     })
 
 program
@@ -149,8 +139,7 @@ program
     .description('preset message manager')
     .option('-e, --edit', 'edit preset message')
     .option('-c, --clear', 'clear preset message')
-    .action(async (option) => {
-        const { edit, clear } = option
+    .action(async ({ edit, clear }) => {
         if (clear) {
             chatAction.clearPresetMessage()
             return
@@ -170,33 +159,28 @@ program
     .option('-o, --with-context', 'change with-context', false)
     .option('-p, --with-mcp', 'change with-mcp', false)
     .option('-u, --use-scenario', 'use scenario')
-    .action(async (option) => {
-        const { contextSize, model, withContext, withMcp, useScenario } = option
-        if (contextSize) {
-            chatAction.modifyContextSize(Number(contextSize))
+    .action(
+        async ({ contextSize, model, withContext, withMcp, useScenario }) => {
+            if (contextSize) {
+                chatAction.modifyContextSize(Number(contextSize))
+            }
+            if (model) {
+                await chatAction.modifyModel()
+            }
+            if (withContext) {
+                chatAction.modifyWithContext()
+            }
+            if (withMcp) {
+                chatAction.modifyWithMCP()
+            }
+            if (useScenario) {
+                await chatAction.modifyScenario()
+            }
+            chatAction.printChatConfig()
         }
-        if (model) {
-            await chatAction.modifyModel()
-        }
-        if (withContext) {
-            chatAction.modifyWithContext()
-        }
-        if (withMcp) {
-            chatAction.modifyWithMCP()
-        }
-        if (useScenario) {
-            await chatAction.modifyScenario()
-        }
-        chatAction.printChatConfig()
-    })
-
-program
-    .command('clear')
-    .alias('cl')
-    .description('clear the current chat message')
-    .action(() => chatAction.clearChatMessage())
+    )
 
 program.parseAsync().catch((e: unknown) => {
     const { message } = e as Error
-    error(message)
+    print(display.error(message))
 })

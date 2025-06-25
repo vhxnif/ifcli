@@ -10,16 +10,13 @@ import type {
     LLMToolsCallParam,
 } from '../types/llm-types'
 import type MCPClient from '../types/mcp-client'
-import type {
-    ChatConfig,
-    IChatStore,
-    MessageContent,
-} from '../types/store-types'
+import type { ChatConfig, IStore, MessageContent } from '../types/store-types'
 import { isEmpty, println, uuid } from '../util/common-utils'
 import { Display } from './display'
 import { assistant, system, user } from './llm-utils'
 
 export type AskShare = LLMParam & {
+    topicId?: string
     config: ChatConfig
     resultChunk?: LLMResultChunk
     tools?: {
@@ -48,8 +45,8 @@ class SystemPromptNode extends Node<AskShare> {
 }
 
 class PresetNode extends Node<AskShare> {
-    private readonly store: IChatStore
-    constructor(store: IChatStore) {
+    private readonly store: IStore
+    constructor(store: IStore) {
         super()
         this.store = store
     }
@@ -67,23 +64,32 @@ class PresetNode extends Node<AskShare> {
 }
 
 class ContextNode extends Node<AskShare> {
-    private readonly store: IChatStore
-    constructor(store: IChatStore) {
+    private readonly store: IStore
+    constructor(store: IStore) {
         super()
         this.store = store
     }
 
     override async prep(shared: AskShare): Promise<void> {
-        const { withContext } = shared.config
+        const { userContent, config, messages } = shared
+        const { withContext, chatId, contextLimit } = config
+        const tp = this.store.selectedTopic(chatId)
+        if (!tp || shared.newTopic) {
+            shared.topicId = this.store.createTopic(chatId, userContent)
+        } else {
+            shared.topicId = tp.id
+        }
         const context = withContext
-            ? this.store.contextMessage().map((it) => {
-                  if (it.role === 'user') {
-                      return user(it.content)
-                  }
-                  return assistant(it.content)
-              })
+            ? this.store
+                  .contextMessage(shared.topicId, contextLimit)
+                  .map((it) => {
+                      if (it.role === 'user') {
+                          return user(it.content)
+                      }
+                      return assistant(it.content)
+                  })
             : []
-        shared.messages = [...shared.messages, ...context]
+        shared.messages = [...messages, ...context]
     }
 }
 
@@ -275,28 +281,32 @@ class StreamCallNode extends Node<AskShare> {
 }
 
 class StoreNode extends Node<AskShare> {
-    private readonly store: IChatStore
+    private readonly store: IStore
 
-    constructor(store: IChatStore) {
+    constructor(store: IStore) {
         super()
         this.store = store
     }
 
     override async prep(shared: AskShare): Promise<void> {
-        const { config, userContent, resultChunk } = shared
+        const { userContent, resultChunk, topicId } = shared
         if (!resultChunk) {
             return
         }
-        const { chatId } = config
         const { tools, assistant, reasoning } = resultChunk
         const pairKey = uuid()
         const messages: MessageContent[] = [
-            { chatId, role: 'user', content: userContent, pairKey },
-            { chatId, role: 'assistant', content: assistant.join(''), pairKey },
+            { topicId: topicId!, role: 'user', content: userContent, pairKey },
+            {
+                topicId: topicId!,
+                role: 'assistant',
+                content: assistant.join(''),
+                pairKey,
+            },
         ]
         if (!isEmpty(reasoning)) {
             messages.push({
-                chatId,
+                topicId: topicId!,
                 role: 'reasoning',
                 content: reasoning.join(''),
                 pairKey,
@@ -304,7 +314,7 @@ class StoreNode extends Node<AskShare> {
         }
         if (!isEmpty(tools)) {
             messages.push({
-                chatId,
+                topicId: topicId!,
                 role: 'toolscall',
                 content: JSON.stringify(tools),
                 pairKey,
@@ -323,14 +333,16 @@ async function askFlow({
     mcps,
     generalSetting,
     noStream = false,
+    newTopic,
 }: {
     client: OpenAI
-    store: IChatStore
+    store: IStore
     config: ChatConfig
     userContent: string
     mcps: MCPClient[]
     generalSetting: GeneralSetting
     noStream?: boolean
+    newTopic?: boolean
 }) {
     const share: AskShare = {
         userContent,
@@ -341,6 +353,7 @@ async function askFlow({
         generalSetting,
         theme: generalSetting.theme,
         noStream,
+        newTopic,
     }
 
     const systemPrompt = new SystemPromptNode()

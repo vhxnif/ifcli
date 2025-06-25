@@ -1,6 +1,6 @@
 import type { MCPConfig } from '../types/mcp-client'
 import type { AppSetting, AppSettingContent } from '../types/store-types'
-import { error, isEmpty } from '../util/common-utils'
+import { isEmpty } from '../util/common-utils'
 import { promptMessage } from './prompt-message'
 
 export type LLMSetting = {
@@ -11,7 +11,7 @@ export type LLMSetting = {
 }
 
 export type GeneralSetting = {
-    theme: string 
+    theme: string
 }
 
 export type Setting = {
@@ -20,7 +20,7 @@ export type Setting = {
     llmSettings: LLMSetting[]
 }
 
-export const version = '0.1.12'
+export const version = '0.1.13'
 
 const defaultGeneralSetting: GeneralSetting = {
     theme: `violet_tides`,
@@ -68,8 +68,12 @@ export class AppSettingParse {
         }
     }
 
-    editShow = (): string => {
-        return JSON.stringify(this.setting(), null, 2)
+    editShow = (set?: Setting): string => {
+        const f = (s: Setting) => JSON.stringify(s, null, 2)
+        if (set) {
+            return f(set)
+        }
+        return f(this.setting())
     }
 
     generalSetting = (): GeneralSetting => {
@@ -107,11 +111,9 @@ export class AppSettingParse {
         }, settings)
     }
 
-    editParse = (str: string): AppSettingContent | undefined => {
+    editParse = (setting: Setting): AppSettingContent | undefined => {
         try {
-            const { generalSetting, mcpServers, llmSettings } = JSON.parse(
-                str
-            ) as Setting
+            const { generalSetting, mcpServers, llmSettings } = setting
             return {
                 version,
                 generalSetting: this.generalSettingParse(generalSetting),
@@ -120,8 +122,16 @@ export class AppSettingParse {
             } as AppSettingContent
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e: unknown) {
-            error(promptMessage.cfParseErr)
-            return
+            throw Error(promptMessage.cfParseErr)
+        }
+    }
+
+    editSettingParse = (str: string): Setting | undefined => {
+        try {
+            return JSON.parse(str) as Setting
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (e: unknown) {
+            throw Error(promptMessage.cfParseErr)
         }
     }
 

@@ -1,7 +1,4 @@
-import type {
-    CatppuccinColorName,
-    CatppuccinColorTheme,
-} from '../util/color-schema'
+import type { CatppuccinColorName, CatppuccinColorTheme } from './color-schema'
 
 export type ThemeColor = {
     titleColor: CatppuccinColorName

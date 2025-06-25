@@ -10,9 +10,18 @@ export class Chat {
     selectTime!: bigint
 }
 
-export class ChatMessage {
+export class ChatTopic {
     id!: string
     chatId!: string
+    content!: string
+    select!: boolean
+    selectTime!: bigint
+    createTime!: bigint
+}
+
+export class ChatMessage {
+    id!: string
+    topicId!: string
     role!: string
     content!: string
     pairKey!: string
@@ -43,7 +52,7 @@ export class ChatPrompt {
 
 export class ChatPresetMessage {
     id!: string
-    chat_id!: string
+    chatId!: string
     user!: string
     assistant!: string
     create_time!: bigint
@@ -55,11 +64,21 @@ export class AppSetting {
     generalSetting!: string
     mcpServer!: string
     llmSetting!: string
-    create_time!: bigint
+    createTime!: bigint
+}
+
+export type CmdHistoryType = 'chat_switch'
+
+export class CmdHistory {
+    id!: string
+    type!: CmdHistoryType
+    key!: string
+    lastSwitchTime!: number 
+    frequency!: number
 }
 
 export type MessageContent = {
-    chatId: string
+    topicId: string
     role: 'user' | 'assistant' | 'reasoning' | 'toolscall'
     content: string
     pairKey: string
@@ -77,7 +96,7 @@ export type AppSettingContent = {
     llmSetting: string
 }
 
-export interface IChatStore {
+export interface IStore {
     init: () => void
     // ---- chat ---- //
     chats: () => Chat[]
@@ -92,10 +111,15 @@ export interface IChatStore {
     changeChat: (name: string) => void
     currentChat: () => Chat | null
 
+    // ---- topic ---- //
+    selectedTopic: (chatId: string) => ChatTopic | null
+    createTopic: (chatId: string, content: string) => string
+    currentChatTopics: () => ChatTopic[]
+    changeTopic: (topicId: string, chatId: string) => void
+
     // ---- message ---- //
     saveMessage: (messages: MessageContent[]) => void
-    clearMessage: () => void
-    contextMessage: () => ChatMessage[]
+    contextMessage: (topicId: string, limit: number) => ChatMessage[]
     historyMessage: (count: number) => ChatMessage[]
     selectMessage: (messageId: string) => ChatMessage
 
@@ -112,6 +136,7 @@ export interface IChatStore {
     // ---- prompt ---- //
     publishPrompt: (name: string, version: string, content: string) => void
     searchPrompt: (name: string, version?: string) => ChatPrompt[]
+    listPrompt: () => ChatPrompt[]
 
     // ---- preset message ---- //
     createPresetMessage: (params: PresetMessageContent[]) => void
@@ -120,4 +145,12 @@ export interface IChatStore {
     // ---- app setting ----
     appSetting: () => AppSetting | null
     addAppSetting: (setting: AppSettingContent) => void
+
+    // ---- cmd his ----
+    queryCmdHis: (type: CmdHistoryType, key: string) => CmdHistory[] 
+    addCmdHis: (type: CmdHistoryType, key: string) => void
+    getCmdHis: (type: CmdHistoryType, key: string) => CmdHistory | null
+    delCmdHis: (type: CmdHistoryType, key: string) => void
+    updateCmdHis: (type: CmdHistoryType, key: string, frequency: number) => void
+    addOrUpdateCmdHis: (type: CmdHistoryType, key: string) => void
 }

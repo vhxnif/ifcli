@@ -8,14 +8,14 @@ import {
     type LLMNotifyMessageType,
 } from './llm-utils'
 import { OraShow } from './ora-show'
-import { TextShow } from './text-show'
-import { themes, type Theme, type ThemeColor } from './theme'
+import { TextShow } from '../util/text-show'
+import { themes, type Theme, type ThemeColor } from '../util/theme'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import {
     catppuccinColorSchema,
+    hex,
     type CatppuccinColorName,
 } from '../util/color-schema'
-import { hex } from '../util/color-utils'
 
 export class Display {
     private hasReasoningContent: boolean = false
@@ -43,18 +43,18 @@ export class Display {
         this.reasoningShow = new TextShow({
             title: 'Reasoning',
             ...this.toTextShowTheme(reasoning),
-            render: textShowRender
+            render: textShowRender,
         })
         this.assistantShow = new TextShow({
             title: 'Assistant',
             ...this.toTextShowTheme(assistant),
-            render: textShowRender
+            render: textShowRender,
         })
         this.toolsCallShow = new TextShow({
             structured: true,
             title: 'ToolsCall',
             ...this.toTextShowTheme(toolsCall),
-            render: textShowRender
+            render: textShowRender,
         })
         if (enableSpinner) {
             this.spinner = new OraShow(this.notice('waiting'))

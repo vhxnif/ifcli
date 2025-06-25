@@ -1,6 +1,6 @@
 import type { ChalkInstance } from 'chalk'
-import { isEmpty, print, println, stringWidth } from '../util/common-utils'
-import { terminal } from '../util/platform-utils'
+import { isEmpty, print, println, stringWidth } from './common-utils'
+import { terminal } from './platform-utils'
 
 export type TextShowTheme = {
     titleColor: ChalkInstance
@@ -47,6 +47,7 @@ export class TextShow {
         this.structured = structured
         this.render = render
     }
+
 
     start() {
         if (this.startFlag) {
@@ -123,13 +124,13 @@ export class TextShow {
     }
 
     private print(str: string) {
-        if(this.render) {
+        if (this.render) {
             print(str)
         }
     }
 
-    private println (str: string) {
-        if(this.render) {
+    private println(str: string) {
+        if (this.render) {
             println(str)
         }
     }

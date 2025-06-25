@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import path from 'path'
 import { env, tmpPath } from './platform-utils'
-import { color } from './color-utils'
 
 const debug = false
 
@@ -12,7 +11,6 @@ const log = (str: string) => {
     }
 }
 const println = console.log
-const error = (str: string) => console.log(color.red.italic(str))
 const uuid = () => Bun.randomUUIDv7().replaceAll('-', '')
 const unixnow = (): number => Date.now()
 const containsChinese = (str: string): boolean => /[\u4e00-\u9fa5]/.test(str)
@@ -67,7 +65,6 @@ const isEmpty: IsEmpty = <T>(param: string | T[] | undefined | null) => {
     return arr.length <= 0
 }
 
-
 const groupBy = <T, R>(arr: T[], key: (i: T) => R) => {
     return arr.reduce((df, it) => {
         const v = df.get(key(it))
@@ -101,7 +98,6 @@ export {
     print,
     println,
     log,
-    error,
     isEmpty,
     groupBy,
 }
