@@ -28,7 +28,7 @@ bun install && bun run build && bun link
 
 ## Config
 
-To configure various application settings using the `ist cf -e` command.**Please configure the large model settings before use.**
+To configure various application settings using the `ist cf -m` command.**Please configure the large model settings before use.**
 
 To use MCP Server, you must first configure the relevant information and enable MCP functionality for the current chat session `ict cf -p`.
 
