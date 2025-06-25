@@ -9,9 +9,11 @@ import {
     ChatPresetMessage,
     ChatPrompt,
     ChatTopic,
+    CmdHistory,
     SqliteTable,
     type AppSettingContent,
-    type IChatStore,
+    type CmdHistoryType,
+    type IStore,
     type MessageContent,
     type PresetMessageContent,
 } from '../types/store-types'
@@ -20,7 +22,7 @@ import { table_def } from './table-def'
 import { defaultSetting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 
-export class ChatStore implements IChatStore {
+export class Store implements IStore {
     private db: Database
     constructor(db: Database) {
         this.db = db
@@ -57,6 +59,9 @@ export class ChatStore implements IChatStore {
         'id, chat_id, user, assistant, create_time as createTime'
     private chatTopicColumn =
         'id, chat_id as chatId, content, "select", select_time as selectTime, create_time as createTime'
+
+    private cmdHistoryColumn =
+        'id, type, key, last_switch_time as lastSwitchTime, frequency'
 
     chats = () =>
         this.db.query(`SELECT ${this.chatColumn} FROM chat`).as(Chat).all()
@@ -479,5 +484,54 @@ export class ChatStore implements IChatStore {
         this.db
             .prepare(`DELETE FROM chat_message WHERE chat_id = ?`)
             .run(chatId)
+    }
+
+    queryCmdHis = (type: CmdHistoryType, key: string) => {
+        return this.db
+            .query(
+                `SELECT ${this.cmdHistoryColumn} FROM cmd_history WHERE type = ? and key like ?`
+            )
+            .as(CmdHistory)
+            .all(type, `%${key}%`)
+    }
+
+    getCmdHis = (type: CmdHistoryType, key: string) => {
+        return this.db
+            .query(
+                `SELECT ${this.cmdHistoryColumn} FROM cmd_history WHERE type = ? and key = ?`
+            )
+            .as(CmdHistory)
+            .get(type, key)
+    }
+
+    addCmdHis = (type: CmdHistoryType, key: string) => {
+        this.db
+            .prepare(
+                `INSERT INTO cmd_history (id, type, key, last_switch_time, frequency) VALUES (?, ?, ?, ?, ?)`
+            )
+            .run(uuid(), type, key, unixnow(), 1)
+    }
+
+    delCmdHis = (type: CmdHistoryType, key: string) => {
+        this.db
+            .prepare(`DELETE FROM cmd_history WHERE type = ? and key = ?`)
+            .run(type, key)
+    }
+
+    updateCmdHis = (type: CmdHistoryType, key: string, frequency: number) => {
+        this.db
+            .prepare(
+                `UPDATE cmd_history SET last_switch_time = ?, frequency = ? WHERE type = ? and key = ?`
+            )
+            .run(unixnow(), frequency + 1, type, key)
+    }
+
+    addOrUpdateCmdHis = (type: CmdHistoryType, key: string) => {
+        const h = this.getCmdHis(type, key)
+        if (h) {
+            this.updateCmdHis(type, key, h.frequency)
+            return
+        }
+        this.addCmdHis(type, key)
     }
 }

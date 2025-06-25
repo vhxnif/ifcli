@@ -4,11 +4,11 @@ import { SettingAction } from './action/setting-action'
 import { AppConfig } from './config/app-config'
 import { AppSettingParse } from './config/app-setting'
 import { OpenAiClient } from './llm/open-ai-client'
-import { ChatStore } from './store/chat-store'
+import { Store } from './store/store'
 import type { IChatAction, ISettingAction } from './types/action-types'
 import type { IConfig } from './types/config-types'
 import MCPClient from './types/mcp-client'
-import type { IChatStore } from './types/store-types'
+import type { IStore } from './types/store-types'
 import { themes } from './util/theme'
 import {
     catppuccinColorSchema,
@@ -18,7 +18,7 @@ import {
 
 const config: IConfig = new AppConfig()
 const db = new Database(config.dataPath(), { strict: true })
-const store: IChatStore = new ChatStore(db)
+const store: IStore = new Store(db)
 // setting
 const settingAction: ISettingAction = new SettingAction(store)
 const settingParse = new AppSettingParse(store.appSetting()!)

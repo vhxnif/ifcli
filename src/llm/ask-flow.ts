@@ -10,11 +10,7 @@ import type {
     LLMToolsCallParam,
 } from '../types/llm-types'
 import type MCPClient from '../types/mcp-client'
-import type {
-    ChatConfig,
-    IChatStore,
-    MessageContent,
-} from '../types/store-types'
+import type { ChatConfig, IStore, MessageContent } from '../types/store-types'
 import { isEmpty, println, uuid } from '../util/common-utils'
 import { Display } from './display'
 import { assistant, system, user } from './llm-utils'
@@ -49,8 +45,8 @@ class SystemPromptNode extends Node<AskShare> {
 }
 
 class PresetNode extends Node<AskShare> {
-    private readonly store: IChatStore
-    constructor(store: IChatStore) {
+    private readonly store: IStore
+    constructor(store: IStore) {
         super()
         this.store = store
     }
@@ -68,8 +64,8 @@ class PresetNode extends Node<AskShare> {
 }
 
 class ContextNode extends Node<AskShare> {
-    private readonly store: IChatStore
-    constructor(store: IChatStore) {
+    private readonly store: IStore
+    constructor(store: IStore) {
         super()
         this.store = store
     }
@@ -285,9 +281,9 @@ class StreamCallNode extends Node<AskShare> {
 }
 
 class StoreNode extends Node<AskShare> {
-    private readonly store: IChatStore
+    private readonly store: IStore
 
-    constructor(store: IChatStore) {
+    constructor(store: IStore) {
         super()
         this.store = store
     }
@@ -340,7 +336,7 @@ async function askFlow({
     newTopic,
 }: {
     client: OpenAI
-    store: IChatStore
+    store: IStore
     config: ChatConfig
     userContent: string
     mcps: MCPClient[]

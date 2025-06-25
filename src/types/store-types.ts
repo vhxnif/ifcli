@@ -67,6 +67,16 @@ export class AppSetting {
     createTime!: bigint
 }
 
+export type CmdHistoryType = 'chat_switch'
+
+export class CmdHistory {
+    id!: string
+    type!: CmdHistoryType
+    key!: string
+    lastSwitchTime!: number 
+    frequency!: number
+}
+
 export type MessageContent = {
     topicId: string
     role: 'user' | 'assistant' | 'reasoning' | 'toolscall'
@@ -86,7 +96,7 @@ export type AppSettingContent = {
     llmSetting: string
 }
 
-export interface IChatStore {
+export interface IStore {
     init: () => void
     // ---- chat ---- //
     chats: () => Chat[]
@@ -135,4 +145,12 @@ export interface IChatStore {
     // ---- app setting ----
     appSetting: () => AppSetting | null
     addAppSetting: (setting: AppSettingContent) => void
+
+    // ---- cmd his ----
+    queryCmdHis: (type: CmdHistoryType, key: string) => CmdHistory[] 
+    addCmdHis: (type: CmdHistoryType, key: string) => void
+    getCmdHis: (type: CmdHistoryType, key: string) => CmdHistory | null
+    delCmdHis: (type: CmdHistoryType, key: string) => void
+    updateCmdHis: (type: CmdHistoryType, key: string, frequency: number) => void
+    addOrUpdateCmdHis: (type: CmdHistoryType, key: string) => void
 }

@@ -14,8 +14,9 @@ import {
     ChatMessage,
     ChatPrompt,
     ChatTopic,
+    CmdHistory,
     type ChatConfig,
-    type IChatStore,
+    type IStore,
     type PresetMessageContent,
 } from '../types/store-types'
 import {
@@ -28,6 +29,7 @@ import {
     groupBy,
     isEmpty,
     isTextSame,
+    print,
     println,
 } from '../util/common-utils'
 import {
@@ -44,7 +46,7 @@ import { themes } from '../util/theme'
 
 export class ChatAction implements IChatAction {
     private clientMap: Map<string, ILLMClient> = new Map()
-    private store: IChatStore
+    private store: IStore
     private mcps: MCPClient[]
     private generalSetting: GeneralSetting
 
@@ -57,7 +59,7 @@ export class ChatAction implements IChatAction {
         generalSetting: GeneralSetting
         llmClients: ILLMClient[]
         mcpClients: MCPClient[]
-        store: IChatStore
+        store: IStore
     }) {
         this.generalSetting = generalSetting
         this.store = store
@@ -157,25 +159,100 @@ export class ChatAction implements IChatAction {
         await f(this.store.currentChatConfig())
     }
 
-    changeChat = async () =>
-        await this.selectChatRun(
-            'Select Chat:',
-            this.store.chats().filter((it) => !it.select),
-            this.store.changeChat
-        )
+    changeChat = async (name?: string) => {
+        const f = (s: string) => {
+            this.store.changeChat(s)
+            print(
+                `${color.green('✔')} ${color.subtext0.bold(
+                    'Select Chat:'
+                )} ${color.teal(s)} `
+            )
+        }
+        if (name && (await this.quikeCmd(name, f))) {
+            return
+        }
+        const chats = this.store.chats()
+        if (isEmpty(chats)) {
+            throw Error(promptMessage.chatMissing)
+        }
+        const df = chats.filter((it) => it.select)[0]
+        const choices: Choice<string>[] = chats.map((it) => ({
+            name: it.name,
+            value: it.name,
+            disabled: it.select ? '(*)' : false,
+        }))
+        if (isEmpty(choices.filter((it) => !it.disabled))) {
+            throw Error(promptMessage.onlyOneChat)
+        }
+        const v = await select({
+            message: 'Select Chat:',
+            choices,
+            default: df.name,
+            theme: themeStyle(color),
+        })
+        this.store.changeChat(v)
+        this.store.addOrUpdateCmdHis('chat_switch', v)
+    }
+
+    private quikeCmd = async (
+        subkey: string,
+        quikeRun: (s: string) => void | Promise<void>
+    ) => {
+        const cmd = this.store
+            .queryCmdHis('chat_switch', subkey)
+            .sort((a, b) => this.frequencyRule(b) - this.frequencyRule(a))[0]
+        if (!cmd) {
+            return false
+        }
+        const { key, frequency } = cmd
+        try {
+            const res = quikeRun(key)
+            if (res instanceof Promise) {
+                await res
+            }
+            this.store.updateCmdHis('chat_switch', key, frequency)
+            return true
+        } catch (e: unknown) {
+            this.store.delCmdHis('chat_switch', key)
+            return false
+        }
+    }
+
+    private frequencyRule(it: CmdHistory): number {
+        const { lastSwitchTime, frequency } = it
+        const lastHour = 36001000
+        const lastDay = 86400000
+        const lastWeek = 604800000
+        const duration = Date.now() - lastSwitchTime
+        if (duration <= lastHour) {
+            return frequency * 4
+        }
+        if (duration <= lastDay) {
+            return frequency * 2
+        }
+        if (duration <= lastWeek) {
+            return frequency / 2
+        }
+        return frequency / 4
+    }
 
     changeTopic = async () => {
-        const topics = this.store.currentChatTopics().filter((it) => !it.select)
+        const topics = this.store.currentChatTopics()
         const choices: Choice<ChatTopic>[] = topics.map((it) => ({
             name: this.subStr(it.content),
             value: it,
+            description: it.content,
+            disabled: it.select ? '(*)' : false,
         }))
-        if (isEmpty(choices)) {
+        if (isEmpty(choices.filter((it) => !it.disabled))) {
             throw Error(promptMessage.onlyOneTopic)
         }
-        await selectRun('Select Topic', choices, ({ id, chatId }) => {
-            this.store.changeTopic(id, chatId)
+        const { id, chatId } = await select({
+            message: 'Select Topic:',
+            choices,
+            theme: themeStyle(color),
         })
+        this.store.changeTopic(id, chatId)
     }
 
     printTopics = async () => {
@@ -830,7 +907,7 @@ export class ChatAction implements IChatAction {
     private subStr = (str: string) => {
         const wd = Math.floor(terminal.column * 0.7)
         const s = JSON.stringify(str)
-        return this.loopSubStr(s, wd)
+        return this.loopSubStr(s.substring(1, s.length - 1), wd)
     }
 
     private loopSubStr = (str: string, targetWd: number): string => {

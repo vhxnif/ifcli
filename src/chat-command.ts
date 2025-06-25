@@ -65,19 +65,6 @@ program
     })
 
 program
-    .command('list')
-    .alias('ls')
-    .description('list all chats')
-    .option('-t, --topic', 'list all topics')
-    .action(async ({ topic }) => {
-        if (topic) {
-            await chatAction.printTopics()
-            return
-        }
-        await chatAction.printChats()
-    })
-
-program
     .command('history')
     .alias('hs')
     .description('view chat history')
@@ -98,12 +85,13 @@ program
     .alias('st')
     .description('switch to another chat or topic')
     .option('-t, --topic', 'switch to anther topic')
-    .action(async ({ topic }) => {
+    .argument('[name]')
+    .action(async (name, { topic }) => {
         if (topic) {
             await chatAction.changeTopic()
             return
         }
-        await chatAction.changeChat()
+        await chatAction.changeChat(name)
     })
 
 program

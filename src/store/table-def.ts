@@ -88,6 +88,18 @@ const app_setting = `
     CREATE INDEX IF NOT EXISTS app_setting_IDX ON app_setting (create_time);
 `
 
+const cmd_history = `
+    CREATE TABLE IF NOT EXISTS cmd_history (
+        id TEXT,
+        type TEXT,
+        key TEXT,
+        last_switch_time INTEGER,
+        frequency INTEGER,
+        CONSTRAINT cmd_history_PK PRIMARY KEY (id)
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS cmd_his_uk_IDX ON cmd_history (type, key);
+`
+
 // table_name: ddl
 const table_def: Record<string, string> = {
     chat: chat,
@@ -97,6 +109,7 @@ const table_def: Record<string, string> = {
     chat_prompt: chat_prompt,
     chat_preset_message: chat_preset_message,
     app_setting: app_setting,
+    cmd_history: cmd_history,
 }
 
 export { table_def }

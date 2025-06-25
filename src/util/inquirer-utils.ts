@@ -7,6 +7,7 @@ export type Choice<V> = {
     name: string
     value: V
     description?: string
+    disabled?: boolean | string
 }
 
 const selectRun = async <V>(
@@ -21,7 +22,7 @@ const selectRun = async <V>(
 const themeStyle = (ds: Record<CatppuccinColorName, ChalkInstance>) => {
     return {
         style: {
-            disabled: (text: string) => ds.subtext0(text),
+            disabled: (text: string) => `- ${ds.maroon(text)}`,
             description: (text: string) => ds.mauve(text),
         },
     }

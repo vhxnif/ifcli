@@ -1,5 +1,6 @@
 export const promptMessage = {
     chatMissing: 'Execute `ifct new <chatName>` first.',
+    onlyOneChat: 'There is currently only one chat.',
     settingMissing: 'Execute `ifct --setting` first to configure LLMSetting.',
     providerMissing: 'At least one provider must be selected.',
     modelMissing: 'At least one model must be selected.',
