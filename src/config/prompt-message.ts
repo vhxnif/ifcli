@@ -12,7 +12,7 @@ export const promptMessage = {
     noEdit: 'No modifications.',
     presetMsgMissing: 'No preset message is configured.',
     cfParseErr: 'Configuration parsing error.',
-    mcpMissing: 'MCP Server is not configured.',
+    mcpMissing: 'No MCP Servers are configured or enabled.',
     userPreset: '<user message content>',
     assistantPreset: '<assistant message content>',
     onlyOneTopic: 'There is currently only one topic.',

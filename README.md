@@ -96,18 +96,21 @@ Commands:
         {
             "name": "weather",
             "version": "v1",
+            "enable: true,
             "type": "sse",
             "url": "http://localhost:3000/sse"
         },
         {
             "name": "weather",
             "version": "v2",
+            "enable: true,
             "type": "steamable",
             "url": "http://localhost:3000/mcp"
         },
         {
             "name": "weather",
             "version": "v3",
+            "enable: true,
             "type": "stdio",
             "params": {
                 "command": "bun",

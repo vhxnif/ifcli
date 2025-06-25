@@ -33,7 +33,7 @@ const display = displaySchema(color)
 const chatAction: IChatAction = new ChatAction({
     generalSetting,
     llmClients: llmSettings.map((it) => new OpenAiClient(it)),
-    mcpClients: mcpServers.map((it) => new MCPClient(it)),
+    mcpClients: mcpServers.filter(it => it.enable).map((it) => new MCPClient(it)),
     store,
 })
 

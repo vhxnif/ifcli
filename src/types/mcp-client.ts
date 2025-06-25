@@ -22,6 +22,7 @@ export type MCPConnectType = 'streamable' | 'sse' | 'stdio'
 export interface MCPConfig {
     name: string
     version: string
+    enable: boolean
     type: MCPConnectType
 }
 
