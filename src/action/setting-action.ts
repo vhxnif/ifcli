@@ -62,10 +62,17 @@ export class SettingAction implements ISettingAction {
     }
 
     setting = async () => {
+        const text = async (source: string) => await editor(source, 'json')
+        await this.modifySetting(text)
+    }
+
+    private modifySetting = async (
+        mdf: (source: string) => Promise<string>
+    ) => {
         const st = this.store.appSetting()!
         const parse = new AppSettingParse(st)
         const sourceText = parse.editShow()
-        const text = await editor(sourceText, 'json')
+        const text = await mdf(sourceText)
         if (!text) {
             return
         }
@@ -84,5 +91,17 @@ export class SettingAction implements ISettingAction {
             return
         }
         this.store.addAppSetting(add)
+    }
+
+    importSetting = async (file: string) => {
+        const text = async () => await Bun.file(file).text()
+        await this.modifySetting(text)
+    }
+
+    exportSetting = async () => {
+        const st = this.store.appSetting()!
+        const parse = new AppSettingParse(st)
+        const sourceText = parse.editShow()
+        await Bun.write(`ifcli_setting.json`, sourceText)
     }
 }

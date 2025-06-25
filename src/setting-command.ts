@@ -27,10 +27,12 @@ program
     .command('config')
     .alias('cf')
     .description('config management')
-    .option('-e, --edit', 'edit app config')
+    .option('-m, --modify', 'modify app config')
     .option('-t, --theme', 'change theme')
-    .action(async ({ edit, theme}) => {
-        if (edit) {
+    .option('-e, --exp', 'export app config')
+    .option('-i, --imp <file>', 'import app config')
+    .action(async ({ modify, theme, exp, imp }) => {
+        if (modify) {
             await settingAction.setting()
             return
         }
@@ -38,8 +40,15 @@ program
             await settingAction.theme()
             return
         }
+        if (exp) {
+            await settingAction.exportSetting()
+            return
+        }
+        if (imp) {
+            await settingAction.importSetting(imp)
+            return
+        }
     })
-
 
 program
     .command('mcp')

@@ -38,4 +38,6 @@ export interface IChatAction {
 export interface ISettingAction {
     setting: () => Promise<void>
     theme: () => Promise<void>
+    importSetting: (file: string) => Promise<void>
+    exportSetting: () => Promise<void>
 }

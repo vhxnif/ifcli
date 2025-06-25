@@ -9,7 +9,7 @@ export const promptMessage = {
     assistantMissing: 'Assistant Content Missing.',
     hisMsgMissing: 'No message history found.',
     oneChatRemain: 'At least one chat must remain.',
-    noEdit: 'No content was edited.',
+    noEdit: 'No modifications.',
     presetMsgMissing: 'No preset message is configured.',
     cfParseErr: 'Configuration parsing error.',
     mcpMissing: 'MCP Server is not configured.',
