@@ -20,7 +20,7 @@ program.configureHelp({
 program
     .name('ifchat')
     .alias('ict')
-    .description('ifcli chat with LLM')
+    .description('chat management')
     .version(`${version}`)
 
 program

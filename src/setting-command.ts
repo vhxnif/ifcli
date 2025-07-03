@@ -20,7 +20,7 @@ program.configureHelp({
 program
     .name('ifsetting')
     .alias('ist')
-    .description('ifcli setting')
+    .description('setting management')
     .version(`${version}`)
 
 program

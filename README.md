@@ -49,7 +49,7 @@ Every release includes a version-specific data file (ifcli\_\<version\>.sqlite).
 ```bash
 Usage: ifsetting|ist [options] [command]
 
-ifcli setting
+setting management
 
 Options:
   -V, --version        output the version number
@@ -67,22 +67,22 @@ Commands:
 ```bash
 Usage: ifchat|ict [options] [command]
 
-ifcli chat with LLM
+chat management
 
 Options:
-  -V, --version           output the version number
-  -h, --help              display help for command
+  -V, --version               output the version number
+  -h, --help                  display help for command
 
 Commands:
-  new <string>            new chat
-  ask [options] [string]  chat with AI
-  history|hs [options]    view chat history
-  remove|rm               remove chat
-  switch|st [options]     switch to another chat or topic
-  prompt|pt [options]     prompt manager
-  preset|ps [options]     preset message manager
-  config|cf [options]     manage chat config
-  help [command]          display help for command
+  new <string>                new chat
+  ask [options] [string]      chat with AI
+  history|hs [options]        view chat history
+  remove|rm                   remove chat
+  switch|st [options] [name]  switch to another chat or topic
+  prompt|pt [options]         prompt manager
+  preset|ps [options]         preset message manager
+  config|cf [options]         manage chat config
+  help [command]              display help for command
 ```
 
 ### AppSetting
@@ -188,20 +188,20 @@ Commands:
 
 ## Tips
 
-### Chat without `ifcli switch`
+### Chat without `ict st`
 
 ```bash
 # the `ts` is another chat that supports translation.
-alias ts = ifcli ask -c 'ts'
+alias ts = ict ask -c 'ts'
 ```
 
 ### Close Stream Output
 
 ```bash
-# sync call ifcli use `helix editor` for simple task
-ifcli ask -sc 'ts'
+# sync call ict use `helix editor` for simple task
+ict ask -sc 'ts'
 # create your own command
-alias sts = ifcli ask -sc 'ts'
+alias sts = ict ask -sc 'ts'
 cat system_prompt.md | sts | save system_prompt.txt
 ```
 
@@ -210,11 +210,11 @@ cat system_prompt.md | sts | save system_prompt.txt
 Pipe symbols are supported
 
 ```bash
-cat system_prompt.md | ifcli pt -c
+cat system_prompt.md | ict pt -c
 ```
 
 Use the editor
 
 ```bash
-ifcli pt -m
+ict pt -m
 ```
