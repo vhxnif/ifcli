@@ -20,7 +20,7 @@ export type Setting = {
     llmSettings: LLMSetting[]
 }
 
-export const version = '0.1.13'
+export const version = '0.1.14'
 
 const defaultGeneralSetting: GeneralSetting = {
     theme: `violet_tides`,
