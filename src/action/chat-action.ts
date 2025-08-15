@@ -275,7 +275,7 @@ export class ChatAction implements IChatAction {
         )
     }
 
-    private listItems = <T>(
+    private listItems = <T,>(
         ts: T[],
         s: (s: T) => boolean,
         n: (n: T) => string
@@ -291,7 +291,7 @@ export class ChatAction implements IChatAction {
 
     printChatConfig = () => {
         const f = (cf: ChatConfig) => {
-            const [ext, config] = tableConfigWithExt({
+            const [_, config] = tableConfigWithExt({
                 cols: [1, 1, 1, 1],
                 alignment: 'left',
             })
@@ -789,7 +789,7 @@ export class ChatAction implements IChatAction {
             ({
                 user: parseContent(c.user),
                 assistant: parseContent(c.assistant),
-            } as PresetMessageContent)
+            }) as PresetMessageContent
         const validContent = (c: TmpContent) =>
             c.type && !isEmpty(c.user) && !isEmpty(c.assistant)
         return text
@@ -890,7 +890,7 @@ export class ChatAction implements IChatAction {
         )
     }
 
-    private sortedItem = async <T>(
+    private sortedItem = async <T,>(
         arr: T[],
         selected: (s: T) => boolean,
         time: (s: T) => bigint
