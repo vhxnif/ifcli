@@ -1,10 +1,11 @@
 {
     "name": "@vhxnif/ifcli",
-    "version": "0.1.14",
+    "version": "0.1.15",
     "description": "Chat with AI via CLI",
     "keywords": [
         "ai",
         "cli",
+        "openrouter",
         "deepseek",
         "ollama",
         "openai",
@@ -58,6 +59,7 @@
         "openai": "^5.12.2",
         "ora": "^8.2.0",
         "pocketflow": "^1.0.4",
-        "table": "^6.9.0"
+        "table": "^6.9.0",
+        "write-excel-file": "^2.3.4"
     }
 }

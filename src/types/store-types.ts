@@ -73,7 +73,7 @@ export class CmdHistory {
     id!: string
     type!: CmdHistoryType
     key!: string
-    lastSwitchTime!: number 
+    lastSwitchTime!: number
     frequency!: number
 }
 
@@ -96,6 +96,15 @@ export type AppSettingContent = {
     llmSetting: string
 }
 
+export class ExportMessage {
+    chatName!: string
+    topicName!: string | undefined
+    user!: string
+    reasoning!: string | undefined
+    assistant!: string
+    actionTime!: string
+}
+
 export interface IStore {
     init: () => void
     // ---- chat ---- //
@@ -116,12 +125,19 @@ export interface IStore {
     createTopic: (chatId: string, content: string) => string
     currentChatTopics: () => ChatTopic[]
     changeTopic: (topicId: string, chatId: string) => void
+    queryTopic: (chatId: string) => ChatTopic[]
 
     // ---- message ---- //
     saveMessage: (messages: MessageContent[]) => void
     contextMessage: (topicId: string, limit: number) => ChatMessage[]
     historyMessage: (count: number) => ChatMessage[]
     selectMessage: (messageId: string) => ChatMessage
+    queryAllExportMessage: () => ExportMessage[]
+    queryChatExportMessage: (chatId: string) => ExportMessage[]
+    queryChatTopicExportMessage: (
+        chatId: string,
+        topicId: string
+    ) => ExportMessage[]
 
     // ---- config ---- //
     currentChatConfig: () => ChatConfig
@@ -147,7 +163,7 @@ export interface IStore {
     addAppSetting: (setting: AppSettingContent) => void
 
     // ---- cmd his ----
-    queryCmdHis: (type: CmdHistoryType, key: string) => CmdHistory[] 
+    queryCmdHis: (type: CmdHistoryType, key: string) => CmdHistory[]
     addCmdHis: (type: CmdHistoryType, key: string) => void
     getCmdHis: (type: CmdHistoryType, key: string) => CmdHistory | null
     delCmdHis: (type: CmdHistoryType, key: string) => void
