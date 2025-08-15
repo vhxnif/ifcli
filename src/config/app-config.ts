@@ -4,7 +4,7 @@ import path from 'path'
 import type { IConfig } from '../types/config-types'
 import { accessSync, constants, mkdirSync } from 'node:fs'
 import { env, platform } from '../util/platform-utils'
-import { version } from './app-setting'
+import { APP_VERSION } from './app-setting'
 
 export class AppConfig implements IConfig {
     appName = (): string => 'ifcli'
@@ -38,5 +38,5 @@ export class AppConfig implements IConfig {
         return pt
     }
     dataPath = (): string =>
-        `${this.configPath()}${path.sep}${this.appName()}_${version}.sqlite`
+        `${this.configPath()}${path.sep}${this.appName()}_${APP_VERSION}.sqlite`
 }

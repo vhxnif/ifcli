@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
 import { chatAction, color, display } from './app-context'
-import { version } from './config/app-setting'
+import { APP_VERSION } from './config/app-setting'
 import { editor, print, stdin } from './util/common-utils'
 import { commanderHelpConfiguration } from './util/color-schema'
 
@@ -11,7 +11,7 @@ program
     .name('ifchat')
     .alias('ict')
     .description('chat management')
-    .version(`${version}`)
+    .version(`${APP_VERSION}`)
 
 program
     .command('new')

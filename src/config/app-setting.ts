@@ -2,6 +2,7 @@ import type { MCPConfig } from '../types/mcp-client'
 import type { AppSetting, AppSettingContent } from '../types/store-types'
 import { isEmpty } from '../util/common-utils'
 import { promptMessage } from './prompt-message'
+import { version } from '../../package.json'
 
 export type LLMSetting = {
     name: string
@@ -20,7 +21,7 @@ export type Setting = {
     llmSettings: LLMSetting[]
 }
 
-export const version = '0.1.14'
+export const APP_VERSION = version
 
 const defaultGeneralSetting: GeneralSetting = {
     theme: `violet_tides`,
@@ -48,7 +49,7 @@ export const defaultLLMSettings: LLMSetting[] = [
 ]
 
 export const defaultSetting: AppSettingContent = {
-    version,
+    version: APP_VERSION,
     generalSetting: JSON.stringify(defaultGeneralSetting),
     mcpServer: '[]',
     llmSetting: '[]',
@@ -115,7 +116,7 @@ export class AppSettingParse {
         try {
             const { generalSetting, mcpServers, llmSettings } = setting
             return {
-                version,
+                version: APP_VERSION,
                 generalSetting: this.generalSettingParse(generalSetting),
                 mcpServer: this.mcpServerParse(mcpServers),
                 llmSetting: this.llmSettingParse(llmSettings),
