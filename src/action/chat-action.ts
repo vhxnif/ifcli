@@ -321,20 +321,17 @@ export class ChatAction implements IChatAction {
         f(this.store.currentChatConfig())
     }
 
-    printChatHistory = async (limit: number, exp?: boolean) => {
+    printChatHistory = async (limit: number) => {
         const messages = this.store.historyMessage(limit)
         if (isEmpty(messages)) {
             throw Error(promptMessage.hisMsgMissing)
         }
         const msp = groupBy(messages, (m: ChatMessage) => m.pairKey)
         const choices = this.historyChoice(msp)
-        const cacheExportPairKey: string[] = []
         const loopShow = async (df?: string) => {
             const v = await this.historyShow({
                 choices,
                 msp,
-                cacheExportPairKey,
-                exp,
                 df,
             })
             await loopShow(v)
@@ -345,14 +342,10 @@ export class ChatAction implements IChatAction {
     private historyShow = async ({
         choices,
         msp,
-        cacheExportPairKey,
-        exp,
         df,
     }: {
         choices: Choice<string>[]
         msp: Map<string, ChatMessage[]>
-        cacheExportPairKey: string[]
-        exp: boolean | undefined
         df?: string
     }) => {
         const value = await select({
@@ -380,28 +373,7 @@ export class ChatAction implements IChatAction {
         this.historyReasoningPrint(reasoning, display, colExpInfo)
         this.historyToolsCallPrint(toolsCall, display, colExpInfo)
         this.historyAssistantPrint(assistant, display, colExpInfo)
-        await this.exportHistory(value, exp, cacheExportPairKey, expInfo)
         return value
-    }
-
-    private exportHistory = async (
-        pairKey: string,
-        exp: boolean | undefined,
-        cacheExportPairKey: string[],
-        expInfo: { role: string; content: string }[]
-    ) => {
-        if (!exp) {
-            return
-        }
-        if (cacheExportPairKey.find((it) => it === pairKey)) {
-            return
-        }
-        cacheExportPairKey.push(pairKey)
-        await Promise.all(
-            expInfo.map((it) =>
-                this.exprotHistory(it.role, pairKey, it.content)
-            )
-        )
     }
 
     private historyAssistantPrint = (
