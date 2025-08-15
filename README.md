@@ -141,19 +141,17 @@ Commands:
             "apiKey": "<your openai key>",
             "models": ["gpt-4o"]
         },
-        
-    {
-      "name": "openrouter",
-      "baseUrl": "https://openrouter.ai/api/v1",
-      "apiKey": "<your openrouter key>",
-      "models": [
-        "deepseek/deepseek-chat-v3-0324:free",
-        "deepseek/deepseek-r1-0528:free",
-        "deepseek/deepseek-r1:free",
-        "qwen/qwen3-coder:free"
-      ]
-    },
-
+        {
+          "name": "openrouter",
+          "baseUrl": "https://openrouter.ai/api/v1",
+          "apiKey": "<your openrouter key>",
+          "models": [
+            "deepseek/deepseek-chat-v3-0324:free",
+            "deepseek/deepseek-r1-0528:free",
+            "deepseek/deepseek-r1:free",
+            "qwen/qwen3-coder:free"
+          ]
+        }
     ]
 }
 ```
