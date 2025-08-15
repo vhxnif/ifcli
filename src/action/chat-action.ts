@@ -9,12 +9,14 @@ import type { AskContent, IChatAction } from '../types/action-types'
 import { temperature } from '../types/constant'
 import type { ILLMClient } from '../types/llm-types'
 import MCPClient from '../types/mcp-client'
+import path from 'path'
 import {
     Chat,
     ChatMessage,
     ChatPrompt,
     ChatTopic,
     CmdHistory,
+    ExportMessage,
     type ChatConfig,
     type IStore,
     type PresetMessageContent,
@@ -31,6 +33,7 @@ import {
     isTextSame,
     print,
     println,
+    unixnow,
 } from '../util/common-utils'
 import {
     input,
@@ -39,10 +42,11 @@ import {
     themeStyle,
     type Choice,
 } from '../util/inquirer-utils'
-import { terminal } from '../util/platform-utils'
+import { env, terminal } from '../util/platform-utils'
 import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { TextShow } from '../util/text-show'
 import { themes } from '../util/theme'
+import writeXlsxFile, { type Schema } from 'write-excel-file/node'
 
 export class ChatAction implements IChatAction {
     private clientMap: Map<string, ILLMClient> = new Map()
@@ -430,15 +434,6 @@ export class ChatAction implements IChatAction {
             arr.push({ name: this.subStr(userContent), value: it[0] })
             return arr
         }, [] as Choice<string>[])
-    }
-
-    private exprotHistory = async (
-        role: string,
-        key: string,
-        content: string
-    ) => {
-        const fileName = `${key}_${role}.md`
-        await Bun.write(fileName, content)
     }
 
     private partMessageByRole = (
@@ -901,5 +896,109 @@ export class ChatAction implements IChatAction {
             }
         }
         return result
+    }
+
+    exportAllChatMessage = async () => {
+        const msgs = this.store.queryAllExportMessage()
+        await this.exportXlsx(msgs, `all_chat_message_${unixnow()}`)
+    }
+
+    exportChatMessage = async () => {
+        const { id: chatId } = await this.allChatToSelect()
+        await this.exportXlsx(
+            this.store.queryChatExportMessage(chatId),
+            `chat_message_${unixnow()}`
+        )
+    }
+
+    exportChatTopicMessage = async () => {
+        const { id: chatId } = await this.allChatToSelect()
+        const topics = this.store.queryTopic(chatId)
+        const { id: topicId } = await this.topicToSelect(topics)
+        await this.exportXlsx(
+            this.store.queryChatTopicExportMessage(chatId, topicId),
+            `chat_topic_message_${unixnow()}`
+        )
+    }
+
+    exportTopicMessage = async () => {
+        const topics = this.store.currentChatTopics()
+        const { id, chatId } = await this.topicToSelect(topics)
+        await this.exportXlsx(
+            this.store.queryChatTopicExportMessage(chatId, id),
+            `chat_topic_message_${unixnow()}`
+        )
+    }
+
+    private topicToSelect = async (topics: ChatTopic[]) => {
+        const choices: Choice<ChatTopic>[] = topics.map((it) => ({
+            name: this.subStr(it.content),
+            value: it,
+            description: it.content,
+        }))
+        if (isEmpty(choices)) {
+            throw Error(promptMessage.topicMissing)
+        }
+        return await select({
+            message: 'Select Topic:',
+            choices,
+            theme: themeStyle(color),
+        })
+    }
+
+    private allChatToSelect = async () => {
+        const chats = this.store.chats()
+        const choices: Choice<Chat>[] = chats.map((it) => ({
+            name: it.name,
+            value: it,
+        }))
+        if (isEmpty(choices)) {
+            throw Error(promptMessage.chatMissing)
+        }
+        return await select({
+            message: 'Select Chat:',
+            choices,
+            theme: themeStyle(color),
+        })
+    }
+
+    private exportXlsx = async (objs: ExportMessage[], fileName: string) => {
+        const schema: Schema<ExportMessage> = [
+            {
+                column: 'ChatName',
+                type: String,
+                value: (c) => c.chatName,
+            },
+            {
+                column: 'TopicName',
+                type: String,
+                value: (c) => c.topicName,
+            },
+            {
+                column: 'UserContent',
+                type: String,
+                value: (c) => c.user,
+            },
+            {
+                column: 'ReasoningContent',
+                type: String,
+                value: (c) => c.reasoning,
+            },
+            {
+                column: 'AssistantContent',
+                type: String,
+                value: (c) => c.assistant,
+            },
+            {
+                column: 'ActionTime',
+                type: String,
+                value: (c) => c.actionTime,
+            },
+        ]
+
+        await writeXlsxFile(objs, {
+            schema,
+            filePath: `${env('HOME')}${path.sep}${fileName}.xlsx`,
+        })
     }
 }

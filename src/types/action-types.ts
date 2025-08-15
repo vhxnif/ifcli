@@ -33,6 +33,11 @@ export interface IChatAction {
     editPresetMessage: () => Promise<void>
     clearPresetMessage: () => void
     printPresetMessage: () => void
+
+    exportAllChatMessage: () => Promise<void>
+    exportChatMessage: () => Promise<void>
+    exportChatTopicMessage: () => Promise<void>
+    exportTopicMessage: () => Promise<void>
 }
 
 export interface ISettingAction {

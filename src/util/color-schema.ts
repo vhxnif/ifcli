@@ -1,3 +1,4 @@
+import type { HelpConfiguration } from '@commander-js/extra-typings'
 import type { ChalkInstance } from 'chalk'
 import chalk from 'chalk'
 
@@ -150,11 +151,14 @@ const mocha: Record<CatppuccinColorName, string> = {
 const chalkColor = (
     schema: Record<CatppuccinColorName, string>
 ): Record<CatppuccinColorName, ChalkInstance> => {
-    return Object.keys(schema).reduce((obj, it) => {
-        const k = it as CatppuccinColorName
-        obj[k] = chalk.hex(schema[k])
-        return obj
-    }, {} as Record<CatppuccinColorName, ChalkInstance>)
+    return Object.keys(schema).reduce(
+        (obj, it) => {
+            const k = it as CatppuccinColorName
+            obj[k] = chalk.hex(schema[k])
+            return obj
+        },
+        {} as Record<CatppuccinColorName, ChalkInstance>
+    )
 }
 
 const catppuccinColorSchema: Record<
@@ -179,13 +183,36 @@ const displayDef: Record<string, CatppuccinColorName> = {
 const displaySchema = (
     cl: Record<CatppuccinColorName, ChalkInstance>
 ): Record<string, ChalkInstance> => {
-    return Object.keys(displayDef).reduce((obj, it) => {
-        const k = displayDef[it]
-        obj[it] = cl[k]
-        return obj
-    }, {} as Record<string, ChalkInstance>)
+    return Object.keys(displayDef).reduce(
+        (obj, it) => {
+            const k = displayDef[it]
+            obj[it] = cl[k]
+            return obj
+        },
+        {} as Record<string, ChalkInstance>
+    )
 }
 
 const hex = (color: string): ChalkInstance => chalk.hex(color)
 
-export { catppuccinColorSchema, displaySchema, chalkColor, hex }
+const commanderHelpConfiguration = (
+    color: Record<CatppuccinColorName, ChalkInstance>
+): HelpConfiguration =>
+    ({
+        styleTitle: (str) => color.peach.bold(str),
+        styleCommandText: (str) => color.sky(str),
+        styleCommandDescription: (str) => color.green.bold.italic(str),
+        styleDescriptionText: (str) => color.flamingo.italic(str),
+        styleOptionText: (str) => color.green(str),
+        styleArgumentText: (str) => color.pink(str),
+        styleSubcommandText: (str) => color.sapphire.italic(str),
+        styleOptionTerm: (str) => color.mauve.italic(str),
+    }) as HelpConfiguration
+
+export {
+    catppuccinColorSchema,
+    displaySchema,
+    chalkColor,
+    hex,
+    commanderHelpConfiguration,
+}

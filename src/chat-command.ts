@@ -3,19 +3,9 @@ import { Command } from '@commander-js/extra-typings'
 import { chatAction, color, display } from './app-context'
 import { version } from './config/app-setting'
 import { editor, print, stdin } from './util/common-utils'
+import { commanderHelpConfiguration } from './util/color-schema'
 
-const program = new Command()
-
-program.configureHelp({
-    styleTitle: (str) => color.peach.bold(str),
-    styleCommandText: (str) => color.sky(str),
-    styleCommandDescription: (str) => color.green.bold.italic(str),
-    styleDescriptionText: (str) => color.flamingo.italic(str),
-    styleOptionText: (str) => color.green(str),
-    styleArgumentText: (str) => color.pink(str),
-    styleSubcommandText: (str) => color.sapphire.italic(str),
-    styleOptionTerm: (str) => color.mauve.italic(str),
-})
+const program = new Command().configureHelp(commanderHelpConfiguration(color))
 
 program
     .name('ifchat')
@@ -176,6 +166,29 @@ program
             chatAction.printChatConfig()
         }
     )
+
+program
+    .command('export')
+    .alias('exp')
+    .description('export chat message.')
+    .option('-a, --all', 'export all chat messages.')
+    .option('-c, --chat', 'select chat and export all topic messages.')
+    .option('-t, --topic', 'select chat and topic then export topic messages.')
+    .action(async ({ all, chat, topic }) => {
+        if (all) {
+            await chatAction.exportAllChatMessage()
+            return
+        }
+        if (chat) {
+            await chatAction.exportChatMessage()
+            return
+        }
+        if (topic) {
+            await chatAction.exportChatTopicMessage()
+            return
+        }
+        await chatAction.exportTopicMessage()
+    })
 
 program.parseAsync().catch((e: unknown) => {
     const { message } = e as Error
