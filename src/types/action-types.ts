@@ -34,10 +34,10 @@ export interface IChatAction {
     clearPresetMessage: () => void
     printPresetMessage: () => void
 
-    exportAllChatMessage: () => Promise<void>
-    exportChatMessage: () => Promise<void>
-    exportChatTopicMessage: () => Promise<void>
-    exportTopicMessage: () => Promise<void>
+    exportAllChatMessage: (path?: string) => Promise<void>
+    exportChatMessage: (path?: string) => Promise<void>
+    exportChatTopicMessage: (path?: string) => Promise<void>
+    exportTopicMessage: (path?: string) => Promise<void>
 }
 
 export interface ISettingAction {

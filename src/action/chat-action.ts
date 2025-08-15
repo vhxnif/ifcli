@@ -898,35 +898,38 @@ export class ChatAction implements IChatAction {
         return result
     }
 
-    exportAllChatMessage = async () => {
+    exportAllChatMessage = async (path?: string) => {
         const msgs = this.store.queryAllExportMessage()
-        await this.exportXlsx(msgs, `all_chat_message_${unixnow()}`)
+        await this.exportXlsx(msgs, `ifcli_all_chat_message_${unixnow()}`, path)
     }
 
-    exportChatMessage = async () => {
+    exportChatMessage = async (path?: string) => {
         const { id: chatId } = await this.allChatToSelect()
         await this.exportXlsx(
             this.store.queryChatExportMessage(chatId),
-            `chat_message_${unixnow()}`
+            `ifcli_chat_message_${unixnow()}`,
+            path
         )
     }
 
-    exportChatTopicMessage = async () => {
+    exportChatTopicMessage = async (path?: string) => {
         const { id: chatId } = await this.allChatToSelect()
         const topics = this.store.queryTopic(chatId)
         const { id: topicId } = await this.topicToSelect(topics)
         await this.exportXlsx(
             this.store.queryChatTopicExportMessage(chatId, topicId),
-            `chat_topic_message_${unixnow()}`
+            `ifcli_chat_topic_message_${unixnow()}`,
+            path
         )
     }
 
-    exportTopicMessage = async () => {
+    exportTopicMessage = async (path?: string) => {
         const topics = this.store.currentChatTopics()
         const { id, chatId } = await this.topicToSelect(topics)
         await this.exportXlsx(
             this.store.queryChatTopicExportMessage(chatId, id),
-            `chat_topic_message_${unixnow()}`
+            `ifcli_chat_topic_message_${unixnow()}`,
+            path
         )
     }
 
@@ -962,7 +965,11 @@ export class ChatAction implements IChatAction {
         })
     }
 
-    private exportXlsx = async (objs: ExportMessage[], fileName: string) => {
+    private exportXlsx = async (
+        objs: ExportMessage[],
+        fileName: string,
+        exportPath?: string
+    ) => {
         const schema: Schema<ExportMessage> = [
             {
                 column: 'ChatName',
@@ -998,7 +1005,7 @@ export class ChatAction implements IChatAction {
 
         await writeXlsxFile(objs, {
             schema,
-            filePath: `${env('HOME')}${path.sep}${fileName}.xlsx`,
+            filePath: `${exportPath ? exportPath : env('HOME')}${path.sep}${fileName}.xlsx`,
         })
     }
 }

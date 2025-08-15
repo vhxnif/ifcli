@@ -170,24 +170,25 @@ program
 program
     .command('export')
     .alias('exp')
+    .argument('[path]', 'default: $HOME')
     .description('export chat message.')
     .option('-a, --all', 'export all chat messages.')
     .option('-c, --chat', 'select chat and export all topic messages.')
     .option('-t, --topic', 'select chat and topic then export topic messages.')
-    .action(async ({ all, chat, topic }) => {
+    .action(async (path, { all, chat, topic }) => {
         if (all) {
-            await chatAction.exportAllChatMessage()
+            await chatAction.exportAllChatMessage(path)
             return
         }
         if (chat) {
-            await chatAction.exportChatMessage()
+            await chatAction.exportChatMessage(path)
             return
         }
         if (topic) {
-            await chatAction.exportChatTopicMessage()
+            await chatAction.exportChatTopicMessage(path)
             return
         }
-        await chatAction.exportTopicMessage()
+        await chatAction.exportTopicMessage(path)
     })
 
 program.parseAsync().catch((e: unknown) => {
