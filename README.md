@@ -82,6 +82,7 @@ Commands:
   prompt|pt [options]         prompt manager
   preset|ps [options]         preset message manager
   config|cf [options]         manage chat config
+  export|exp [options] [path]  export chat message.
   help [command]              display help for command
 ```
 

@@ -1,10 +1,11 @@
 {
     "name": "@vhxnif/ifcli",
-    "version": "0.1.14",
+    "version": "0.1.15",
     "description": "Chat with AI via CLI",
     "keywords": [
         "ai",
         "cli",
+        "openrouter",
         "deepseek",
         "ollama",
         "openai",
