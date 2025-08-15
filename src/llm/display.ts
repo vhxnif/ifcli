@@ -92,8 +92,9 @@ export class Display {
     thinkingShow = (chunk: OpenAI.Chat.Completions.ChatCompletionChunk) => {
         const delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta & {
             reasoning_content?: string
+            reasoning?: string
         } = chunk.choices[0]?.delta
-        const reasoning = delta.reasoning_content || ''
+        const reasoning = delta.reasoning || delta.reasoning_content || ''
         const content = delta.content || ''
         if (reasoning) {
             this.hasReasoningContent = true

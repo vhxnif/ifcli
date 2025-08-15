@@ -55,7 +55,7 @@
         "@modelcontextprotocol/sdk": "^1.11.4",
         "chalk": "^5.4.1",
         "commander": "^13.1.0",
-        "openai": "^4.89.1",
+        "openai": "^5.12.2",
         "ora": "^8.2.0",
         "pocketflow": "^1.0.4",
         "table": "^6.9.0"

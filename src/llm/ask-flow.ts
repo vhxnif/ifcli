@@ -170,7 +170,7 @@ class ToolsCallNode extends Node<AskShare> {
             enableSpinner: render,
         })
         try {
-            const runner = this.client.beta.chat.completions
+            const runner = this.client.chat.completions
                 .runTools({
                     model,
                     temperature,
@@ -181,19 +181,22 @@ class ToolsCallNode extends Node<AskShare> {
                 .on('tool_calls.function.arguments.delta', () => {
                     display.change('analyzing')
                 })
-                .on('tool_calls.function.arguments.done', (it) => {
-                    const f = tools.find((i) => i.id == it.name)!
-                    display.toolCall(
-                        f?.mcpServer,
-                        f?.mcpVersion,
-                        f?.funName,
-                        it.arguments
-                    )
-                })
-                .on('functionCallResult', (it) => {
+                .on(
+                    'tool_calls.function.arguments.done',
+                    (it: { name: string; arguments: string }) => {
+                        const f = tools.find((i) => i.id == it.name)!
+                        display.toolCall(
+                            f?.mcpServer,
+                            f?.mcpVersion,
+                            f?.funName,
+                            it.arguments
+                        )
+                    }
+                )
+                .on('functionToolCallResult', (it: string) => {
                     display.toolCallReult(it)
                 })
-                .on('content', (it) => {
+                .on('content', (it: string) => {
                     display.contentShow(it)
                 })
             await runner.finalChatCompletion()
