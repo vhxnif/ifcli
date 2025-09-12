@@ -249,7 +249,7 @@ export class ChatAction implements IChatAction {
         const choices: Choice<ChatTopic>[] = topics.map((it) => ({
             name: this.subStr(it.content),
             value: it,
-            description: it.content,
+            description: this.descriptionTrim(it.content),
             disabled: it.select ? ' ' : false,
         }))
         if (isEmpty(choices.filter((it) => !it.disabled))) {
@@ -1005,7 +1005,7 @@ export class ChatAction implements IChatAction {
         const choices: Choice<ChatTopic>[] = topics.map((it) => ({
             name: this.subStr(it.content),
             value: it,
-            description: it.content,
+            description: this.descriptionTrim(it.content),
         }))
         if (isEmpty(choices)) {
             throw Error(promptMessage.topicMissing)
@@ -1015,6 +1015,14 @@ export class ChatAction implements IChatAction {
             choices,
             theme: themeStyle(color),
         })
+    }
+
+    private descriptionTrim = (str: string) => {
+        const lines = str.split('\n')
+        if (lines.length <= 15) {
+            return str
+        }
+        return [...lines.slice(0, 10), '...', ...lines.slice(-5)].join('\n')
     }
 
     private allChatToSelect = async () => {
