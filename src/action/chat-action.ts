@@ -303,7 +303,16 @@ export class ChatAction implements IChatAction {
             if (isEmpty(mcpServers)) {
                 return ''
             }
-            return mcpServers.map((it) => `${it.name}/${it.version}`).join('\n')
+            const enableFilter = (s: MCPServerKey) => {
+                const one = this.mcps.find(
+                    (it) => it.name === s.name && it.version === s.version
+                )
+                return one !== void 0
+            }
+            return mcpServers
+                .filter(enableFilter)
+                .map((it) => `${it.name}/${it.version}`)
+                .join('\n')
         }
 
         const f = (cf: ChatConfig) => {
