@@ -15,7 +15,7 @@ import {
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js'
 import type { RunnableToolFunction } from 'openai/lib/RunnableFunction.mjs'
-import { uuid } from '../util/common-utils'
+import { println, uuid } from '../util/common-utils'
 
 export type MCPConnectType = 'streamable' | 'sse' | 'stdio'
 
@@ -48,6 +48,7 @@ export default class MCPClient {
     version: string
     client: Client
     transport: Transport
+    private connected: boolean = false
     constructor(config: MCPConfig) {
         this.name = config.name
         this.version = config.version
@@ -79,12 +80,23 @@ export default class MCPClient {
         this.transport = new SSEClientTransport(new URL(url), opts)
     }
 
-    connect = async () => await this.client.connect(this.transport)
+    connect = async () => {
+        try {
+            await this.client.connect(this.transport)
+            this.connected = true
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (e: unknown) {
+            println(`${this.name}/${this.version} connect error.`)
+        }
+    }
 
     listTools = async () => await this.client.listTools()
 
-    tools = async () =>
-        await this.listTools().then((res) =>
+    tools = async () => {
+        if (!this.connected) {
+            return []
+        }
+        return await this.listTools().then((res) =>
             res.tools.map((t) => {
                 const nameId = uuid()
                 const f = {
@@ -109,6 +121,7 @@ export default class MCPClient {
                 }
             })
         )
+    }
 
     callTool = async (name: string, args: any) =>
         await this.client.callTool(
@@ -116,5 +129,15 @@ export default class MCPClient {
             CallToolResultSchema
         )
 
-    close = async () => await this.client.close()
+    close = async () => {
+        try {
+            if (this.connected) {
+                await this.client.close()
+                this.connected = false
+            }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (e: unknown) {
+            println(`${this.name}/${this.version} close error.`)
+        }
+    }
 }

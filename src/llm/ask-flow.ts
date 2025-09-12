@@ -15,7 +15,6 @@ import type {
     ChatConfigExt,
     ConfigExt,
     IStore,
-    MCPTools,
     MessageContent,
 } from '../types/store-types'
 import { isEmpty, println, uuid } from '../util/common-utils'
@@ -142,9 +141,13 @@ class ToolsNode extends Node<AskShare> {
             return
         }
         shared.mcps = mcps
-        await Promise.all(mcps.map((it) => it.connect()))
         const tools = (
-            await Promise.all(mcps.flatMap((it) => it.tools()))
+            await Promise.all(
+                mcps.flatMap(async (it) => {
+                    await it.connect()
+                    return await it.tools()
+                })
+            )
         ).flat()
         shared.tools = tools
     }
