@@ -158,7 +158,7 @@ program
                 chatAction.modifyWithContext()
             }
             if (withMcp) {
-                chatAction.modifyWithMCP()
+                await chatAction.modifyWithMCP()
             }
             if (useScenario) {
                 await chatAction.modifyScenario()

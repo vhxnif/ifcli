@@ -5,6 +5,7 @@ import {
     AppSetting,
     Chat,
     ChatConfig,
+    ChatConfigExt,
     ChatMessage,
     ChatPresetMessage,
     ChatPrompt,
@@ -63,6 +64,11 @@ export class Store implements IStore {
 
     private cmdHistoryColumn =
         'id, type, key, last_switch_time as lastSwitchTime, frequency'
+    private mcpToolsColumn =
+        'id, name, version, tools, create_time as createTime, update_time as updateTime'
+
+    private chatConfigExtColumn =
+        'id, chat_id as chatId, ext, create_time as createTime, update_time as updateTime'
 
     chats = () =>
         this.db.query(`SELECT ${this.chatColumn} FROM chat`).as(Chat).all()
@@ -338,9 +344,9 @@ export class Store implements IStore {
         )
 
     modifyWithContext = () =>
-        this.changeConfigBooleanType('with_context', (c) => c.withContext)
-    modifyWithMCP = () =>
-        this.changeConfigBooleanType('with_mcp', (c) => c.withMCP)
+        this.changeConfigBooleanType('with_context', (c) => !c.withContext)
+    modifyWithMCP = (withMCP: boolean) =>
+        this.changeConfigBooleanType('with_mcp', () => withMCP)
 
     private changeConfigBooleanType = (
         columnName: string,
@@ -351,7 +357,7 @@ export class Store implements IStore {
                 .prepare(
                     `UPDATE chat_config SET ${columnName} = ?, update_time = ? where id = ?`
                 )
-                .run(!f(cf), unixnow(), cf.id)
+                .run(f(cf), unixnow(), cf.id)
         )
     }
 
@@ -588,5 +594,29 @@ export class Store implements IStore {
             return
         }
         this.addCmdHis(type, key)
+    }
+
+    saveChatCofnigExt = (chatId: string, ext: string): void => {
+        const now = unixnow()
+        this.db
+            .prepare(
+                `INSERT INTO chat_config_ext (id, chat_id, ext, create_time, update_time) VALUES (?, ?, ?, ?, ?)`
+            )
+            .run(uuid(), chatId, ext, now, now)
+    }
+    updateChatConfigExt = (chatId: string, ext: string): void => {
+        this.db
+            .prepare(
+                `UPDATE chat_config_ext SET ext = ?, update_time = ? WHERE chat_id = ?`
+            )
+            .run(ext, unixnow(), chatId)
+    }
+    queryChatConfigExt = (chatId: string): ChatConfigExt | null => {
+        return this.db
+            .prepare(
+                `SELECT ${this.chatConfigExtColumn} FROM chat_config_ext WHERE chat_id = ?`
+            )
+            .as(ChatConfigExt)
+            .get(chatId)
     }
 }

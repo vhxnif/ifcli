@@ -42,6 +42,14 @@ export class ChatConfig {
     updateTime!: bigint
 }
 
+export class ChatConfigExt {
+    id!: string
+    chat_id!: string
+    ext!: string
+    createTime!: string
+    updateTime!: string
+}
+
 export class ChatPrompt {
     name!: string
     version!: string
@@ -105,6 +113,15 @@ export class ExportMessage {
     actionTime!: string
 }
 
+export type MCPServerKey = {
+    name: string
+    version: string
+}
+
+export type ConfigExt = {
+    mcpServers: MCPServerKey[]
+}
+
 export interface IStore {
     init: () => void
     // ---- chat ---- //
@@ -145,7 +162,7 @@ export interface IStore {
     modifyContextLimit: (contextLimit: number) => void
     modifyModel: (llm: string, model: string) => void
     modifyWithContext: () => void
-    modifyWithMCP: () => void
+    modifyWithMCP: (withMCP: boolean) => void
     modifyScenario: (sc: [string, number]) => void
     queryChatConfig: (chatId: string) => ChatConfig
 
@@ -169,4 +186,9 @@ export interface IStore {
     delCmdHis: (type: CmdHistoryType, key: string) => void
     updateCmdHis: (type: CmdHistoryType, key: string, frequency: number) => void
     addOrUpdateCmdHis: (type: CmdHistoryType, key: string) => void
+
+    // chat config ext
+    saveChatCofnigExt: (chatId: string, ext: string) => void
+    updateChatConfigExt: (chatId: string, ext: string) => void
+    queryChatConfigExt: (chatId: string) => ChatConfigExt | null
 }

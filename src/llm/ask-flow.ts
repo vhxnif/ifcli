@@ -10,7 +10,14 @@ import type {
     LLMToolsCallParam,
 } from '../types/llm-types'
 import type MCPClient from '../types/mcp-client'
-import type { ChatConfig, IStore, MessageContent } from '../types/store-types'
+import type {
+    ChatConfig,
+    ChatConfigExt,
+    ConfigExt,
+    IStore,
+    MCPTools,
+    MessageContent,
+} from '../types/store-types'
 import { isEmpty, println, uuid } from '../util/common-utils'
 import { Display } from './display'
 import { assistant, system, user } from './llm-utils'
@@ -18,6 +25,7 @@ import { assistant, system, user } from './llm-utils'
 export type AskShare = LLMParam & {
     topicId?: string
     config: ChatConfig
+    configExt: ConfigExt
     resultChunk?: LLMResultChunk
     tools?: {
         id: string
@@ -119,10 +127,24 @@ class ToolsNode extends Node<AskShare> {
         if (!shared.config.withMCP) {
             return
         }
-        shared.mcps = this.mcps
-        await Promise.all(this.mcps.map((it) => it.connect()))
+        const { mcpServers } = shared.configExt
+        if (isEmpty(mcpServers)) {
+            return
+        }
+        const filterActiveMCPServer = (m: MCPClient) => {
+            const one = mcpServers.find(
+                (it) => it.name === m.name && it.version === m.version
+            )
+            return one !== void 0
+        }
+        const mcps = this.mcps.filter(filterActiveMCPServer)
+        if (isEmpty(mcps)) {
+            return
+        }
+        shared.mcps = mcps
+        await Promise.all(mcps.map((it) => it.connect()))
         const tools = (
-            await Promise.all(this.mcps.flatMap((it) => it.tools()))
+            await Promise.all(mcps.flatMap((it) => it.tools()))
         ).flat()
         shared.tools = tools
     }
@@ -332,6 +354,7 @@ async function askFlow({
     client,
     store,
     config,
+    configExt,
     userContent,
     mcps,
     generalSetting,
@@ -341,6 +364,7 @@ async function askFlow({
     client: OpenAI
     store: IStore
     config: ChatConfig
+    configExt: ConfigExt
     userContent: string
     mcps: MCPClient[]
     generalSetting: GeneralSetting
@@ -353,6 +377,7 @@ async function askFlow({
         model: config.model,
         temperature: config.scenario,
         config,
+        configExt,
         generalSetting,
         theme: generalSetting.theme,
         noStream,

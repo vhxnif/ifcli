@@ -18,7 +18,9 @@ import {
     CmdHistory,
     ExportMessage,
     type ChatConfig,
+    type ConfigExt,
     type IStore,
+    type MCPServerKey,
     type PresetMessageContent,
 } from '../types/store-types'
 import {
@@ -38,6 +40,7 @@ import {
 import {
     input,
     select,
+    checkbox,
     selectRun,
     themeStyle,
     type Choice,
@@ -146,6 +149,7 @@ export class ChatAction implements IChatAction {
                 client: client.openai,
                 store: this.store,
                 config: cf,
+                configExt: this.configExt(cf.chatId),
                 userContent: content,
                 mcps: this.mcps,
                 noStream,
@@ -294,6 +298,14 @@ export class ChatAction implements IChatAction {
     }
 
     printChatConfig = () => {
+        const mcps = (chatId: string) => {
+            const { mcpServers } = this.configExt(chatId)
+            if (isEmpty(mcpServers)) {
+                return ''
+            }
+            return mcpServers.map((it) => `${it.name}/${it.version}`).join('\n')
+        }
+
         const f = (cf: ChatConfig) => {
             const [_, config] = tableConfigWithExt({
                 cols: [1, 1, 1, 1],
@@ -304,14 +316,18 @@ export class ChatAction implements IChatAction {
                 [
                     display.caution('Context:'),
                     display.important(booleanPrettyFormat(cf.withContext)),
-                    display.caution('MCP:'),
-                    display.important(booleanPrettyFormat(cf.withMCP)),
+                    display.caution('ContextSize:'),
+                    display.warning(cf.contextLimit),
                 ],
                 [
                     display.caution('Scenario:'),
                     display.tip(cf.scenarioName),
-                    display.caution('ContextSize:'),
-                    display.warning(cf.contextLimit),
+                    display.caution('MCP:'),
+                    display.important(
+                        cf.withMCP
+                            ? display.tip(mcps(cf.chatId))
+                            : booleanPrettyFormat(cf.withMCP)
+                    ),
                 ],
                 [
                     display.caution('LLMType:'),
@@ -500,8 +516,51 @@ export class ChatAction implements IChatAction {
         this.store.modifyWithContext()
     }
 
-    modifyWithMCP = () => {
-        this.store.modifyWithMCP()
+    modifyWithMCP = async () => {
+        // select mcp
+        const { id } = this.store.currentChat()!
+        const ext = this.configExt(id)
+        const key = (n: string, v: string) => `${n}/${v}`
+        const isChecked = (m: MCPClient) => {
+            const { mcpServers } = ext
+            if (isEmpty(mcpServers)) {
+                return false
+            }
+            const item = mcpServers.find(
+                (it) => key(m.name, m.version) === key(it.name, it.version)
+            )
+            return item !== void 0
+        }
+        const choices = this.mcps.map((it) => {
+            const { name, version } = it
+            return {
+                name: key(name, version),
+                value: { name, version } as MCPServerKey,
+                checked: isChecked(it),
+            }
+        })
+        if (isEmpty(choices)) {
+            throw Error(promptMessage.mcpMissing)
+        }
+        const items = await checkbox({ message: 'Select MCP Server:', choices })
+        if (isEmpty(items)) {
+            ext.mcpServers = []
+            this.store.modifyWithMCP(false)
+        } else {
+            ext.mcpServers = items
+            this.store.modifyWithMCP(true)
+        }
+        this.store.updateChatConfigExt(id, JSON.stringify(ext))
+    }
+
+    private configExt = (chatId: string) => {
+        const ext = this.store.queryChatConfigExt(chatId)
+        if (ext) {
+            return JSON.parse(ext.ext) as ConfigExt
+        }
+        const def = { mcpServers: [] } as ConfigExt
+        this.store.saveChatCofnigExt(chatId, JSON.stringify(def))
+        return def
     }
 
     modifyScenario = async () => {

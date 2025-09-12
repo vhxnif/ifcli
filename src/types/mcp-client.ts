@@ -95,7 +95,8 @@ export default class MCPClient {
                         parameters: {
                             ...t.inputSchema,
                         },
-                        function: async (args: any) => await this.callTool(t.name, args),
+                        function: async (args: any) =>
+                            await this.callTool(t.name, args),
                         parse: JSON.parse,
                     },
                 } as RunnableToolFunction<any>
@@ -109,7 +110,7 @@ export default class MCPClient {
             })
         )
 
-    callTool = async (name: string, args: any) => 
+    callTool = async (name: string, args: any) =>
         await this.client.callTool(
             { name, arguments: { ...args } },
             CallToolResultSchema

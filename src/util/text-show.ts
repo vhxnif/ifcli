@@ -48,7 +48,6 @@ export class TextShow {
         this.render = render
     }
 
-
     start() {
         if (this.startFlag) {
             return
