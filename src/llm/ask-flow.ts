@@ -12,7 +12,6 @@ import type {
 import type MCPClient from '../types/mcp-client'
 import type {
     ChatConfig,
-    ChatConfigExt,
     ConfigExt,
     IStore,
     MessageContent,
