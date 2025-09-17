@@ -80,7 +80,7 @@ Options:
 
 Commands:
   new <string>                 new chat
-  history|hs [options]         view chat history
+  history|hs [options]         view chat topic history
   remove|rm                    remove chat
   switch|st [options] [name]   switch to another chat or topic
   prompt|pt [options]          prompt manager

@@ -55,7 +55,7 @@ program
 program
     .command('history')
     .alias('hs')
-    .description('view chat history')
+    .description('view chat topic history')
     .option('-l, --limit <limit>', 'history message limit', '100')
     .action(async ({ limit }, cmd) => {
         const force = cmd.parent?.opts()?.force as string
