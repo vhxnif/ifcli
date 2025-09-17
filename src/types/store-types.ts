@@ -136,6 +136,7 @@ export interface IStore {
     removeChat: (name: string) => void
     changeChat: (name: string) => void
     currentChat: () => Chat | null
+    existCurrentChat: () => Chat
 
     // ---- topic ---- //
     selectedTopic: (chatId: string) => ChatTopic | null
@@ -148,6 +149,7 @@ export interface IStore {
     saveMessage: (messages: MessageContent[]) => void
     contextMessage: (topicId: string, limit: number) => ChatMessage[]
     historyMessage: (count: number) => ChatMessage[]
+    chatHistoryMessage: (chat: Chat, count: number) => ChatMessage[]
     selectMessage: (messageId: string) => ChatMessage
     queryAllExportMessage: () => ExportMessage[]
     queryChatExportMessage: (chatId: string) => ExportMessage[]
@@ -159,11 +161,17 @@ export interface IStore {
     // ---- config ---- //
     currentChatConfig: () => ChatConfig
     modifySystemPrompt: (prompt: string) => void
+    modifyChatSystemPrompt: (chat: Chat, prompt: string) => void
     modifyContextLimit: (contextLimit: number) => void
+    modifyChatContextLimit: (chat: Chat, contextLimit: number) => void
     modifyModel: (llm: string, model: string) => void
+    modifyChatModel: (chat: Chat, llm: string, model: string) => void
     modifyWithContext: () => void
+    modifyChatWithContext: (chat: Chat) => void
     modifyWithMCP: (withMCP: boolean) => void
+    modifyChatWithMCP: (chat: Chat, withMCP: boolean) => void
     modifyScenario: (sc: [string, number]) => void
+    modifyChatScenario: (chat: Chat, sc: [string, number]) => void
     queryChatConfig: (chatId: string) => ChatConfig
 
     // ---- prompt ---- //
@@ -173,8 +181,14 @@ export interface IStore {
 
     // ---- preset message ---- //
     createPresetMessage: (params: PresetMessageContent[]) => void
+    createChatPresetMessage: (
+        chat: Chat,
+        params: PresetMessageContent[]
+    ) => void
     selectPresetMessage: () => ChatPresetMessage[]
+    selectChatPresetMessage: (chat: Chat) => ChatPresetMessage[]
     clearPresetMessage: () => void
+    clearChatPresetMessage: (chat: Chat) => void
     // ---- app setting ----
     appSetting: () => AppSetting | null
     addAppSetting: (setting: AppSettingContent) => void
