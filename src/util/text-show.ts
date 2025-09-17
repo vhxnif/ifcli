@@ -19,8 +19,7 @@ export class TextShow {
     private readonly stopLeft: string = '╰'
     private readonly stopRight: string = '╯'
     private content: string[] = []
-    private startFlag: boolean = false
-    private stopFlag: boolean = false
+    private active: boolean = false
     private structured: boolean = false
     private obj: Record<string, string> = {}
     private render: boolean
@@ -48,9 +47,8 @@ export class TextShow {
         this.render = render
     }
 
-
     start() {
-        if (this.startFlag) {
+        if (this.active) {
             return
         }
         const fillSize = terminal.column - stringWidth(this.title)
@@ -62,14 +60,14 @@ export class TextShow {
             suffix
         )}${this.bolderColor(this.startRight)}`
         this.println(sp)
-        this.startFlag = true
+        this.active = true
         if (this.structured) {
             this.obj = {}
         }
     }
 
     stop() {
-        if (this.stopFlag) {
+        if (!this.active) {
             return
         }
         const fillSize = terminal.column - 2
@@ -77,7 +75,7 @@ export class TextShow {
             fillSize
         )}${this.bolderColor(this.stopRight)}`
         this.println(sp)
-        this.stopFlag = true
+        this.active = false
         if (this.structured) {
             this.content.push(JSON.stringify(this.obj))
             this.obj = {}
@@ -91,9 +89,7 @@ export class TextShow {
             key?: string
         }
     ) {
-        if (!this.startFlag) {
-            this.start()
-        }
+        this.start()
         if (this.structured) {
             this.structuredPush(text, options?.key)
         } else {

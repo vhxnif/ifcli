@@ -100,6 +100,26 @@ const cmd_history = `
     CREATE UNIQUE INDEX IF NOT EXISTS cmd_his_uk_IDX ON cmd_history (type, key);
 `
 
+const chat_confi_ext = `
+    CREATE TABLE IF NOT EXISTS "chat_config_ext" (
+      "id" text NOT NULL,
+      "chat_id" text NOT NULL,
+      "ext" text NOT NULL,
+      "create_time" integer NOT NULL,
+      "update_time" integer NOT NULL,
+      PRIMARY KEY ("id")
+    );
+
+    CREATE INDEX IF NOT EXISTS "idx_chat_id_chat_config_ext" ON "chat_config_ext"("chat_id");    
+`
+const cache = `
+    CREATE TABLE "cache" (
+      "key" text NOT NULL,
+      "value" text NOT NULL,
+      PRIMARY KEY ("key")
+    );
+`
+
 // table_name: ddl
 const table_def: Record<string, string> = {
     chat: chat,
@@ -110,6 +130,8 @@ const table_def: Record<string, string> = {
     chat_preset_message: chat_preset_message,
     app_setting: app_setting,
     cmd_history: cmd_history,
+    chat_config_ext: chat_confi_ext,
+    cache: cache,
 }
 
 export { table_def }

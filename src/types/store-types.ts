@@ -42,6 +42,14 @@ export class ChatConfig {
     updateTime!: bigint
 }
 
+export class ChatConfigExt {
+    id!: string
+    chat_id!: string
+    ext!: string
+    createTime!: string
+    updateTime!: string
+}
+
 export class ChatPrompt {
     name!: string
     version!: string
@@ -65,6 +73,11 @@ export class AppSetting {
     mcpServer!: string
     llmSetting!: string
     createTime!: bigint
+}
+
+export class Cache {
+    key!: string
+    value!: string
 }
 
 export type CmdHistoryType = 'chat_switch'
@@ -105,6 +118,15 @@ export class ExportMessage {
     actionTime!: string
 }
 
+export type MCPServerKey = {
+    name: string
+    version: string
+}
+
+export type ConfigExt = {
+    mcpServers: MCPServerKey[]
+}
+
 export interface IStore {
     init: () => void
     // ---- chat ---- //
@@ -119,6 +141,7 @@ export interface IStore {
     removeChat: (name: string) => void
     changeChat: (name: string) => void
     currentChat: () => Chat | null
+    existCurrentChat: () => Chat
 
     // ---- topic ---- //
     selectedTopic: (chatId: string) => ChatTopic | null
@@ -131,6 +154,7 @@ export interface IStore {
     saveMessage: (messages: MessageContent[]) => void
     contextMessage: (topicId: string, limit: number) => ChatMessage[]
     historyMessage: (count: number) => ChatMessage[]
+    chatHistoryMessage: (chat: Chat, count: number) => ChatMessage[]
     selectMessage: (messageId: string) => ChatMessage
     queryAllExportMessage: () => ExportMessage[]
     queryChatExportMessage: (chatId: string) => ExportMessage[]
@@ -142,11 +166,17 @@ export interface IStore {
     // ---- config ---- //
     currentChatConfig: () => ChatConfig
     modifySystemPrompt: (prompt: string) => void
+    modifyChatSystemPrompt: (chat: Chat, prompt: string) => void
     modifyContextLimit: (contextLimit: number) => void
+    modifyChatContextLimit: (chat: Chat, contextLimit: number) => void
     modifyModel: (llm: string, model: string) => void
+    modifyChatModel: (chat: Chat, llm: string, model: string) => void
     modifyWithContext: () => void
-    modifyWithMCP: () => void
+    modifyChatWithContext: (chat: Chat) => void
+    modifyWithMCP: (withMCP: boolean) => void
+    modifyChatWithMCP: (chat: Chat, withMCP: boolean) => void
     modifyScenario: (sc: [string, number]) => void
+    modifyChatScenario: (chat: Chat, sc: [string, number]) => void
     queryChatConfig: (chatId: string) => ChatConfig
 
     // ---- prompt ---- //
@@ -156,8 +186,14 @@ export interface IStore {
 
     // ---- preset message ---- //
     createPresetMessage: (params: PresetMessageContent[]) => void
+    createChatPresetMessage: (
+        chat: Chat,
+        params: PresetMessageContent[]
+    ) => void
     selectPresetMessage: () => ChatPresetMessage[]
+    selectChatPresetMessage: (chat: Chat) => ChatPresetMessage[]
     clearPresetMessage: () => void
+    clearChatPresetMessage: (chat: Chat) => void
     // ---- app setting ----
     appSetting: () => AppSetting | null
     addAppSetting: (setting: AppSettingContent) => void
@@ -169,4 +205,14 @@ export interface IStore {
     delCmdHis: (type: CmdHistoryType, key: string) => void
     updateCmdHis: (type: CmdHistoryType, key: string, frequency: number) => void
     addOrUpdateCmdHis: (type: CmdHistoryType, key: string) => void
+
+    // chat config ext
+    saveChatCofnigExt: (chatId: string, ext: string) => void
+    updateChatConfigExt: (chatId: string, ext: string) => void
+    queryChatConfigExt: (chatId: string) => ChatConfigExt | null
+
+    // cache
+    saveOrUpdateCache: (caches: Cache[]) => void
+    queryCache: (keys: string[]) => Cache[]
+    deleteCache: (keys: string[]) => void
 }

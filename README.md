@@ -65,25 +65,29 @@ Commands:
 `chat` command
 
 ```bash
-Usage: ifchat|ict [options] [command]
 
-chat management
+Usage: ifchat|ict [options] [command] [string]
+
+chat with AI
 
 Options:
-  -V, --version               output the version number
-  -h, --help                  display help for command
+  -V, --version                output the version number
+  -f, --force <name>           use the specified chat
+  -s, --sync-call              sync call
+  -e, --edit                   use editor
+  -t, --new-topic              start new topic
+  -r, --retry                  retry the last question.
+  -h, --help                   display help for command
 
 Commands:
-  new <string>                new chat
-  ask [options] [string]      chat with AI
-  history|hs [options]        view chat history
-  remove|rm                   remove chat
-  switch|st [options] [name]  switch to another chat or topic
-  prompt|pt [options]         prompt manager
-  preset|ps [options]         preset message manager
-  config|cf [options]         manage chat config
+  new <string>                 new chat
+  history|hs [options]         view chat topic history
+  remove|rm                    remove chat
+  switch|st [options] [name]   switch to another chat or topic
+  prompt|pt [options]          prompt manager
+  preset|ps [options]          preset message manager
+  config|cf [options]          manage chat config
   export|exp [options] [path]  export chat message.
-  help [command]              display help for command
 ```
 
 ### AppSetting
@@ -203,17 +207,17 @@ Commands:
 ### Chat without `ict st`
 
 ```bash
-# the `ts` is another chat that supports translation.
-alias ts = ict ask -c 'ts'
+# `ts` is the name of another chat used for translation. You can simply use `ict -f ts` to specify using the `ts` chat, without switching the current chat to ts.You can also use `alias` to simplify `ict -f ts`.
+alias ts = ict -f ts 
 ```
 
 ### Close Stream Output
 
 ```bash
-# sync call ict use `helix editor` for simple task
-ict ask -sc 'ts'
+# Specifying synchronous output so that it can be used in pipelines.
+ict -sf ts
 # create your own command
-alias sts = ict ask -sc 'ts'
+alias sts = ict -sf ts
 cat system_prompt.md | sts | save system_prompt.txt
 ```
 
@@ -230,3 +234,7 @@ Use the editor
 ```bash
 ict pt -m
 ```
+
+### Retry Last Question
+
+If you fail to respond after asking a question for any other reason, once you have resolved the issue you can use `-r, --retry` to retry the most recent question, thereby avoiding loss of prior progress.

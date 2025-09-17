@@ -18,4 +18,5 @@ export const promptMessage = {
     onlyOneTopic: 'There is currently only one topic.',
     topicMissing: 'No topics are available.',
     topicIdMissing: 'No Topic is Selected.',
+    retryOptionsMisssing: 'No recent question.',
 }

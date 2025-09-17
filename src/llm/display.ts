@@ -136,6 +136,7 @@ export class Display {
     ) => {
         this.spinner?.stop()
         const argsStr = jsonformat(args)
+        this.toolsCallShow.start()
         this.toolTitle(`McpServer: `)
         this.toolProperty(mcpServer, 'mcpServer')
         this.toolText(`  `)

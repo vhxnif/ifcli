@@ -1,5 +1,6 @@
 import input from '@inquirer/input'
 import select from '@inquirer/select'
+import checkbox from '@inquirer/checkbox'
 import type { CatppuccinColorName } from './color-schema'
 import type { ChalkInstance } from 'chalk'
 
@@ -10,7 +11,7 @@ export type Choice<V> = {
     disabled?: boolean | string
 }
 
-const selectRun = async <V>(
+const selectRun = async <V,>(
     message: string,
     choices: Choice<V>[],
     f: (str: V) => void
@@ -31,4 +32,4 @@ const themeStyle = (ds: Record<CatppuccinColorName, ChalkInstance>) => {
 const inputRun = async (message: string, f: (str: string) => void) =>
     f(await input({ message }))
 
-export { themeStyle, selectRun, inputRun, select, input }
+export { themeStyle, selectRun, inputRun, select, input, checkbox }

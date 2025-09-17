@@ -3,8 +3,10 @@ import { Database } from 'bun:sqlite'
 import { temperature } from '../types/constant'
 import {
     AppSetting,
+    Cache,
     Chat,
     ChatConfig,
+    ChatConfigExt,
     ChatMessage,
     ChatPresetMessage,
     ChatPrompt,
@@ -63,6 +65,11 @@ export class Store implements IStore {
 
     private cmdHistoryColumn =
         'id, type, key, last_switch_time as lastSwitchTime, frequency'
+    private mcpToolsColumn =
+        'id, name, version, tools, create_time as createTime, update_time as updateTime'
+
+    private chatConfigExtColumn =
+        'id, chat_id as chatId, ext, create_time as createTime, update_time as updateTime'
 
     chats = () =>
         this.db.query(`SELECT ${this.chatColumn} FROM chat`).as(Chat).all()
@@ -154,7 +161,7 @@ export class Store implements IStore {
             .get(true)
     }
 
-    private existCurrentChat = () => {
+    existCurrentChat = () => {
         const chat = this.currentChat()
         if (chat) {
             return chat
@@ -240,13 +247,15 @@ export class Store implements IStore {
         this.queryMessage(topicId, limit)
 
     historyMessage = (count: number) => {
-        return this.currentChatRun((c) => {
-            const stp = this.selectedTopic(c.id)
-            if (stp) {
-                return this.queryMessage(stp.id, count, true)
-            }
-            return []
-        })
+        return this.currentChatRun((c) => this.chatHistoryMessage(c, count))
+    }
+
+    chatHistoryMessage = (chat: Chat, count: number) => {
+        const stp = this.selectedTopic(chat.id)
+        if (stp) {
+            return this.queryMessage(stp.id, count, true)
+        }
+        return []
     }
 
     selectMessage = (messageId: string) =>
@@ -312,57 +321,96 @@ export class Store implements IStore {
 
     modifySystemPrompt = (prompt: string) =>
         this.currentChatConfigRun((_, cf) =>
-            this.db
-                .prepare(
-                    `UPDATE chat_config SET sys_prompt = ?, update_time = ? where id = ?`
-                )
-                .run(prompt, unixnow(), cf.id)
+            this.updateSystemPrompt(cf.id, prompt)
         )
 
-    modifyContextLimit = (contextLimit: number) =>
-        this.currentChatConfigRun((_, cf) =>
-            this.db
-                .prepare(
-                    `UPDATE chat_config SET context_limit = ?, update_time = ? where id = ?`
-                )
-                .run(contextLimit, unixnow(), cf.id)
-        )
+    modifyChatSystemPrompt = (chat: Chat, prompt: string) => {
+        const { id } = this.queryChatConfig(chat.id)
+        this.updateSystemPrompt(id, prompt)
+    }
 
-    modifyModel = (llm: string, model: string) =>
-        this.currentChatConfigRun((_, cf) =>
-            this.db
-                .prepare(
-                    `UPDATE chat_config SET llm_type = ?, model = ?, update_time = ? where id = ?`
-                )
-                .run(llm, model, unixnow(), cf.id)
-        )
+    private updateSystemPrompt = (configId: string, prompt: string) => {
+        this.db
+            .prepare(
+                `UPDATE chat_config SET sys_prompt = ?, update_time = ? where id = ?`
+            )
+            .run(prompt, unixnow(), configId)
+    }
+
+    modifyContextLimit = (contextLimit: number) => {
+        this.currentChatRun((c) => this.modifyChatContextLimit(c, contextLimit))
+    }
+
+    modifyChatContextLimit = (chat: Chat, contextLimit: number) => {
+        const { id } = this.queryChatConfig(chat.id)
+        this.db
+            .prepare(
+                `UPDATE chat_config SET context_limit = ?, update_time = ? where id = ?`
+            )
+            .run(contextLimit, unixnow(), id)
+    }
+
+    modifyModel = (llm: string, model: string) => {
+        this.currentChatRun((c) => this.modifyChatModel(c, llm, model))
+    }
+
+    modifyChatModel = (chat: Chat, llm: string, model: string) => {
+        const { id } = this.queryChatConfig(chat.id)
+        this.db
+            .prepare(
+                `UPDATE chat_config SET llm_type = ?, model = ?, update_time = ? where id = ?`
+            )
+            .run(llm, model, unixnow(), id)
+    }
 
     modifyWithContext = () =>
-        this.changeConfigBooleanType('with_context', (c) => c.withContext)
-    modifyWithMCP = () =>
-        this.changeConfigBooleanType('with_mcp', (c) => c.withMCP)
+        this.changeConfigBooleanType('with_context', (c) => !c.withContext)
+
+    modifyChatWithContext = (chat: Chat) =>
+        this.changeConfigBooleanType(
+            'with_context',
+            (c) => !c.withContext,
+            chat
+        )
+
+    modifyWithMCP = (withMCP: boolean) =>
+        this.changeConfigBooleanType('with_mcp', () => withMCP)
+
+    modifyChatWithMCP = (chat: Chat, withMCP: boolean) =>
+        this.changeConfigBooleanType('with_mcp', () => withMCP, chat)
 
     private changeConfigBooleanType = (
         columnName: string,
-        f: (f: ChatConfig) => boolean
+        f: (f: ChatConfig) => boolean,
+        chat?: Chat
     ) => {
-        this.currentChatConfigRun((_, cf) =>
+        const run = (c: Chat) => {
+            const cf = this.queryChatConfig(c.id)
             this.db
                 .prepare(
                     `UPDATE chat_config SET ${columnName} = ?, update_time = ? where id = ?`
                 )
-                .run(!f(cf), unixnow(), cf.id)
-        )
+                .run(f(cf), unixnow(), cf.id)
+        }
+        if (chat) {
+            run(chat)
+            return
+        }
+        this.currentChatRun(run)
     }
 
-    modifyScenario = (sc: [string, number]) =>
-        this.currentChatConfigRun((_, cf) =>
-            this.db
-                .prepare(
-                    `UPDATE chat_config SET scenario_name = ?, scenario = ?, update_time = ? where id = ?`
-                )
-                .run(sc[0], sc[1], unixnow(), cf.id)
-        )
+    modifyScenario = (sc: [string, number]) => {
+        this.currentChatRun((c) => this.modifyChatScenario(c, sc))
+    }
+
+    modifyChatScenario = (chat: Chat, sc: [string, number]) => {
+        const cf = this.queryChatConfig(chat.id)
+        this.db
+            .prepare(
+                `UPDATE chat_config SET scenario_name = ?, scenario = ?, update_time = ? where id = ?`
+            )
+            .run(sc[0], sc[1], unixnow(), cf.id)
+    }
 
     publishPrompt = (name: string, version: string, content: string) => {
         const prompt = this.db
@@ -408,7 +456,11 @@ export class Store implements IStore {
     }
 
     createPresetMessage = (params: PresetMessageContent[]) => {
-        const { id } = this.existCurrentChat()
+        this.createChatPresetMessage(this.existCurrentChat(), params)
+    }
+
+    createChatPresetMessage = (chat: Chat, params: PresetMessageContent[]) => {
+        const { id } = chat
         this.db.transaction(() => {
             this.deletePresetMessage(id)
             this.addPresetMessage(id, params)
@@ -419,8 +471,16 @@ export class Store implements IStore {
         return this.currentChatRun((c) => this.queryPresetMessage(c.id))
     }
 
+    selectChatPresetMessage = (chat: Chat) => {
+        return this.queryPresetMessage(chat.id)
+    }
+
     clearPresetMessage = () => {
         this.currentChatRun((c) => this.deletePresetMessage(c.id))
+    }
+
+    clearChatPresetMessage = (chat: Chat) => {
+        this.deletePresetMessage(chat.id)
     }
 
     appSetting = () => {
@@ -588,5 +648,77 @@ export class Store implements IStore {
             return
         }
         this.addCmdHis(type, key)
+    }
+
+    saveChatCofnigExt = (chatId: string, ext: string): void => {
+        const now = unixnow()
+        this.db
+            .prepare(
+                `INSERT INTO chat_config_ext (id, chat_id, ext, create_time, update_time) VALUES (?, ?, ?, ?, ?)`
+            )
+            .run(uuid(), chatId, ext, now, now)
+    }
+    updateChatConfigExt = (chatId: string, ext: string): void => {
+        this.db
+            .prepare(
+                `UPDATE chat_config_ext SET ext = ?, update_time = ? WHERE chat_id = ?`
+            )
+            .run(ext, unixnow(), chatId)
+    }
+    queryChatConfigExt = (chatId: string): ChatConfigExt | null => {
+        return this.db
+            .prepare(
+                `SELECT ${this.chatConfigExtColumn} FROM chat_config_ext WHERE chat_id = ?`
+            )
+            .as(ChatConfigExt)
+            .get(chatId)
+    }
+
+    queryCache = (keys: string[]) => {
+        const ins = keys.map(() => '?').join(',')
+        return this.db
+            .prepare(`SELECT key, value FROM cache WHERE key in (${ins})`)
+            .as(Cache)
+            .all(...keys)
+    }
+
+    saveOrUpdateCache = (caches: Cache[]) => {
+        const exists = this.queryCache(caches.map((it) => it.key))
+        const [ins, upt] = caches.reduce(
+            (arr, it) => {
+                const [ins, upt] = arr
+                if (exists.find((i) => i.key === it.key)) {
+                    upt.push(it)
+                } else {
+                    ins.push(it)
+                }
+                return arr
+            },
+            [[], []] as Cache[][]
+        )
+        const uptStatement = this.db.prepare(
+            `UPDATE cache SET value = ? WHERE key = ?`
+        )
+        const insStatement = this.db.prepare(
+            `INSERT INTO cache (key, value) VALUES (?, ?)`
+        )
+        this.db.transaction(() => {
+            if (!isEmpty(ins)) {
+                ins.forEach((it) => insStatement.run(it.key, it.value))
+            }
+            if (!isEmpty(upt)) {
+                upt.forEach((it) => uptStatement.run(it.value, it.key))
+            }
+        })()
+    }
+
+    deleteCache = (keys: string[]) => {
+        if (isEmpty(keys)) {
+            return
+        }
+        const statement = this.db.prepare(`DELETE FROM cache WHERE key = ?`)
+        this.db.transaction(() => {
+            keys.forEach((it) => statement.run(it))
+        })()
     }
 }
