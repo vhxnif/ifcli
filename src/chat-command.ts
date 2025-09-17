@@ -18,15 +18,23 @@ program
     .option('-s, --sync-call', 'sync call')
     .option('-e, --edit', 'use editor')
     .option('-t, --new-topic', 'start new topic')
+    .option('-r, --retry', 'retry the last question.')
     .argument('[string]')
-    .action(async (content, { edit, syncCall, newTopic, force }) => {
-        const ask = async (ct: string) =>
+    .action(async (content, option) => {
+        const { edit, syncCall, newTopic, force, retry } = option
+        if (retry) {
+            await chatAction.reAsk()
+            return
+        }
+        const ask = async (ct: string) => {
             await chatAction.ask({
                 content: ct,
                 chatName: force,
                 noStream: syncCall ? true : false,
                 newTopic,
             })
+        }
+
         if (content) {
             await ask(content)
             return

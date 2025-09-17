@@ -76,6 +76,7 @@ Options:
   -s, --sync-call              sync call
   -e, --edit                   use editor
   -t, --new-topic              start new topic
+  -r, --retry                  retry the last question.
   -h, --help                   display help for command
 
 Commands:
@@ -233,3 +234,7 @@ Use the editor
 ```bash
 ict pt -m
 ```
+
+### Retry Last Question
+
+If you fail to respond after asking a question for any other reason, once you have resolved the issue you can use `-r, --retry` to retry the most recent question, thereby avoiding loss of prior progress.

@@ -75,6 +75,11 @@ export class AppSetting {
     createTime!: bigint
 }
 
+export class Cache {
+    key!: string
+    value!: string
+}
+
 export type CmdHistoryType = 'chat_switch'
 
 export class CmdHistory {
@@ -205,4 +210,9 @@ export interface IStore {
     saveChatCofnigExt: (chatId: string, ext: string) => void
     updateChatConfigExt: (chatId: string, ext: string) => void
     queryChatConfigExt: (chatId: string) => ChatConfigExt | null
+
+    // cache
+    saveOrUpdateCache: (caches: Cache[]) => void
+    queryCache: (keys: string[]) => Cache[]
+    deleteCache: (keys: string[]) => void
 }

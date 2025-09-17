@@ -112,6 +112,13 @@ const chat_confi_ext = `
 
     CREATE INDEX IF NOT EXISTS "idx_chat_id_chat_config_ext" ON "chat_config_ext"("chat_id");    
 `
+const cache = `
+    CREATE TABLE "cache" (
+      "key" text NOT NULL,
+      "value" text NOT NULL,
+      PRIMARY KEY ("key")
+    );
+`
 
 // table_name: ddl
 const table_def: Record<string, string> = {
@@ -124,6 +131,7 @@ const table_def: Record<string, string> = {
     app_setting: app_setting,
     cmd_history: cmd_history,
     chat_config_ext: chat_confi_ext,
+    cache: cache,
 }
 
 export { table_def }

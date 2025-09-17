@@ -17,6 +17,7 @@ import {
     ChatTopic,
     CmdHistory,
     ExportMessage,
+    type Cache,
     type ChatConfig,
     type ConfigExt,
     type IStore,
@@ -50,7 +51,6 @@ import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { TextShow } from '../util/text-show'
 import { themes } from '../util/theme'
 import writeXlsxFile, { type Schema } from 'write-excel-file/node'
-import { ChatCompletionStream } from 'openai/lib/ChatCompletionStream.mjs'
 
 export class ChatAction implements IChatAction {
     private clientMap: Map<string, ILLMClient> = new Map()
@@ -137,12 +137,23 @@ export class ChatAction implements IChatAction {
         )
     }
 
-    ask = async ({
-        content,
-        chatName,
-        noStream = false,
-        newTopic,
-    }: AskContent) => {
+    reAsk = async () => {
+        const prevOptions = this.queryCaches(['prev_options'])
+        if (isEmpty(prevOptions)) {
+            throw Error(promptMessage.retryOptionsMisssing)
+        }
+        const [it] = prevOptions
+        await this.ask(JSON.parse(it.value) as AskContent)
+    }
+
+    ask = async (params: AskContent) => {
+        this.saveOrUpdateCaches([
+            {
+                key: 'prev_options',
+                value: JSON.stringify(params),
+            },
+        ])
+        const { content, chatName, noStream = false, newTopic } = params
         const f = async (cf: ChatConfig) => {
             const client = await this.client(cf.llmType)
             await askFlow({
@@ -1166,5 +1177,17 @@ export class ChatAction implements IChatAction {
             schema,
             filePath: `${exportPath ? exportPath : env('HOME')}${path.sep}${fileName}.xlsx`,
         })
+    }
+
+    queryCaches = (keys: string[]) => {
+        return this.store.queryCache(keys)
+    }
+
+    saveOrUpdateCaches = (caches: Cache[]) => {
+        this.store.saveOrUpdateCache(caches)
+    }
+
+    deleteCaches = (keys: string[]) => {
+        this.store.deleteCache(keys)
     }
 }

@@ -3,6 +3,7 @@ import { Database } from 'bun:sqlite'
 import { temperature } from '../types/constant'
 import {
     AppSetting,
+    Cache,
     Chat,
     ChatConfig,
     ChatConfigExt,
@@ -671,5 +672,53 @@ export class Store implements IStore {
             )
             .as(ChatConfigExt)
             .get(chatId)
+    }
+
+    queryCache = (keys: string[]) => {
+        const ins = keys.map(() => '?').join(',')
+        return this.db
+            .prepare(`SELECT key, value FROM cache WHERE key in (${ins})`)
+            .as(Cache)
+            .all(...keys)
+    }
+
+    saveOrUpdateCache = (caches: Cache[]) => {
+        const exists = this.queryCache(caches.map((it) => it.key))
+        const [ins, upt] = caches.reduce(
+            (arr, it) => {
+                const [ins, upt] = arr
+                if (exists.find((i) => i.key === it.key)) {
+                    upt.push(it)
+                } else {
+                    ins.push(it)
+                }
+                return arr
+            },
+            [[], []] as Cache[][]
+        )
+        const uptStatement = this.db.prepare(
+            `UPDATE cache SET value = ? WHERE key = ?`
+        )
+        const insStatement = this.db.prepare(
+            `INSERT INTO cache (key, value) VALUES (?, ?)`
+        )
+        this.db.transaction(() => {
+            if (!isEmpty(ins)) {
+                ins.forEach((it) => insStatement.run(it.key, it.value))
+            }
+            if (!isEmpty(upt)) {
+                upt.forEach((it) => uptStatement.run(it.value, it.key))
+            }
+        })()
+    }
+
+    deleteCache = (keys: string[]) => {
+        if (isEmpty(keys)) {
+            return
+        }
+        const statement = this.db.prepare(`DELETE FROM cache WHERE key = ?`)
+        this.db.transaction(() => {
+            keys.forEach((it) => statement.run(it))
+        })()
     }
 }
