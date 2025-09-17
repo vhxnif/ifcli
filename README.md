@@ -206,7 +206,7 @@ Commands:
 ### Chat without `ict st`
 
 ```bash
-# `ts` is another chat name; you can simply use `ict -f ts` to specify using the ts chat, without switching the current chat to ts.
+# `ts` is the name of another chat used for translation. You can simply use `ict -f ts` to specify using the `ts` chat, without switching the current chat to ts.You can also use `alias` to simplify `ict -f ts`.
 alias ts = ict -f ts 
 ```
 
