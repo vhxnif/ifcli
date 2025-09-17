@@ -18,7 +18,7 @@ program
     .option('-s, --sync-call', 'sync call')
     .option('-e, --edit', 'use editor')
     .option('-t, --new-topic', 'start new topic')
-    .option('-r, --retry', 'retry the last question.')
+    .option('-r, --retry', 'retry the last question')
     .argument('[string]')
     .action(async (content, option) => {
         const { edit, syncCall, newTopic, force, retry } = option
@@ -187,10 +187,10 @@ program
     .command('export')
     .alias('exp')
     .argument('[path]', 'default: $HOME')
-    .description('export chat message.')
-    .option('-a, --all', 'export all chat messages.')
-    .option('-c, --chat', 'select chat and export all topic messages.')
-    .option('-t, --topic', 'select chat and topic then export topic messages.')
+    .description('export chat message')
+    .option('-a, --all', 'export all chat messages')
+    .option('-c, --chat', 'select chat and export all topic messages')
+    .option('-t, --topic', 'select chat and topic then export topic messages')
     .action(async (path, { all, chat, topic }) => {
         if (all) {
             await chatAction.exportAllChatMessage(path)
