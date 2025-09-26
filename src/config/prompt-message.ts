@@ -1,5 +1,7 @@
 export const promptMessage = {
     chatMissing: 'Execute `ict new <chatName>` first.',
+    chatConfigMissing: 'Chat Config Missing.',
+    configExtMissing: 'Chat Config Ext Missing.',
     onlyOneChat: 'There is currently only one chat.',
     settingMissing: 'Execute `ist cf -m` first to configure LLMSetting.',
     providerMissing: 'At least one provider must be selected.',

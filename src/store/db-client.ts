@@ -1,0 +1,274 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import Database from 'bun:sqlite'
+import {
+    AppSetting,
+    Chat,
+    ChatConfig,
+    ChatConfigExt,
+    ChatPresetMessage,
+    ChatTopic,
+    SqliteTable,
+    type AppSettingContent,
+    type IDBClient,
+    type Model,
+    type PresetMessageContent,
+    type RunSql,
+    type Scenario,
+} from '../types/store-types'
+import { table_def } from './table-def'
+import { unixnow, uuid } from '../util/common-utils'
+import { defaultSetting } from '../config/app-setting'
+import { temperature } from '../types/constant'
+
+export class DBClient implements IDBClient {
+    private readonly db: Database
+
+    private readonly appSettingColumn =
+        'id, version, general_setting as generalSetting, mcp_server as mcpServer, llm_setting as llmSetting, create_time as createTime'
+    private readonly chatColumn =
+        'id, name, "select", action_time as actionTime, select_time as selectTime'
+    private readonly chatMessageColumn =
+        'id, topic_id as topicId, "role", content, pair_key as pairKey, action_time as actionTime'
+    private readonly chatConfigColumn =
+        'id, chat_id as chatId , sys_prompt as sysPrompt, with_context as withContext, with_mcp as withMCP, context_limit as contextLimit, llm_type as llmType, model, scenario_name as scenarioName, scenario, update_time as updateTime'
+    private readonly chatPromptColumn =
+        'name, version, role, content, modify_time as modifyTime'
+    private readonly chatPresetMessageColumn =
+        'id, chat_id, user, assistant, create_time as createTime'
+    private readonly chatTopicColumn =
+        'id, chat_id as chatId, content, "select", select_time as selectTime, create_time as createTime'
+
+    private readonly cmdHistoryColumn =
+        'id, type, key, last_switch_time as lastSwitchTime, frequency'
+    private readonly mcpToolsColumn =
+        'id, name, version, tools, create_time as createTime, update_time as updateTime'
+
+    private readonly chatConfigExtColumn =
+        'id, chat_id as chatId, ext, create_time as createTime, update_time as updateTime'
+
+    constructor(db: Database) {
+        this.db = db
+        this.init()
+    }
+
+    init = () => {
+        const tables = this.db
+            .query("SELECT name FROM sqlite_master WHERE type='table';")
+            .as(SqliteTable)
+            .all()
+            .map((it) => it.name)
+        Object.entries(table_def)
+            .filter(([k, _]) => !tables.includes(k))
+            .forEach(([_, v]) => {
+                this.db.run(v)
+            })
+        if (!this.appSetting()) {
+            this.addAppSetting(defaultSetting)
+        }
+    }
+
+    private appSetting = () => {
+        return this.db
+            .query(
+                `SELECT ${this.appSettingColumn} FROM app_setting order by create_time desc limit 1`
+            )
+            .as(AppSetting)
+            .get()
+    }
+
+    private addAppSetting = (setting: AppSettingContent) => {
+        const { version, generalSetting, mcpServer, llmSetting } = setting
+        this.db
+            .prepare(
+                `INSERT INTO app_setting (id, version, general_setting, mcp_server, llm_setting, create_time) VALUES (?, ?, ?, ?, ?, ?)`
+            )
+            .run(
+                uuid(),
+                version,
+                generalSetting,
+                mcpServer,
+                llmSetting,
+                unixnow()
+            )
+    }
+
+    trans = (fs: RunSql): void => {
+        this.db.transaction(fs)()
+    }
+
+    addChat(name: string): string {
+        const now = unixnow()
+        const chatId = uuid()
+        const statement = this.db.prepare(
+            `INSERT INTO chat (id, name, "select", action_time, select_time) VALUES (?, ?, ?, ?, ?)`
+        )
+        statement.run(chatId, name, false, now, now)
+        return chatId
+    }
+
+    addConfig(chatId: string, model: Model): void {
+        const configStatement = this.db.prepare(
+            `INSERT INTO chat_config (id, chat_id, sys_prompt, with_context, context_limit, with_mcp, llm_type, model, scenario_name, scenario, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        const [scenarioName, scenario] = temperature.general
+        const { llmType, model: value } = model
+        configStatement.run(
+            uuid(),
+            chatId,
+            '',
+            true,
+            10,
+            false,
+            llmType,
+            value,
+            scenarioName,
+            scenario,
+            unixnow()
+        )
+    }
+
+    addConfigExt(chatId: string, ext: string): void {
+        const now = unixnow()
+        this.db
+            .prepare(
+                `INSERT INTO chat_config_ext (id, chat_id, ext, create_time, update_time) VALUES (?, ?, ?, ?, ?)`
+            )
+            .run(uuid(), chatId, ext, now, now)
+    }
+
+    addPreset(chatId: string, contents: PresetMessageContent[]): void {
+        const statement = this.db.prepare(
+            `INSERT INTO chat_preset_message (id, chat_id, user, assistant, create_time) VALUES (?, ?, ?, ?, ?)`
+        )
+        contents.forEach((it) => {
+            statement.run(uuid(), chatId, it.user, it.assistant, unixnow())
+        })
+    }
+
+    addTopic(chatId: string, topicId: string, content: string): void {
+        const now = unixnow()
+        this.db
+            .prepare(
+                `INSERT INTO chat_topic (id, chat_id, content, "select", select_time, create_time) VALUES (?, ?, ?, ?, ?, ?)`
+            )
+            .run(topicId, chatId, content, true, now, now)
+    }
+
+    selectChat(name: string, active: boolean): void {
+        this.db
+            .prepare('UPDATE chat SET "select" = ? WHERE name = ?')
+            .run(active, name)
+    }
+
+    unselectTopic(chatId: string): void {
+        this.db
+            .prepare(
+                `UPDATE chat_topic SET "select" = ? where "select" = ? and chat_id = ?`
+            )
+            .run(false, true, chatId)
+    }
+
+    currentChat(): Chat | null {
+        return this.db
+            .query(`SELECT ${this.chatColumn} FROM chat WHERE "select" = ?`)
+            .as(Chat)
+            .get(true)
+    }
+    currentTopic(chatId: string): ChatTopic | null {
+        return this.db
+            .query(
+                `SELECT ${this.chatTopicColumn} FROM chat_topic WHERE "select" = ? and chat_id = ? limit 1`
+            )
+            .as(ChatTopic)
+            .get(true, chatId)
+    }
+
+    queryChat(name: string): Chat | null {
+        return this.db
+            .query(`SELECT ${this.chatColumn} FROM chat WHERE name = ?`)
+            .as(Chat)
+            .get(name)
+    }
+    queryConfig(chatId: string): ChatConfig | null {
+        return this.db
+            .query(
+                `SELECT ${this.chatConfigColumn} FROM chat_config WHERE chat_id = ?`
+            )
+            .as(ChatConfig)
+            .get(chatId)
+    }
+    queryConfigExt(chatId: string): ChatConfigExt | null {
+        return this.db
+            .prepare(
+                `SELECT ${this.chatConfigExtColumn} FROM chat_config_ext WHERE chat_id = ?`
+            )
+            .as(ChatConfigExt)
+            .get(chatId)
+    }
+    queryPreset(chatId: string): ChatPresetMessage[] {
+        return this.db
+            .query(
+                `SELECT ${this.chatPresetMessageColumn} FROM chat_preset_message WHERE chat_id = ?`
+            )
+            .as(ChatPresetMessage)
+            .all(chatId)
+    }
+
+    modifySystemPrompt(configId: string, prompt: string): void {
+        this.db
+            .prepare(
+                `UPDATE chat_config SET sys_prompt = ?, update_time = ? where id = ?`
+            )
+            .run(prompt, unixnow(), configId)
+    }
+    modifyContextLimit(configId: string, limit: number): void {
+        this.db
+            .prepare(
+                `UPDATE chat_config SET context_limit = ?, update_time = ? where id = ?`
+            )
+            .run(limit, unixnow(), configId)
+    }
+    modifyContext(configId: string, active: boolean): void {
+        this.db
+            .prepare(
+                `UPDATE chat_config SET with_context = ?, update_time = ? where id = ?`
+            )
+            .run(active, unixnow(), configId)
+    }
+    modifyMcp(configId: string, active: boolean): void {
+        this.db
+            .prepare(
+                `UPDATE chat_config SET with_mcp = ?, update_time = ? where id = ?`
+            )
+            .run(active, unixnow(), configId)
+    }
+    modifyScenario(configId: string, scenario: Scenario): void {
+        const { name, value } = scenario
+        this.db
+            .prepare(
+                `UPDATE chat_config SET scenario_name = ?, scenario = ?, update_time = ? where id = ?`
+            )
+            .run(name, value, unixnow(), configId)
+    }
+    modifyModel(configId: string, model: Model): void {
+        const { llmType, model: value } = model
+        this.db
+            .prepare(
+                `UPDATE chat_config SET llm_type = ?, model = ?, update_time = ? where id = ?`
+            )
+            .run(llmType, value, unixnow(), configId)
+    }
+    updateConfigExt(chatId: string, ext: string): void {
+        this.db
+            .prepare(
+                `UPDATE chat_config_ext SET ext = ?, update_time = ? WHERE chat_id = ?`
+            )
+            .run(ext, unixnow(), chatId)
+    }
+
+    delPreset(chatId: string): void {
+        this.db
+            .prepare(`DELETE FROM chat_preset_message WHERE chat_id = ?`)
+            .run(chatId)
+    }
+}

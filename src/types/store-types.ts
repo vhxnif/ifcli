@@ -216,3 +216,83 @@ export interface IStore {
     queryCache: (keys: string[]) => Cache[]
     deleteCache: (keys: string[]) => void
 }
+
+export type RunSql = () => void
+
+export interface IDBClient {
+    init: () => void
+    trans: (fs: RunSql) => void
+    addChat: (name: string) => string
+    addConfig: (chatId: string, model: Model) => void
+    addConfigExt: (chatId: string, ext: string) => void
+    addPreset: (chatId: string, contents: PresetMessageContent[]) => void
+    addTopic: (chatId: string, topicId: string, content: string) => void
+
+    selectChat: (name: string, active: boolean) => void
+    unselectTopic: (chatId: string) => void
+    currentChat: () => Chat | null
+    currentTopic: (chatId: string) => ChatTopic | null
+
+    queryChat: (name: string) => Chat | null
+    queryConfig: (chatId: string) => ChatConfig | null
+    queryConfigExt: (chatId: string) => ChatConfigExt | null
+    queryPreset: (chatId: string) => ChatPresetMessage[]
+
+    modifySystemPrompt: (configId: string, prompt: string) => void
+    modifyContextLimit: (configId: string, limit: number) => void
+    modifyContext: (configId: string, active: boolean) => void
+    modifyMcp: (configId: string, active: boolean) => void
+    modifyScenario: (configId: string, scenario: Scenario) => void
+    modifyModel: (configId: string, model: Model) => void
+    updateConfigExt: (chatId: string, ext: string) => void
+
+    delPreset: (chatId: string) => void
+}
+export type Model = {
+    llmType: string
+    model: string
+}
+export type Scenario = {
+    name: string
+    value: number
+}
+
+export type ConfigBo = {
+    config: ChatConfig
+    modifySystemPrompt: (prompt: string) => void
+    modifyContextLimit: (limit: number) => void
+    moidfyContext: () => void
+    moidfyModel: (model: Model) => void
+    modifyMcp: (active: boolean) => void
+    modifyScenario: (scenario: Scenario) => void
+}
+
+export type ConfigExtBo = {
+    ext: ConfigExt
+    updateExt: (ext: ConfigExt) => void
+}
+
+export type PresetBo = {
+    presets: () => ChatPresetMessage[]
+    create: (contents: PresetMessageContent[]) => void
+    clear: () => void
+}
+
+export type TopicBo = {
+    topic: () => ChatTopic | null
+    newTopic: (topicName: string) => string
+    messages: (limit: number) => ChatMessage[]
+}
+
+export type ChatBo = {
+    chat: Chat
+    config: () => ConfigBo
+    configExt: () => ConfigExtBo
+    preset: () => PresetBo
+    topic: () => TopicBo
+}
+
+export interface IChatStore {
+    chat: (name?: string) => ChatBo
+    newChat: (name: string, model: () => Promise<Model>) => Promise<void>
+}

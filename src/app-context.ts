@@ -8,17 +8,20 @@ import { Store } from './store/store'
 import type { IChatAction, ISettingAction } from './types/action-types'
 import type { IConfig } from './types/config-types'
 import MCPClient from './types/mcp-client'
-import type { IStore } from './types/store-types'
+import type { IDBClient, IStore } from './types/store-types'
 import { themes } from './util/theme'
 import {
     catppuccinColorSchema,
     chalkColor,
     displaySchema,
 } from './util/color-schema'
+import { DBClient } from './store/db-client'
+import { ChatStore } from './store/chat-store'
 
 const config: IConfig = new AppConfig()
 const db = new Database(config.dataPath(), { strict: true })
 const store: IStore = new Store(db)
+const dbClient: IDBClient = new DBClient(db)
 // setting
 const settingAction: ISettingAction = new SettingAction(store)
 const settingParse = new AppSettingParse(store.appSetting()!)
@@ -33,8 +36,11 @@ const display = displaySchema(color)
 const chatAction: IChatAction = new ChatAction({
     generalSetting,
     llmClients: llmSettings.map((it) => new OpenAiClient(it)),
-    mcpClients: mcpServers.filter(it => it.enable).map((it) => new MCPClient(it)),
+    mcpClients: mcpServers
+        .filter((it) => it.enable)
+        .map((it) => new MCPClient(it)),
     store,
+    chatStore: new ChatStore(dbClient),
 })
 
 export {

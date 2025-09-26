@@ -20,7 +20,9 @@ import {
     type Cache,
     type ChatConfig,
     type ConfigExt,
+    type IChatStore,
     type IStore,
+    type Model,
     type MCPServerKey,
     type PresetMessageContent,
 } from '../types/store-types'
@@ -57,40 +59,49 @@ export class ChatAction implements IChatAction {
     private store: IStore
     private mcps: MCPClient[]
     private generalSetting: GeneralSetting
+    private chatStore: IChatStore
 
     constructor({
         generalSetting,
         llmClients,
         mcpClients,
         store,
+        chatStore,
     }: {
         generalSetting: GeneralSetting
         llmClients: ILLMClient[]
         mcpClients: MCPClient[]
         store: IStore
+        chatStore: IChatStore
     }) {
         this.generalSetting = generalSetting
         this.store = store
         llmClients.forEach((it) => this.clientMap.set(it.type, it))
         this.mcps = mcpClients
+        this.chatStore = chatStore
     }
     private text = color.mauve
-    private client = async (llmType?: string) => {
-        const getClient = () => {
-            if (llmType) {
-                return this.clientMap.get(llmType)
-            }
-            const config = this.store.currentChatConfig()
-            return this.clientMap.get(config.llmType)
-        }
+    private client = async ({
+        llmType,
+        chatName,
+    }: {
+        llmType?: string
+        chatName?: string
+    }) => {
+        const getClient = () =>
+            this.clientMap.get(
+                llmType
+                    ? llmType
+                    : this.chatStore.chat(chatName).config().config.llmType
+            )
         const ct = getClient()
         if (!ct) {
-            await this.modifyLLMAndModel()
+            await this.modifyModel(chatName)
         }
         return getClient()!
     }
 
-    private selectLLmAndModel = async (): Promise<[string, string]> => {
+    private selectLLmAndModel = async (): Promise<Model> => {
         const choices = Array.from(this.clientMap.keys()).map((it) => ({
             name: it as string,
             value: it as string,
@@ -98,14 +109,14 @@ export class ChatAction implements IChatAction {
         if (isEmpty(choices)) {
             throw Error(promptMessage.settingMissing)
         }
-        const llm = await select({
+        const llmType = await select({
             message: 'Provider:',
             choices,
         })
-        if (!llm) {
+        if (!llmType) {
             throw Error(promptMessage.providerMissing)
         }
-        const llmSelect = this.clientMap.get(llm)!
+        const llmSelect = this.clientMap.get(llmType)!
         const model = await select({
             message: 'Model',
             choices: llmSelect.models.map((it) => ({ name: it, value: it })),
@@ -113,16 +124,14 @@ export class ChatAction implements IChatAction {
         if (!model) {
             throw Error(promptMessage.modelMissing)
         }
-        return [llm, model]
+        return {
+            llmType,
+            model,
+        }
     }
 
     newChat = async (name: string) => {
-        if (this.store.queryChat(name)) {
-            this.store.changeChat(name)
-            return
-        }
-        const [llm, model] = await this.selectLLmAndModel()
-        this.store.newChat(name, '', llm, model)
+        this.chatStore.newChat(name, this.selectLLmAndModel)
     }
 
     removeChat = async () => {
@@ -155,17 +164,17 @@ export class ChatAction implements IChatAction {
         ])
         const { content, chatName, noStream = false, newTopic } = params
         const f = async (cf: ChatConfig) => {
-            const client = await this.client(cf.llmType)
+            const client = await this.client({ llmType: cf.llmType, chatName })
             await askFlow({
                 generalSetting: this.generalSetting,
                 client: client.openai,
+                mcps: this.mcps,
+                userContent: content,
+                noStream,
+                newTopic,
                 store: this.store,
                 config: cf,
                 configExt: this.configExt(cf.chatId),
-                userContent: content,
-                mcps: this.mcps,
-                noStream,
-                newTopic,
             })
         }
         if (chatName) {
@@ -315,61 +324,56 @@ export class ChatAction implements IChatAction {
     }
 
     printChatConfig = (chatName?: string) => {
-        const mcps = (chatId: string) => {
-            const { mcpServers } = this.configExt(chatId)
-            if (isEmpty(mcpServers)) {
-                return ''
-            }
-            const enableFilter = (s: MCPServerKey) => {
-                const one = this.mcps.find(
-                    (it) => it.name === s.name && it.version === s.version
-                )
-                return one !== void 0
-            }
-            return mcpServers
-                .filter(enableFilter)
-                .map((it) => `${it.name}/${it.version}`)
-                .join('\n')
-        }
+        const chat = this.chatStore.chat(chatName)
+        const cf = chat.config().config
+        const ext = chat.configExt().ext
+        const [_, config] = tableConfigWithExt({
+            cols: [1, 1, 1, 1],
+            alignment: 'left',
+        })
+        const booleanPrettyFormat = (v: boolean) => (v ? 'true' : 'false')
+        const data = [
+            [
+                display.caution('Context:'),
+                display.important(booleanPrettyFormat(cf.withContext)),
+                display.caution('ContextSize:'),
+                display.warning(cf.contextLimit),
+            ],
+            [
+                display.caution('Scenario:'),
+                display.tip(cf.scenarioName),
+                display.caution('MCP:'),
+                display.important(
+                    cf.withMCP
+                        ? display.tip(this.chatMcpDisplay(ext))
+                        : booleanPrettyFormat(cf.withMCP)
+                ),
+            ],
+            [
+                display.caution('LLMType:'),
+                display.tip(cf.llmType),
+                display.caution('Model:'),
+                display.tip(cf.model),
+            ],
+        ]
+        printTable(data, config)
+    }
 
-        const f = (cf: ChatConfig) => {
-            const [_, config] = tableConfigWithExt({
-                cols: [1, 1, 1, 1],
-                alignment: 'left',
-            })
-            const booleanPrettyFormat = (v: boolean) => (v ? 'true' : 'false')
-            const data = [
-                [
-                    display.caution('Context:'),
-                    display.important(booleanPrettyFormat(cf.withContext)),
-                    display.caution('ContextSize:'),
-                    display.warning(cf.contextLimit),
-                ],
-                [
-                    display.caution('Scenario:'),
-                    display.tip(cf.scenarioName),
-                    display.caution('MCP:'),
-                    display.important(
-                        cf.withMCP
-                            ? display.tip(mcps(cf.chatId))
-                            : booleanPrettyFormat(cf.withMCP)
-                    ),
-                ],
-                [
-                    display.caution('LLMType:'),
-                    display.tip(cf.llmType),
-                    display.caution('Model:'),
-                    display.tip(cf.model),
-                ],
-            ]
-            printTable(data, config)
+    private chatMcpDisplay(ext: ConfigExt) {
+        const { mcpServers } = ext
+        if (isEmpty(mcpServers)) {
+            return ''
         }
-        if (!chatName) {
-            f(this.store.currentChatConfig())
-            return
+        const enableFilter = (s: MCPServerKey) => {
+            const one = this.mcps.find(
+                (it) => it.name === s.name && it.version === s.version
+            )
+            return one !== void 0
         }
-        const { id } = this.getChat(chatName)
-        f(this.store.queryChatConfig(id))
+        return mcpServers
+            .filter(enableFilter)
+            .map((it) => `${it.name}/${it.version}`)
+            .join('\n')
     }
 
     printChatHistory = async (limit: number, chatName?: string) => {
@@ -534,60 +538,37 @@ export class ChatAction implements IChatAction {
     }
 
     modifyContextSize = (size: number, chatName?: string) => {
-        if (!chatName) {
-            this.store.modifyContextLimit(size)
-            return
-        }
-        this.store.modifyChatContextLimit(this.getChat(chatName), size)
+        this.chatStore.chat(chatName).config().modifyContextLimit(size)
     }
 
     modifyModel = async (chatName?: string) => {
-        await this.modifyLLMAndModel(chatName)
-    }
-
-    private modifyLLMAndModel = async (chatName?: string) => {
-        const [llm, model] = await this.selectLLmAndModel()
-        if (!chatName) {
-            this.store.modifyModel(llm, model)
-            return
-        }
-        this.store.modifyChatModel(this.getChat(chatName), llm, model)
+        const model = await this.selectLLmAndModel()
+        this.chatStore.chat(chatName).config().moidfyModel(model)
     }
 
     modifySystemPrompt = (prompt: string, chatName?: string) => {
-        if (!chatName) {
-            this.store.modifySystemPrompt(prompt)
-            return
-        }
-        this.store.modifyChatSystemPrompt(this.getChat(chatName), prompt)
+        this.chatStore.chat(chatName).config().modifySystemPrompt(prompt)
     }
 
     modifyWithContext = (chatName?: string) => {
-        if (!chatName) {
-            this.store.modifyWithContext()
-            return
-        }
-        this.store.modifyChatWithContext(this.getChat(chatName))
+        this.chatStore.chat(chatName).config().moidfyContext()
     }
 
     modifyWithMCP = async (chatName?: string) => {
-        // select mcp
-        const f = () => {
-            if (!chatName) {
-                return {
-                    chat: this.store.existCurrentChat(),
-                    mcp: (v: boolean) => this.store.modifyWithMCP(v),
-                }
-            }
-            const chat = this.getChat(chatName)
-            return {
-                chat,
-                mcp: (v: boolean) => this.store.modifyChatWithMCP(chat, v),
-            }
-        }
-        const { chat, mcp } = f()
-        const { id } = chat
-        const ext = this.configExt(id)
+        const chat = this.chatStore.chat(chatName)
+        const config = chat.config()
+        const configExt = chat.configExt()
+        const { ext } = configExt
+        const items = await checkbox({
+            message: 'Select MCP Server:',
+            choices: this.mcpChoices(ext),
+        })
+        ext.mcpServers = items
+        configExt.updateExt(ext)
+        config.modifyMcp(!isEmpty(items))
+    }
+
+    private mcpChoices(ext: ConfigExt) {
         const key = (n: string, v: string) => `${n}/${v}`
         const isChecked = (m: MCPClient) => {
             const { mcpServers } = ext
@@ -610,15 +591,7 @@ export class ChatAction implements IChatAction {
         if (isEmpty(choices)) {
             throw Error(promptMessage.mcpMissing)
         }
-        const items = await checkbox({ message: 'Select MCP Server:', choices })
-        if (isEmpty(items)) {
-            ext.mcpServers = []
-            mcp(false)
-        } else {
-            ext.mcpServers = items
-            mcp(true)
-        }
-        this.store.updateChatConfigExt(id, JSON.stringify(ext))
+        return choices
     }
 
     private configExt = (chatId: string) => {
