@@ -10,6 +10,7 @@ import type {
     PresetBo,
     TopicBo,
     MessageContent,
+    Chat,
 } from '../types/store-types'
 import { uuid } from '../util/common-utils'
 
@@ -33,6 +34,7 @@ export class ChatStore implements IChatStore {
             getConfigExt: () => this.configExt(id),
             getPreset: () => this.preset(id),
             getTopic: () => this.topic(id),
+            removeChat: () => this.removeChat(id),
         } as ChatBo
     }
 
@@ -87,6 +89,7 @@ export class ChatStore implements IChatStore {
     private topic(chatId: string): TopicBo {
         return {
             topic: () => this.client.currentTopic(chatId),
+            topics: () => this.client.queryTopic(chatId),
             newTopic: (topicName: string) => {
                 const topicId = uuid()
                 this.client.trans(() => {
@@ -103,6 +106,19 @@ export class ChatStore implements IChatStore {
             saveMessage: (messages: MessageContent[]) =>
                 this.client.saveMessage(messages),
         } as TopicBo
+    }
+
+    private removeChat(chatId: string) {
+        this.client.trans(() => {
+            this.client.delChat(chatId)
+            this.client.delConfig(chatId)
+            this.client.delConfigExt(chatId)
+            this.client.delPreset(chatId)
+            this.client
+                .queryTopic(chatId)
+                .forEach((it) => this.client.delMessage(it.id))
+            this.client.delChatTopic(chatId)
+        })
     }
 
     async newChat(name: string, model: () => Promise<Model>): Promise<void> {
@@ -126,5 +142,9 @@ export class ChatStore implements IChatStore {
             )
             f()
         })
+    }
+
+    chats(): Chat[] {
+        return this.client.chats()
     }
 }

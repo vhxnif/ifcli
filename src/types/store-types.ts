@@ -222,6 +222,9 @@ export type RunSql = () => void
 export interface IDBClient {
     init: () => void
     trans: (fs: RunSql) => void
+
+    chats: () => Chat[]
+
     addChat: (name: string) => string
     addConfig: (chatId: string, model: Model) => void
     addConfigExt: (chatId: string, ext: string) => void
@@ -237,6 +240,7 @@ export interface IDBClient {
     queryConfig: (chatId: string) => ChatConfig | null
     queryConfigExt: (chatId: string) => ChatConfigExt | null
     queryPreset: (chatId: string) => ChatPresetMessage[]
+    queryTopic: (chatId: string) => ChatTopic[]
 
     modifySystemPrompt: (configId: string, prompt: string) => void
     modifyContextLimit: (configId: string, limit: number) => void
@@ -246,7 +250,12 @@ export interface IDBClient {
     modifyModel: (configId: string, model: Model) => void
     updateConfigExt: (chatId: string, ext: string) => void
 
+    delChat: (chatId: string) => void
+    delConfig: (chatId: string) => void
+    delConfigExt: (chatId: string) => void
     delPreset: (chatId: string) => void
+    delChatTopic: (chatId: string) => void
+    delMessage: (topicId: string) => void
 
     queryMessage: (
         topicId: string,
@@ -287,8 +296,13 @@ export type PresetBo = {
 
 export type TopicBo = {
     topic: () => ChatTopic | null
+    topics: () => ChatTopic[]
     newTopic: (topicName: string) => string
-    messages: (topicId: string, limit: number, withReasoning?: boolean) => ChatMessage[]
+    messages: (
+        topicId: string,
+        limit: number,
+        withReasoning?: boolean
+    ) => ChatMessage[]
     saveMessage: (messages: MessageContent[]) => void
 }
 
@@ -298,9 +312,11 @@ export type ChatBo = {
     getConfigExt: () => ConfigExtBo
     getPreset: () => PresetBo
     getTopic: () => TopicBo
+    removeChat: () => void
 }
 
 export interface IChatStore {
     chat: (name?: string) => ChatBo
     newChat: (name: string, model: () => Promise<Model>) => Promise<void>
+    chats: () => Chat[]
 }

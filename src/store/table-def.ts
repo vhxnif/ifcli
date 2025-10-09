@@ -100,7 +100,7 @@ const cmd_history = `
     CREATE UNIQUE INDEX IF NOT EXISTS cmd_his_uk_IDX ON cmd_history (type, key);
 `
 
-const chat_confi_ext = `
+const chat_config_ext = `
     CREATE TABLE IF NOT EXISTS "chat_config_ext" (
       "id" text NOT NULL,
       "chat_id" text NOT NULL,
@@ -130,7 +130,7 @@ const table_def: Record<string, string> = {
     chat_preset_message: chat_preset_message,
     app_setting: app_setting,
     cmd_history: cmd_history,
-    chat_config_ext: chat_confi_ext,
+    chat_config_ext: chat_config_ext,
     cache: cache,
 }
 

@@ -98,6 +98,13 @@ export class DBClient implements IDBClient {
         this.db.transaction(fs)()
     }
 
+    chats(): Chat[] {
+        return this.db
+            .query(`SELECT ${this.chatColumn} FROM chat`)
+            .as(Chat)
+            .all()
+    }
+
     addChat(name: string): string {
         const now = unixnow()
         const chatId = uuid()
@@ -216,6 +223,15 @@ export class DBClient implements IDBClient {
             .all(chatId)
     }
 
+    queryTopic(chatId: string): ChatTopic[] {
+        return this.db
+            .query(
+                `SELECT ${this.chatTopicColumn} FROM chat_topic WHERE chat_id = ?`
+            )
+            .as(ChatTopic)
+            .all(chatId)
+    }
+
     modifySystemPrompt(configId: string, prompt: string): void {
         this.db
             .prepare(
@@ -272,6 +288,30 @@ export class DBClient implements IDBClient {
         this.db
             .prepare(`DELETE FROM chat_preset_message WHERE chat_id = ?`)
             .run(chatId)
+    }
+
+    delChat(chatId: string): void {
+        this.db.prepare(`DELETE FROM chat WHERE id = ?`).run(chatId)
+    }
+
+    delConfig(chatId: string): void {
+        this.db.prepare(`DELETE FROM chat_config WHERE chat_id = ?`).run(chatId)
+    }
+
+    delConfigExt(chatId: string): void {
+        this.db
+            .prepare(`DELETE FROM chat_config_ext WHERE chat_id = ?`)
+            .run(chatId)
+    }
+
+    delChatTopic(chatId: string): void {
+        this.db.prepare(`DELETE FROM chat_topic WHERE chat_id = ?`).run(chatId)
+    }
+
+    delMessage(topicId: string): void {
+        this.db
+            .prepare(`DELETE FROM chat_message WHERE topic_id = ?`)
+            .run(topicId)
     }
 
     queryMessage(

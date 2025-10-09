@@ -116,14 +116,14 @@ export class ChatAction implements IChatAction {
     }
 
     removeChat = async () => {
-        const cts = this.store.chats()
+        const cts = this.chatStore.chats()
         if (cts.length == 1) {
             throw Error(promptMessage.oneChatRemain)
         }
         await this.selectChatRun(
-            'Delete Chat:',
+            'Remove Chat:',
             cts.filter((it) => !it.select),
-            (answer) => this.store.removeChat(answer)
+            (answer) => this.chatStore.chat(answer).removeChat()
         )
     }
 
