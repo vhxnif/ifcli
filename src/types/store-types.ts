@@ -247,6 +247,13 @@ export interface IDBClient {
     updateConfigExt: (chatId: string, ext: string) => void
 
     delPreset: (chatId: string) => void
+
+    queryMessage: (
+        topicId: string,
+        limit: number,
+        withReasoning?: boolean
+    ) => ChatMessage[]
+    saveMessage: (messages: MessageContent[]) => void
 }
 export type Model = {
     llmType: string
@@ -281,15 +288,16 @@ export type PresetBo = {
 export type TopicBo = {
     topic: () => ChatTopic | null
     newTopic: (topicName: string) => string
-    messages: (limit: number) => ChatMessage[]
+    messages: (topicId: string, limit: number) => ChatMessage[]
+    saveMessage: (messages: MessageContent[]) => void
 }
 
 export type ChatBo = {
     chat: Chat
-    config: () => ConfigBo
-    configExt: () => ConfigExtBo
-    preset: () => PresetBo
-    topic: () => TopicBo
+    getConfig: () => ConfigBo
+    getConfigExt: () => ConfigExtBo
+    getPreset: () => PresetBo
+    getTopic: () => TopicBo
 }
 
 export interface IChatStore {

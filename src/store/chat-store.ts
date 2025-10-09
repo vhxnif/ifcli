@@ -9,6 +9,7 @@ import type {
     Model,
     PresetBo,
     TopicBo,
+    MessageContent,
 } from '../types/store-types'
 import { uuid } from '../util/common-utils'
 
@@ -28,10 +29,10 @@ export class ChatStore implements IChatStore {
         const { id } = chat
         return {
             chat,
-            config: () => this.config(id),
-            configExt: () => this.configExt(id),
-            preset: () => this.preset(id),
-            topic: () => this.topic(id),
+            getConfig: () => this.config(id),
+            getConfigExt: () => this.configExt(id),
+            getPreset: () => this.preset(id),
+            getTopic: () => this.topic(id),
         } as ChatBo
     }
 
@@ -94,7 +95,10 @@ export class ChatStore implements IChatStore {
                 })
                 return topicId
             },
-            messages: (limit: number) => [],
+            messages: (topicId: string, limit: number) =>
+                this.client.queryMessage(topicId, limit),
+            saveMessage: (messages: MessageContent[]) =>
+                this.client.saveMessage(messages),
         } as TopicBo
     }
 

@@ -5,18 +5,20 @@ import {
     Chat,
     ChatConfig,
     ChatConfigExt,
+    ChatMessage,
     ChatPresetMessage,
     ChatTopic,
     SqliteTable,
     type AppSettingContent,
     type IDBClient,
+    type MessageContent,
     type Model,
     type PresetMessageContent,
     type RunSql,
     type Scenario,
 } from '../types/store-types'
 import { table_def } from './table-def'
-import { unixnow, uuid } from '../util/common-utils'
+import { isEmpty, unixnow, uuid } from '../util/common-utils'
 import { defaultSetting } from '../config/app-setting'
 import { temperature } from '../types/constant'
 
@@ -270,5 +272,45 @@ export class DBClient implements IDBClient {
         this.db
             .prepare(`DELETE FROM chat_preset_message WHERE chat_id = ?`)
             .run(chatId)
+    }
+
+    queryMessage(
+        topicId: string,
+        limit: number,
+        withReasoning?: boolean
+    ): ChatMessage[] {
+        return this.db
+            .query(
+                `
+                select ${
+                    this.chatMessageColumn
+                } from chat_message where topic_id = ? ${
+                    withReasoning ? '' : "and role != 'reasoning'"
+                } and pair_key in (
+                    select pair_key from chat_message group by pair_key order by max(action_time) desc limit ?
+                ) order by action_time desc
+                `
+            )
+            .as(ChatMessage)
+            .all(topicId, limit)
+    }
+
+    saveMessage(messages: MessageContent[]) {
+        const statement = this.db.prepare(
+            `INSERT INTO chat_message (id, topic_id, "role", content, pair_key, action_time) VALUES (?, ?, ?, ?, ?, ?)`
+        )
+        this.db.transaction(() => {
+            messages
+                .filter((it) => !isEmpty(it.role) && !isEmpty(it.content))
+                .map((it) => [
+                    uuid(),
+                    it.topicId,
+                    it.role,
+                    it.content,
+                    it.pairKey,
+                    unixnow(),
+                ])
+                .forEach((it) => statement.run(...it))
+        })()
     }
 }

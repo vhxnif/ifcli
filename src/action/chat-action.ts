@@ -81,25 +81,6 @@ export class ChatAction implements IChatAction {
         this.chatStore = chatStore
     }
     private text = color.mauve
-    private client = async ({
-        llmType,
-        chatName,
-    }: {
-        llmType?: string
-        chatName?: string
-    }) => {
-        const getClient = () =>
-            this.clientMap.get(
-                llmType
-                    ? llmType
-                    : this.chatStore.chat(chatName).config().config.llmType
-            )
-        const ct = getClient()
-        if (!ct) {
-            await this.modifyModel(chatName)
-        }
-        return getClient()!
-    }
 
     private selectLLmAndModel = async (): Promise<Model> => {
         const choices = Array.from(this.clientMap.keys()).map((it) => ({
@@ -163,26 +144,21 @@ export class ChatAction implements IChatAction {
             },
         ])
         const { content, chatName, noStream = false, newTopic } = params
-        const f = async (cf: ChatConfig) => {
-            const client = await this.client({ llmType: cf.llmType, chatName })
-            await askFlow({
-                generalSetting: this.generalSetting,
-                client: client.openai,
-                mcps: this.mcps,
-                userContent: content,
-                noStream,
-                newTopic,
-                store: this.store,
-                config: cf,
-                configExt: this.configExt(cf.chatId),
-            })
+        const chat = this.chatStore.chat(chatName)
+        let client = this.clientMap.get(chat.getConfig().config.llmType)
+        if (client === void 0) {
+            this.modifyModel(chatName)
+            client = this.clientMap.get(chat.getConfig().config.llmType)!
         }
-        if (chatName) {
-            const chat = this.getChat(chatName)
-            await f(this.store.queryChatConfig(chat.id))
-            return
-        }
-        await f(this.store.currentChatConfig())
+        await askFlow({
+            chat,
+            generalSetting: this.generalSetting,
+            client: client.openai,
+            mcps: this.mcps,
+            userContent: content,
+            noStream,
+            newTopic,
+        })
     }
 
     private getChat = (chatName: string) => {
@@ -309,7 +285,7 @@ export class ChatAction implements IChatAction {
         )
     }
 
-    private listItems = <T,>(
+    private listItems = <T>(
         ts: T[],
         s: (s: T) => boolean,
         n: (n: T) => string
@@ -325,8 +301,8 @@ export class ChatAction implements IChatAction {
 
     printChatConfig = (chatName?: string) => {
         const chat = this.chatStore.chat(chatName)
-        const cf = chat.config().config
-        const ext = chat.configExt().ext
+        const cf = chat.getConfig().config
+        const ext = chat.getConfigExt().ext
         const [_, config] = tableConfigWithExt({
             cols: [1, 1, 1, 1],
             alignment: 'left',
@@ -538,26 +514,26 @@ export class ChatAction implements IChatAction {
     }
 
     modifyContextSize = (size: number, chatName?: string) => {
-        this.chatStore.chat(chatName).config().modifyContextLimit(size)
+        this.chatStore.chat(chatName).getConfig().modifyContextLimit(size)
     }
 
     modifyModel = async (chatName?: string) => {
         const model = await this.selectLLmAndModel()
-        this.chatStore.chat(chatName).config().moidfyModel(model)
+        this.chatStore.chat(chatName).getConfig().moidfyModel(model)
     }
 
     modifySystemPrompt = (prompt: string, chatName?: string) => {
-        this.chatStore.chat(chatName).config().modifySystemPrompt(prompt)
+        this.chatStore.chat(chatName).getConfig().modifySystemPrompt(prompt)
     }
 
     modifyWithContext = (chatName?: string) => {
-        this.chatStore.chat(chatName).config().moidfyContext()
+        this.chatStore.chat(chatName).getConfig().moidfyContext()
     }
 
     modifyWithMCP = async (chatName?: string) => {
         const chat = this.chatStore.chat(chatName)
-        const config = chat.config()
-        const configExt = chat.configExt()
+        const config = chat.getConfig()
+        const configExt = chat.getConfigExt()
         const { ext } = configExt
         const items = await checkbox({
             message: 'Select MCP Server:',
@@ -891,7 +867,7 @@ export class ChatAction implements IChatAction {
             ({
                 user: parseContent(c.user),
                 assistant: parseContent(c.assistant),
-            }) as PresetMessageContent
+            } as PresetMessageContent)
         const validContent = (c: TmpContent) =>
             c.type && !isEmpty(c.user) && !isEmpty(c.assistant)
         return text
@@ -992,7 +968,7 @@ export class ChatAction implements IChatAction {
         )
     }
 
-    private sortedItem = async <T,>(
+    private sortedItem = async <T>(
         arr: T[],
         selected: (s: T) => boolean,
         time: (s: T) => bigint
@@ -1148,7 +1124,9 @@ export class ChatAction implements IChatAction {
 
         await writeXlsxFile(objs, {
             schema,
-            filePath: `${exportPath ? exportPath : env('HOME')}${path.sep}${fileName}.xlsx`,
+            filePath: `${exportPath ? exportPath : env('HOME')}${
+                path.sep
+            }${fileName}.xlsx`,
         })
     }
 

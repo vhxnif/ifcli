@@ -11,8 +11,8 @@ import type {
 } from '../types/llm-types'
 import type MCPClient from '../types/mcp-client'
 import type {
+    ChatBo,
     ChatConfig,
-    ConfigExt,
     IStore,
     MessageContent,
 } from '../types/store-types'
@@ -21,9 +21,12 @@ import { Display } from './display'
 import { assistant, system, user } from './llm-utils'
 
 export type AskShare = LLMParam & {
+    chat: ChatBo
+    systemPrompt: string
+    withContext: boolean
+    contextLimit: number
+    withMCP: boolean
     topicId?: string
-    config: ChatConfig
-    configExt: ConfigExt
     resultChunk?: LLMResultChunk
     tools?: {
         id: string
@@ -42,58 +45,57 @@ class SystemPromptNode extends Node<AskShare> {
     }
 
     override async prep(shared: AskShare): Promise<void> {
-        const { sysPrompt } = shared.config
-        if (isEmpty(sysPrompt)) {
+        const { systemPrompt } = shared
+        if (isEmpty(systemPrompt)) {
             return
         }
-        shared.messages.push(system(sysPrompt))
+        shared.messages.push(system(systemPrompt))
     }
 }
 
 class PresetNode extends Node<AskShare> {
-    private readonly store: IStore
-    constructor(store: IStore) {
+    constructor() {
         super()
-        this.store = store
     }
 
     override async prep(shared: AskShare): Promise<void> {
-        const presetMessage = this.store.selectPresetMessage().flatMap(
-            (it) =>
-                [
-                    { role: 'user', content: it.user },
-                    { role: 'assistant', content: it.assistant },
-                ] as LLMMessage[]
-        )
+        const { chat } = shared
+        const presetMessage = chat
+            .getPreset()
+            .presets()
+            .flatMap(
+                (it) =>
+                    [
+                        { role: 'user', content: it.user },
+                        { role: 'assistant', content: it.assistant },
+                    ] as LLMMessage[]
+            )
         shared.messages = [...shared.messages, ...presetMessage]
     }
 }
 
 class ContextNode extends Node<AskShare> {
-    private readonly store: IStore
-    constructor(store: IStore) {
+    constructor() {
         super()
-        this.store = store
     }
 
     override async prep(shared: AskShare): Promise<void> {
-        const { userContent, config, messages } = shared
-        const { withContext, chatId, contextLimit } = config
-        const tp = this.store.selectedTopic(chatId)
+        const { chat, userContent, messages, withContext, contextLimit } =
+            shared
+        const tpfun = chat.getTopic()
+        const tp = tpfun.topic()
         if (!tp || shared.newTopic) {
-            shared.topicId = this.store.createTopic(chatId, userContent)
+            shared.topicId = tpfun.newTopic(userContent)
         } else {
             shared.topicId = tp.id
         }
         const context = withContext
-            ? this.store
-                  .contextMessage(shared.topicId, contextLimit)
-                  .map((it) => {
-                      if (it.role === 'user') {
-                          return user(it.content)
-                      }
-                      return assistant(it.content)
-                  })
+            ? tpfun.messages(shared.topicId, contextLimit).map((it) => {
+                  if (it.role === 'user') {
+                      return user(it.content)
+                  }
+                  return assistant(it.content)
+              })
             : []
         shared.messages = [...messages, ...context]
     }
@@ -122,10 +124,10 @@ class ToolsNode extends Node<AskShare> {
         if (isEmpty(this.mcps)) {
             return
         }
-        if (!shared.config.withMCP) {
+        if (!shared.withMCP) {
             return
         }
-        const { mcpServers } = shared.configExt
+        const { mcpServers } = shared.chat.getConfigExt().ext
         if (isEmpty(mcpServers)) {
             return
         }
@@ -308,15 +310,12 @@ class StreamCallNode extends Node<AskShare> {
 }
 
 class StoreNode extends Node<AskShare> {
-    private readonly store: IStore
-
-    constructor(store: IStore) {
+    constructor() {
         super()
-        this.store = store
     }
 
     override async prep(shared: AskShare): Promise<void> {
-        const { userContent, resultChunk, topicId } = shared
+        const { chat, userContent, resultChunk, topicId } = shared
         if (!resultChunk) {
             return
         }
@@ -347,39 +346,40 @@ class StoreNode extends Node<AskShare> {
                 pairKey,
             })
         }
-        this.store.saveMessage(messages)
+        chat.getTopic().saveMessage(messages)
     }
 }
 
 // system -> preset -> context -> user -> tools -> router -> streamCall / toolsCall -> store
 async function askFlow({
+    chat,
     client,
-    store,
-    config,
-    configExt,
     userContent,
     mcps,
     generalSetting,
     noStream = false,
     newTopic,
 }: {
+    chat: ChatBo
     client: OpenAI
-    store: IStore
-    config: ChatConfig
-    configExt: ConfigExt
     userContent: string
     mcps: MCPClient[]
     generalSetting: GeneralSetting
     noStream?: boolean
     newTopic?: boolean
 }) {
+    const { model, scenario, sysPrompt, withContext, contextLimit, withMCP } =
+        chat.getConfig().config
     const share: AskShare = {
+        chat,
         userContent,
         messages: [],
-        model: config.model,
-        temperature: config.scenario,
-        config,
-        configExt,
+        model,
+        temperature: scenario,
+        systemPrompt: sysPrompt,
+        withContext,
+        contextLimit,
+        withMCP,
         generalSetting,
         theme: generalSetting.theme,
         noStream,
@@ -387,13 +387,13 @@ async function askFlow({
     }
 
     const systemPrompt = new SystemPromptNode()
-    const preset = new PresetNode(store)
-    const context = new ContextNode(store)
+    const preset = new PresetNode()
+    const context = new ContextNode()
     const userNode = new UserNode()
     const tools = new ToolsNode(mcps)
     const router = new AiRouterNode()
 
-    const storeChat = new StoreNode(store)
+    const storeChat = new StoreNode()
     const toolsCall = new ToolsCallNode(client)
     const streamCall = new StreamCallNode(client)
 
