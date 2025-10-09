@@ -11,6 +11,7 @@ import type {
     TopicBo,
     MessageContent,
     Chat,
+    QucikSwitch,
 } from '../types/store-types'
 import { uuid } from '../util/common-utils'
 
@@ -27,7 +28,7 @@ export class ChatStore implements IChatStore {
         if (!chat) {
             throw new Error(promptMessage.chatMissing)
         }
-        const { id } = chat
+        const { id, name: sourceName } = chat
         return {
             chat,
             getConfig: () => this.config(id),
@@ -35,6 +36,7 @@ export class ChatStore implements IChatStore {
             getPreset: () => this.preset(id),
             getTopic: () => this.topic(id),
             removeChat: () => this.removeChat(id),
+            switch: (targetName) => this.switchChat(sourceName, targetName),
         } as ChatBo
     }
 
@@ -98,6 +100,12 @@ export class ChatStore implements IChatStore {
                 })
                 return topicId
             },
+            switch: (targetTopicId: string) => {
+                this.client.trans(() => {
+                    this.client.unselectTopic(chatId)
+                    this.client.selectTopic(targetTopicId, true)
+                })
+            },
             messages: (
                 topicId: string,
                 limit: number,
@@ -118,6 +126,13 @@ export class ChatStore implements IChatStore {
                 .queryTopic(chatId)
                 .forEach((it) => this.client.delMessage(it.id))
             this.client.delChatTopic(chatId)
+        })
+    }
+
+    private switchChat(sourceName: string, targetName: string) {
+        this.client.trans(() => {
+            this.client.selectChat(sourceName, false)
+            this.client.selectChat(targetName, true)
         })
     }
 
@@ -146,5 +161,16 @@ export class ChatStore implements IChatStore {
 
     chats(): Chat[] {
         return this.client.chats()
+    }
+
+    chatQuickSwitch() {
+        return {
+            history: (k) => this.client.queryCmdHis('chat_switch', k),
+            add: (k) => this.client.addCmdHis('chat_switch', k),
+            get: (k) => this.client.getCmdHis('chat_switch', k),
+            delete: (k) => this.client.delCmdHis('chat_switch', k),
+            update: (k, v) => this.client.updateCmdHis('chat_switch', k, v),
+            addOrUpdate: (k) => this.client.addOrUpdateCmdHis('chat_switch', k),
+        } as QucikSwitch
     }
 }

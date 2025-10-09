@@ -170,8 +170,9 @@ export class ChatAction implements IChatAction {
     }
 
     changeChat = async (name?: string) => {
+        const chat = this.chatStore.chat()
         const f = (s: string) => {
-            this.store.changeChat(s)
+            chat.switch(s)
             print(
                 `${color.green('✔')} ${color.subtext0.bold(
                     'Select Chat:'
@@ -181,7 +182,7 @@ export class ChatAction implements IChatAction {
         if (name && (await this.quikeCmd(name, f))) {
             return
         }
-        const chats = this.store.chats()
+        const chats = this.chatStore.chats()
         if (isEmpty(chats)) {
             throw Error(promptMessage.chatMissing)
         }
@@ -200,16 +201,17 @@ export class ChatAction implements IChatAction {
             default: df.name,
             theme: themeStyle(color),
         })
-        this.store.changeChat(v)
-        this.store.addOrUpdateCmdHis('chat_switch', v)
+        chat.switch(v)
+        this.chatStore.chatQuickSwitch().addOrUpdate(v)
     }
 
     private quikeCmd = async (
         subkey: string,
         quikeRun: (s: string) => void | Promise<void>
     ) => {
-        const cmd = this.store
-            .queryCmdHis('chat_switch', subkey)
+        const qk = this.chatStore.chatQuickSwitch()
+        const cmd = qk
+            .history(subkey)
             .sort((a, b) => this.frequencyRule(b) - this.frequencyRule(a))[0]
         if (!cmd) {
             return false
@@ -220,10 +222,10 @@ export class ChatAction implements IChatAction {
             if (res instanceof Promise) {
                 await res
             }
-            this.store.updateCmdHis('chat_switch', key, frequency)
+            qk.update(key, frequency)
             return true
         } catch (e: unknown) {
-            this.store.delCmdHis('chat_switch', key)
+            qk.delete(key)
             return false
         }
     }
@@ -247,7 +249,8 @@ export class ChatAction implements IChatAction {
     }
 
     changeTopic = async () => {
-        const topics = this.store.currentChatTopics()
+        const tpfun = this.chatStore.chat().getTopic()
+        const topics = tpfun.topics()
         const choices: Choice<ChatTopic>[] = topics.map((it) => ({
             name: this.subStr(it.content),
             value: it,
@@ -257,12 +260,12 @@ export class ChatAction implements IChatAction {
         if (isEmpty(choices.filter((it) => !it.disabled))) {
             throw Error(promptMessage.onlyOneTopic)
         }
-        const { id, chatId } = await select({
+        const { id } = await select({
             message: 'Select Topic:',
             choices,
             theme: themeStyle(color),
         })
-        this.store.changeTopic(id, chatId)
+        tpfun.switch(id)
     }
 
     printTopics = async () => {

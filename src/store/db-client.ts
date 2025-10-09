@@ -8,8 +8,10 @@ import {
     ChatMessage,
     ChatPresetMessage,
     ChatTopic,
+    CmdHistory,
     SqliteTable,
     type AppSettingContent,
+    type CmdHistoryType,
     type IDBClient,
     type MessageContent,
     type Model,
@@ -192,6 +194,12 @@ export class DBClient implements IDBClient {
             .get(true, chatId)
     }
 
+    selectTopic(topicId: string, active: boolean): void {
+        this.db
+            .prepare(`UPDATE chat_topic SET "select" = ? where id = ?`)
+            .run(active, topicId)
+    }
+
     queryChat(name: string): Chat | null {
         return this.db
             .query(`SELECT ${this.chatColumn} FROM chat WHERE name = ?`)
@@ -352,5 +360,54 @@ export class DBClient implements IDBClient {
                 ])
                 .forEach((it) => statement.run(...it))
         })()
+    }
+
+    queryCmdHis(type: CmdHistoryType, key: string) {
+        return this.db
+            .query(
+                `SELECT ${this.cmdHistoryColumn} FROM cmd_history WHERE type = ? and key like ?`
+            )
+            .as(CmdHistory)
+            .all(type, `%${key}%`)
+    }
+
+    getCmdHis(type: CmdHistoryType, key: string) {
+        return this.db
+            .query(
+                `SELECT ${this.cmdHistoryColumn} FROM cmd_history WHERE type = ? and key = ?`
+            )
+            .as(CmdHistory)
+            .get(type, key)
+    }
+
+    addCmdHis(type: CmdHistoryType, key: string) {
+        this.db
+            .prepare(
+                `INSERT INTO cmd_history (id, type, key, last_switch_time, frequency) VALUES (?, ?, ?, ?, ?)`
+            )
+            .run(uuid(), type, key, unixnow(), 1)
+    }
+
+    delCmdHis(type: CmdHistoryType, key: string) {
+        this.db
+            .prepare(`DELETE FROM cmd_history WHERE type = ? and key = ?`)
+            .run(type, key)
+    }
+
+    updateCmdHis(type: CmdHistoryType, key: string, frequency: number) {
+        this.db
+            .prepare(
+                `UPDATE cmd_history SET last_switch_time = ?, frequency = ? WHERE type = ? and key = ?`
+            )
+            .run(unixnow(), frequency + 1, type, key)
+    }
+
+    addOrUpdateCmdHis(type: CmdHistoryType, key: string) {
+        const h = this.getCmdHis(type, key)
+        if (h) {
+            this.updateCmdHis(type, key, h.frequency)
+            return
+        }
+        this.addCmdHis(type, key)
     }
 }

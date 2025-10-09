@@ -235,6 +235,7 @@ export interface IDBClient {
     unselectTopic: (chatId: string) => void
     currentChat: () => Chat | null
     currentTopic: (chatId: string) => ChatTopic | null
+    selectTopic: (topicId: string, active: boolean) => void
 
     queryChat: (name: string) => Chat | null
     queryConfig: (chatId: string) => ChatConfig | null
@@ -263,6 +264,13 @@ export interface IDBClient {
         withReasoning?: boolean
     ) => ChatMessage[]
     saveMessage: (messages: MessageContent[]) => void
+
+    queryCmdHis: (type: CmdHistoryType, key: string) => CmdHistory[]
+    addCmdHis: (type: CmdHistoryType, key: string) => void
+    getCmdHis: (type: CmdHistoryType, key: string) => CmdHistory | null
+    delCmdHis: (type: CmdHistoryType, key: string) => void
+    updateCmdHis: (type: CmdHistoryType, key: string, frequency: number) => void
+    addOrUpdateCmdHis: (type: CmdHistoryType, key: string) => void
 }
 export type Model = {
     llmType: string
@@ -298,6 +306,7 @@ export type TopicBo = {
     topic: () => ChatTopic | null
     topics: () => ChatTopic[]
     newTopic: (topicName: string) => string
+    switch: (targetTopicId: string) => void
     messages: (
         topicId: string,
         limit: number,
@@ -313,10 +322,21 @@ export type ChatBo = {
     getPreset: () => PresetBo
     getTopic: () => TopicBo
     removeChat: () => void
+    switch: (targetName: string) => void
+}
+
+export type QucikSwitch = {
+    history: (key: string) => CmdHistory[]
+    add: (key: string) => void
+    get: (key: string) => CmdHistory | null
+    delete: (key: string) => void
+    update: (key: string, frequency: number) => void
+    addOrUpdate: (key: string) => void
 }
 
 export interface IChatStore {
     chat: (name?: string) => ChatBo
     newChat: (name: string, model: () => Promise<Model>) => Promise<void>
     chats: () => Chat[]
+    chatQuickSwitch: () => QucikSwitch
 }
