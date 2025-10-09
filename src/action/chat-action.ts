@@ -602,22 +602,18 @@ export class ChatAction implements IChatAction {
     }
 
     publishPrompt = async (chatName?: string) => {
-        const getPrompt = () => {
-            if (!chatName) {
-                return this.store.currentChatConfig().sysPrompt
-            }
-            const { id } = this.getChat(chatName)
-            return this.store.queryChatConfig(id).sysPrompt
-        }
-        const prompt = getPrompt()
-        if (!prompt) {
+        const cffun = this.chatStore.chat(chatName).getConfig()
+        const { sysPrompt } = cffun.config
+        if (!sysPrompt) {
             throw Error(promptMessage.systemPromptMissing)
         }
-        await this.getPublishPromptInput(prompt)
+        await this.getPublishPromptInput((name, version) =>
+            cffun.publishPrompt(name, version)
+        )
     }
 
     selectPrompt = async (name: string, chatName?: string) => {
-        const prompts = this.store.searchPrompt(name)
+        const prompts = this.chatStore.searchPrompt(name)
         if (isEmpty(prompts)) {
             throw Error(promptMessage.systemPromptNoMatching)
         }
@@ -911,23 +907,25 @@ export class ChatAction implements IChatAction {
             .map(toPresetMessageContent)
     }
 
-    private getPublishPromptInput = async (prompt: string) => {
+    private getPublishPromptInput = async (
+        f: (name: string, version: string) => void
+    ) => {
         const name = await input({ message: 'Prompt Name: ' })
         if (isEmpty(name)) {
-            await this.getPublishPromptInput(prompt)
+            await this.getPublishPromptInput(f)
             return
         }
         const version = await input({ message: 'Prompt Version: ' })
         if (isEmpty(version)) {
-            await this.getPublishPromptInput(prompt)
+            await this.getPublishPromptInput(f)
             return
         }
         const existsPrompt = this.store.searchPrompt(name, version)
         if (isEmpty(existsPrompt)) {
-            this.store.publishPrompt(name, version, prompt)
+            f(name, version)
             return
         }
-        await this.getPublishPromptInput(prompt)
+        await this.getPublishPromptInput(f)
     }
 
     private selectChatRun = async (

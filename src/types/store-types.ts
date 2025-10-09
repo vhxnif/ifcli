@@ -271,6 +271,9 @@ export interface IDBClient {
     delCmdHis: (type: CmdHistoryType, key: string) => void
     updateCmdHis: (type: CmdHistoryType, key: string, frequency: number) => void
     addOrUpdateCmdHis: (type: CmdHistoryType, key: string) => void
+
+    publishPrompt: (name: string, version: string, content: string) => void
+    searchPrompt: (name: string, version?: string) => ChatPrompt[]
 }
 export type Model = {
     llmType: string
@@ -289,6 +292,7 @@ export type ConfigBo = {
     moidfyModel: (model: Model) => void
     modifyMcp: (active: boolean) => void
     modifyScenario: (scenario: Scenario) => void
+    publishPrompt: (name: string, version: string) => void
 }
 
 export type ConfigExtBo = {
@@ -339,4 +343,5 @@ export interface IChatStore {
     newChat: (name: string, model: () => Promise<Model>) => Promise<void>
     chats: () => Chat[]
     chatQuickSwitch: () => QucikSwitch
+    searchPrompt: (name: string, version?: string) => ChatPrompt[]
 }

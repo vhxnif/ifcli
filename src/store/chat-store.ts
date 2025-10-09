@@ -12,6 +12,7 @@ import type {
     MessageContent,
     Chat,
     QucikSwitch,
+    ChatPrompt,
 } from '../types/store-types'
 import { uuid } from '../util/common-utils'
 
@@ -45,7 +46,7 @@ export class ChatStore implements IChatStore {
         if (!config) {
             throw new Error(promptMessage.chatConfigMissing)
         }
-        const { id, withContext } = config
+        const { id, withContext, sysPrompt } = config
         return {
             config,
             modifySystemPrompt: (prompt) =>
@@ -59,6 +60,8 @@ export class ChatStore implements IChatStore {
             modifyScenario: (scenario) =>
                 this.client.modifyScenario(id, scenario),
             moidfyModel: (model) => this.client.modifyModel(id, model),
+            publishPrompt: (name, version) =>
+                this.client.publishPrompt(name, version, sysPrompt),
         } as ConfigBo
     }
 
@@ -172,5 +175,9 @@ export class ChatStore implements IChatStore {
             update: (k, v) => this.client.updateCmdHis('chat_switch', k, v),
             addOrUpdate: (k) => this.client.addOrUpdateCmdHis('chat_switch', k),
         } as QucikSwitch
+    }
+
+    searchPrompt(name: string, version?: string): ChatPrompt[] {
+        return this.client.searchPrompt(name, version)
     }
 }

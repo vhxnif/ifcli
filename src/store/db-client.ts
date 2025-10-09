@@ -7,6 +7,7 @@ import {
     ChatConfigExt,
     ChatMessage,
     ChatPresetMessage,
+    ChatPrompt,
     ChatTopic,
     CmdHistory,
     SqliteTable,
@@ -409,5 +410,42 @@ export class DBClient implements IDBClient {
             return
         }
         this.addCmdHis(type, key)
+    }
+
+
+    publishPrompt = (name: string, version: string, content: string) => {
+        const prompt = this.db
+            .query(
+                `SELECT ${this.chatPromptColumn} FROM chat_prompt WHERE name = ? AND version = ?`
+            )
+            .as(ChatPrompt)
+            .get(name, version)
+        if (prompt) {
+            this.db
+                .prepare(
+                    `UPDATE chat_prompt SET content = ?, modify_time = ${unixnow()} WHERE name = ? AND version = ?`
+                )
+                .run(content, name, version)
+            return
+        }
+        this.db
+            .prepare(
+                `INSERT INTO chat_prompt (name, version, role, content, modify_time) VALUES (?, ?, ?, ?, ?)`
+            )
+            .run(name, version, 'system', content, unixnow())
+    }
+
+    searchPrompt = (name: string, version?: string) => {
+        const sql = `SELECT ${this.chatPromptColumn} FROM chat_prompt`
+        if (version) {
+            return this.db
+                .query(`${sql} WHERE name = ? and version = ?`)
+                .as(ChatPrompt)
+                .all(name, version)
+        }
+        return this.db
+            .query(`${sql} WHERE name LIKE ?`)
+            .as(ChatPrompt)
+            .all(`%${name}%`)
     }
 }
