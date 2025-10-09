@@ -353,14 +353,12 @@ export class ChatAction implements IChatAction {
     }
 
     printChatHistory = async (limit: number, chatName?: string) => {
-        const getMsgs = () => {
-            if (!chatName) {
-                return this.store.historyMessage(limit)
-            }
-            const chat = this.getChat(chatName)
-            return this.store.chatHistoryMessage(chat, limit)
+        const tpfun = this.chatStore.chat(chatName).getTopic()
+        const tp = tpfun.topic()
+        if (!tp) {
+            throw Error(promptMessage.hisMsgMissing)
         }
-        const messages = getMsgs()
+        const messages = tpfun.messages(tp.id, limit, true)
         if (isEmpty(messages)) {
             throw Error(promptMessage.hisMsgMissing)
         }

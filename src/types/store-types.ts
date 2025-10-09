@@ -288,7 +288,7 @@ export type PresetBo = {
 export type TopicBo = {
     topic: () => ChatTopic | null
     newTopic: (topicName: string) => string
-    messages: (topicId: string, limit: number) => ChatMessage[]
+    messages: (topicId: string, limit: number, withReasoning?: boolean) => ChatMessage[]
     saveMessage: (messages: MessageContent[]) => void
 }
 

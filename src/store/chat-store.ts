@@ -95,8 +95,11 @@ export class ChatStore implements IChatStore {
                 })
                 return topicId
             },
-            messages: (topicId: string, limit: number) =>
-                this.client.queryMessage(topicId, limit),
+            messages: (
+                topicId: string,
+                limit: number,
+                withReasoning?: boolean
+            ) => this.client.queryMessage(topicId, limit, withReasoning),
             saveMessage: (messages: MessageContent[]) =>
                 this.client.saveMessage(messages),
         } as TopicBo
