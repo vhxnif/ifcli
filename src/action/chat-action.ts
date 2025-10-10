@@ -744,7 +744,7 @@ export class ChatAction implements IChatAction {
     }
 
     printPrompt = (chatName?: string) => {
-        const pt = prompt(chatName)
+        const pt = this.prompt(chatName)
         if (!pt) {
             throw Error(promptMessage.systemPromptMissing)
         }
