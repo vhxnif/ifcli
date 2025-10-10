@@ -5,11 +5,7 @@ import { AppConfig } from './config/app-config'
 import type { IChatAction, ISettingAction } from './action/action-types'
 import type { IDBClient } from './store/store-types'
 import { themes } from './util/theme'
-import {
-    catppuccinColorSchema,
-    chalkColor,
-    displaySchema,
-} from './util/color-schema'
+import { catppuccinColorSchema, chalkColor } from './util/color-schema'
 import { DBClient } from './store/db-client'
 import { Store } from './store/store'
 
@@ -22,6 +18,5 @@ const chatAction: IChatAction = new ChatAction(store)
 // theme
 const { palette } = themes[settingAction.generalSetting.theme]
 const color = chalkColor(catppuccinColorSchema[palette])
-const display = displaySchema(color)
 
-export { settingAction, chatAction, color, display }
+export { settingAction, chatAction, color }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { chatAction, color, display, settingAction } from './app-context'
+import { chatAction, color, settingAction } from './app-context'
 import { APP_VERSION } from './config/app-setting'
 import { print } from './util/common-utils'
 import { commanderHelpConfiguration } from './util/color-schema'
@@ -84,5 +84,5 @@ program
 
 program.parseAsync().catch((e: unknown) => {
     const { message } = e as Error
-    print(display.error(message))
+    print(color.red(message))
 })
