@@ -342,7 +342,7 @@ class StoreNode extends Node<AskShare> {
     }
 }
 
-// system -> preset -> context -> user -> tools -> router -> streamCall / toolsCall -> store
+// system prompt -> preset message -> context message -> user content -> tools -> router -> streamCall / toolsCall -> store
 async function askFlow({
     chat,
     client,
