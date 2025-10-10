@@ -14,27 +14,33 @@ program
     .alias('ict')
     .version(`${APP_VERSION}`)
     .description('chat with AI')
-    .option('-f, --force <name>', 'use the specified chat')
-    .option('-s, --sync-call', 'sync call')
-    .option('-e, --edit', 'use editor')
+    .option('-f, --force <name>', 'use specified chat session')
+    .option('-s, --sync-call', 'synchronous call (non-streaming)')
+    .option('-e, --edit', 'use editor for input')
     .option('-t, --new-topic', 'start new topic')
-    .option('-r, --retry', 'retry the last question')
+    .option('-r, --retry', 'retry last question')
+    .option('-a, --attachment <file>', 'include file as attachment')
     .argument('[string]')
     .action(async (content, option) => {
-        const { edit, syncCall, newTopic, force, retry } = option
+        const { edit, syncCall, newTopic, force, retry, attachment } = option
         if (retry) {
             await chatAction.reAsk()
             return
         }
         const ask = async (ct: string) => {
+            let str = ct
+            if (attachment) {
+                const fileContent = await Bun.file(attachment).text()
+                str = `# User\n\n${ct}\n\n# Attachment \n\n${fileContent}`
+            }
+
             await chatAction.ask({
-                content: ct,
+                content: str,
                 chatName: force,
                 noStream: syncCall ? true : false,
                 newTopic,
             })
         }
-
         if (content) {
             await ask(content)
             return
@@ -56,14 +62,14 @@ program
 
 program
     .command('new')
-    .description('new chat')
+    .description('create new chat')
     .argument('<string>')
     .action(async (content) => await chatAction.newChat(content))
 
 program
     .command('history')
     .alias('hs')
-    .description('view chat topic history')
+    .description('view chat history')
     .option('-l, --limit <limit>', 'history message limit', '100')
     .action(async ({ limit }, cmd) => {
         const force = cmd.parent?.opts()?.force as string
@@ -73,7 +79,7 @@ program
 program
     .command('remove')
     .alias('rm')
-    .description('remove chat')
+    .description('remove chat session')
     .action(async () => await chatAction.removeChat())
 
 program
