@@ -303,7 +303,7 @@ export type AppSettingAct = {
     set: (setting: AppSettingContent) => void
 }
 
-export interface IChatStore {
+export interface IStore {
     chat: ChatAct
     quickSwitch: QucikSwitchAct
     exprot: ExportAct

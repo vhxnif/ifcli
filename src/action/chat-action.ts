@@ -18,7 +18,7 @@ import {
     CmdHistory,
     ExportMessage,
     type ConfigExt,
-    type IChatStore,
+    type IStore,
     type Model,
     type MCPServerKey,
     type PresetMessageContent,
@@ -57,9 +57,9 @@ export class ChatAction implements IChatAction {
     private generalSetting: GeneralSetting
     private clientMap: Map<string, ILLMClient> = new Map()
     private mcps: MCPClient[]
-    private store: IChatStore
+    private store: IStore
 
-    constructor(chatStore: IChatStore) {
+    constructor(chatStore: IStore) {
         this.store = chatStore
         const { generalSetting, mcpServers, llmSettings } = new AppSettingParse(
             this.store.appSetting.get()!

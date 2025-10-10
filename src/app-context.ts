@@ -11,17 +11,14 @@ import {
     displaySchema,
 } from './util/color-schema'
 import { DBClient } from './store/db-client'
-import { ChatStore } from './store/chat-store'
+import { Store } from './store/store'
 
 const { dataPath } = new AppConfig()
-const dbClient: IDBClient = new DBClient(
-    new Database(dataPath(), { strict: true })
-)
-// setting
-const settingAction: ISettingAction = new SettingAction(new ChatStore(dbClient))
-// command action
-const chatAction: IChatAction = new ChatAction(new ChatStore(dbClient))
-
+const database = new Database(dataPath(), { strict: true })
+const client: IDBClient = new DBClient(database)
+const store = new Store(client)
+const settingAction: ISettingAction = new SettingAction(store)
+const chatAction: IChatAction = new ChatAction(store)
 // theme
 const { palette } = themes[settingAction.generalSetting.theme]
 const color = chalkColor(catppuccinColorSchema[palette])

@@ -8,7 +8,7 @@ import type {
     ConfigExt,
     ConfigExtAct,
     ExportAct,
-    IChatStore,
+    IStore,
     IDBClient,
     MessageContent,
     Model,
@@ -20,7 +20,7 @@ import type {
 } from './store-types'
 import { uuid } from '../util/common-utils'
 
-export class ChatStore implements IChatStore {
+export class Store implements IStore {
     private readonly client: IDBClient
     constructor(client: IDBClient) {
         this.client = client
