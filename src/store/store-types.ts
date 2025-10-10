@@ -256,7 +256,7 @@ export type TopicAct = {
 }
 
 export type ChatInfo = {
-    chat: Chat
+    value: Chat
     config: ConfigAct
     configExt: ConfigExtAct
     preset: PresetAct

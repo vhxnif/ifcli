@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { stringWidth } from 'bun'
-import { color, display } from '../app-context'
+import { color } from '../app-context'
 import { AppSettingParse, type GeneralSetting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { askFlow } from '../llm/ask-flow'
@@ -47,11 +47,11 @@ import {
     type Choice,
 } from '../util/inquirer-utils'
 import { env, terminal } from '../util/platform-utils'
-import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { TextShow } from '../component/text-show'
 import { themes } from '../util/theme'
 import writeXlsxFile, { type Schema } from 'write-excel-file/node'
 import { OpenAiClient } from '../llm/open-ai-client'
+import { configShow } from '../component/cf-show'
 
 export class ChatAction implements IChatAction {
     private generalSetting: GeneralSetting
@@ -253,53 +253,7 @@ export class ChatAction implements IChatAction {
         const chat = this.store.chat.get(chatName)
         const cf = chat.config.value
         const ext = chat.configExt.value
-        const [_, config] = tableConfigWithExt({
-            cols: [1, 1, 1, 1],
-            alignment: 'left',
-        })
-        const booleanPrettyFormat = (v: boolean) => (v ? 'true' : 'false')
-        const data = [
-            [
-                display.caution('Context:'),
-                display.important(booleanPrettyFormat(cf.withContext)),
-                display.caution('ContextSize:'),
-                display.warning(cf.contextLimit),
-            ],
-            [
-                display.caution('Scenario:'),
-                display.tip(cf.scenarioName),
-                display.caution('MCP:'),
-                display.important(
-                    cf.withMCP
-                        ? display.tip(this.chatMcpDisplay(ext))
-                        : booleanPrettyFormat(cf.withMCP)
-                ),
-            ],
-            [
-                display.caution('LLMType:'),
-                display.tip(cf.llmType),
-                display.caution('Model:'),
-                display.tip(cf.model),
-            ],
-        ]
-        printTable(data, config)
-    }
-
-    private chatMcpDisplay(ext: ConfigExt) {
-        const { mcpServers } = ext
-        if (isEmpty(mcpServers)) {
-            return ''
-        }
-        const enableFilter = (s: MCPServerKey) => {
-            const one = this.mcps.find(
-                (it) => it.name === s.name && it.version === s.version
-            )
-            return one !== void 0
-        }
-        return mcpServers
-            .filter(enableFilter)
-            .map((it) => `${it.name}/${it.version}`)
-            .join('\n')
+        configShow.chatConfigShow(chat.value.name, cf, ext, color)
     }
 
     printChatHistory = async (limit: number, chatName?: string) => {
@@ -493,7 +447,7 @@ export class ChatAction implements IChatAction {
     }
 
     private mcpChoices(ext: ConfigExt) {
-        const key = (n: string, v: string) => `${n}/${v}`
+        const key = (n: string, v: string) => `${n}@${v}`
         const isChecked = (m: MCPClient) => {
             const { mcpServers } = ext
             if (isEmpty(mcpServers)) {
@@ -618,30 +572,31 @@ export class ChatAction implements IChatAction {
         if (isEmpty(this.mcps)) {
             throw Error(promptMessage.mcpMissing)
         }
-        const tools = await Promise.all(
+        const data = await Promise.all(
             this.mcps.map(async (it) => {
-                let health = display.tip(`[✓]`)
+                let health = true
                 try {
                     await it.connect()
+                    if (!it.isConnected) {
+                        health = false
+                    }
                 } catch (e: unknown) {
-                    health = display.warning(`[✗]`)
+                    health = false
                 } finally {
                     await it.close()
                 }
-                return [display.tip(it.name), display.tip(it.version), health]
+                return {
+                    name: it.name,
+                    version: it.version,
+                    health,
+                }
             })
         )
-        printTable(
-            [
-                ['Name', 'Version', 'Health'].map((it) => display.caution(it)),
-                ...tools,
-            ],
-            tableConfig({ cols: [1, 1, 1] })
-        )
+        configShow.mcpHealthCheckShow(data, color)
     }
 
     testTool = async () => {
-        const f = (m: MCPClient) => `${m.name}/${m.version}`
+        const f = (m: MCPClient) => `${m.name}@${m.version}`
         const choices = this.mcps.map((it) => ({ name: f(it), value: f(it) }))
         if (isEmpty(choices)) {
             throw Error(promptMessage.mcpMissing)
@@ -651,18 +606,12 @@ export class ChatAction implements IChatAction {
             try {
                 await m.connect()
                 const res = await m.listTools()
-                const tools = res.tools.map((it) => [
-                    display.tip(it.name),
-                    it.description,
-                ])
-                printTable(
-                    [
-                        ['Name', 'Description'].map((it) =>
-                            display.caution(it)
-                        ),
-                        ...tools,
-                    ],
-                    tableConfig({ cols: [1, 3], alignment: 'left' })
+                configShow.mcpTestShow(
+                    res.tools.map((it) => ({
+                        name: it.name,
+                        description: it.description ?? '',
+                    })),
+                    this.generalSetting
                 )
             } finally {
                 await m.close()

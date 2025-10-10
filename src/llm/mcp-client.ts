@@ -90,6 +90,10 @@ export default class MCPClient {
         }
     }
 
+    get isConnected() {
+        return this.connected
+    }
+
     listTools = async () => await this.client.listTools()
 
     tools = async () => {

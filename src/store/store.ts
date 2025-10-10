@@ -43,7 +43,7 @@ export class Store implements IStore {
         }
         const { id, name: sourceName } = chat
         return {
-            chat,
+            value: chat,
             config: this.config(id),
             configExt: this.configExt(id),
             preset: this.preset(id),
