@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type OpenAI from 'openai'
-import type { LLMResultChunk } from './llm-types'
+import type { LLMResultChunk } from '../llm/llm-types'
 import { jsonformat } from '../util/common-utils'
 import {
     llmNotifyMessage,
     llmNotifyMessageColor,
     type LLMNotifyMessageType,
-} from './llm-utils'
+} from '../llm/llm-utils'
 import { OraShow } from './ora-show'
-import { TextShow } from '../util/text-show'
+import { TextShow } from './text-show'
 import { themes, type Theme, type ThemeColor } from '../util/theme'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import {

@@ -12,7 +12,7 @@ import type {
 import type MCPClient from './mcp-client'
 import type { ChatInfo, MessageContent } from '../store/store-types'
 import { isEmpty, println, uuid } from '../util/common-utils'
-import { Display } from './display'
+import { Display } from '../component/llm-result-show'
 import { assistant, system, user } from './llm-utils'
 
 export type AskShare = LLMParam & {
