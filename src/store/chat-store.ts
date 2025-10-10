@@ -1,19 +1,20 @@
 import { promptMessage } from '../config/prompt-message'
 import type {
+    CacheAct,
     Chat,
-    ChatBo,
+    ChatAct,
     ChatPrompt,
-    ConfigBo,
+    ConfigAct,
     ConfigExt,
-    ConfigExtBo,
-    Export,
+    ConfigExtAct,
+    ExportAct,
     IChatStore,
     IDBClient,
     MessageContent,
     Model,
-    PresetBo,
-    QucikSwitch,
-    TopicBo,
+    PresetAct,
+    QucikSwitchAct,
+    TopicAct,
 } from '../types/store-types'
 import { uuid } from '../util/common-utils'
 
@@ -23,7 +24,7 @@ export class ChatStore implements IChatStore {
         this.client = client
     }
 
-    chat(name?: string): ChatBo {
+    chat(name?: string): ChatAct {
         const chat = name
             ? this.client.queryChat(name)
             : this.client.currentChat()
@@ -39,10 +40,10 @@ export class ChatStore implements IChatStore {
             getTopic: () => this.topic(id),
             removeChat: () => this.removeChat(id),
             switch: (targetName) => this.switchChat(sourceName, targetName),
-        } as ChatBo
+        } as ChatAct
     }
 
-    private config(chatId: string): ConfigBo {
+    private config(chatId: string): ConfigAct {
         const config = this.client.queryConfig(chatId)
         if (!config) {
             throw new Error(promptMessage.chatConfigMissing)
@@ -63,10 +64,10 @@ export class ChatStore implements IChatStore {
             moidfyModel: (model) => this.client.modifyModel(id, model),
             publishPrompt: (name, version) =>
                 this.client.publishPrompt(name, version, sysPrompt),
-        } as ConfigBo
+        } as ConfigAct
     }
 
-    private configExt(chatId: string): ConfigExtBo {
+    private configExt(chatId: string): ConfigExtAct {
         const extBo = this.client.queryConfigExt(chatId)
         if (!extBo) {
             throw new Error(promptMessage.configExtMissing)
@@ -76,10 +77,10 @@ export class ChatStore implements IChatStore {
             ext: JSON.parse(ext) as ConfigExt,
             updateExt: (ext) =>
                 this.client.updateConfigExt(chatId, JSON.stringify(ext)),
-        } as ConfigExtBo
+        } as ConfigExtAct
     }
 
-    private preset(chatId: string): PresetBo {
+    private preset(chatId: string): PresetAct {
         return {
             presets: () => this.client.queryPreset(chatId),
             create: (contents) => {
@@ -89,10 +90,10 @@ export class ChatStore implements IChatStore {
                 })
             },
             clear: () => this.client.delPreset(chatId),
-        } as PresetBo
+        } as PresetAct
     }
 
-    private topic(chatId: string): TopicBo {
+    private topic(chatId: string): TopicAct {
         return {
             topic: () => this.client.currentTopic(chatId),
             topics: () => this.client.queryTopic(chatId),
@@ -117,7 +118,7 @@ export class ChatStore implements IChatStore {
             ) => this.client.queryMessage(topicId, limit, withReasoning),
             saveMessage: (messages: MessageContent[]) =>
                 this.client.saveMessage(messages),
-        } as TopicBo
+        } as TopicAct
     }
 
     private removeChat(chatId: string) {
@@ -175,19 +176,27 @@ export class ChatStore implements IChatStore {
             delete: (k) => this.client.delCmdHis('chat_switch', k),
             update: (k, v) => this.client.updateCmdHis('chat_switch', k, v),
             addOrUpdate: (k) => this.client.addOrUpdateCmdHis('chat_switch', k),
-        } as QucikSwitch
+        } as QucikSwitchAct
     }
 
     searchPrompt(name: string, version?: string): ChatPrompt[] {
         return this.client.searchPrompt(name, version)
     }
 
-    exprot(): Export {
+    exprot(): ExportAct {
         return {
             all: () => this.client.queryAllExportMessage(),
             chat: (chatId) => this.client.queryChatExportMessage(chatId),
             topic: (chatId, topicId) =>
                 this.client.queryChatTopicExportMessage(chatId, topicId),
-        } as Export
+        } as ExportAct
+    }
+
+    cache(): CacheAct {
+        return {
+            get: (k) => this.client.queryCache(k),
+            del: (k) => this.client.deleteCache(k),
+            set: (c) => this.client.saveOrUpdateCache(c),
+        } as CacheAct
     }
 }

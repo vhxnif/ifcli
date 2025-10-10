@@ -2,6 +2,7 @@
 import Database from 'bun:sqlite'
 import {
     AppSetting,
+    Cache,
     Chat,
     ChatConfig,
     ChatConfigExt,
@@ -413,7 +414,6 @@ export class DBClient implements IDBClient {
         this.addCmdHis(type, key)
     }
 
-
     publishPrompt = (name: string, version: string, content: string) => {
         const prompt = this.db
             .query(
@@ -497,5 +497,30 @@ export class DBClient implements IDBClient {
             GROUP by m.pair_key
             order by c.name, t.create_time, m.action_time;
         `
+    }
+
+    queryCache(key: string): Cache | null {
+        return this.db
+            .prepare(`SELECT key, value FROM cache WHERE key = ?`)
+            .as(Cache)
+            .get(key)
+    }
+
+    saveOrUpdateCache = (cache: Cache) => {
+        const { key, value } = cache
+        const v = this.queryCache(key)
+        if (v) {
+            this.db
+                .prepare(`UPDATE cache SET value = ? WHERE key = ?`)
+                .run(value, key)
+            return
+        }
+        this.db
+            .prepare(`INSERT INTO cache (key, value) VALUES (?, ?)`)
+            .run(key, value)
+    }
+
+    deleteCache(key: string): void {
+        this.db.prepare(`DELETE FROM cache WHERE key = ?`).run(key)
     }
 }

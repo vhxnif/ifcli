@@ -1,5 +1,3 @@
-import type { Cache } from './store-types'
-
 export type AskContent = {
     content: string
     chatName?: string
@@ -41,10 +39,6 @@ export interface IChatAction {
     exportChatMessage: (path?: string) => Promise<void>
     exportChatTopicMessage: (path?: string) => Promise<void>
     exportTopicMessage: (path?: string) => Promise<void>
-
-    queryCaches: (keys: string[]) => Cache[]
-    saveOrUpdateCaches: (caches: Cache[]) => void
-    deleteCaches: (keys: string[]) => void
 }
 
 export interface ISettingAction {

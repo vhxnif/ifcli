@@ -281,6 +281,10 @@ export interface IDBClient {
         chatId: string,
         topicId: string
     ) => ExportMessage[]
+
+    saveOrUpdateCache: (cache: Cache) => void
+    queryCache: (key: string) => Cache | null
+    deleteCache: (key: string) => void
 }
 export type Model = {
     llmType: string
@@ -291,7 +295,7 @@ export type Scenario = {
     value: number
 }
 
-export type ConfigBo = {
+export type ConfigAct = {
     config: ChatConfig
     modifySystemPrompt: (prompt: string) => void
     modifyContextLimit: (limit: number) => void
@@ -302,18 +306,18 @@ export type ConfigBo = {
     publishPrompt: (name: string, version: string) => void
 }
 
-export type ConfigExtBo = {
+export type ConfigExtAct = {
     ext: ConfigExt
     updateExt: (ext: ConfigExt) => void
 }
 
-export type PresetBo = {
+export type PresetAct = {
     presets: () => ChatPresetMessage[]
     create: (contents: PresetMessageContent[]) => void
     clear: () => void
 }
 
-export type TopicBo = {
+export type TopicAct = {
     topic: () => ChatTopic | null
     topics: () => ChatTopic[]
     newTopic: (topicName: string) => string
@@ -326,17 +330,17 @@ export type TopicBo = {
     saveMessage: (messages: MessageContent[]) => void
 }
 
-export type ChatBo = {
+export type ChatAct = {
     chat: Chat
-    getConfig: () => ConfigBo
-    getConfigExt: () => ConfigExtBo
-    getPreset: () => PresetBo
-    getTopic: () => TopicBo
+    getConfig: () => ConfigAct
+    getConfigExt: () => ConfigExtAct
+    getPreset: () => PresetAct
+    getTopic: () => TopicAct
     removeChat: () => void
     switch: (targetName: string) => void
 }
 
-export type QucikSwitch = {
+export type QucikSwitchAct = {
     history: (key: string) => CmdHistory[]
     add: (key: string) => void
     get: (key: string) => CmdHistory | null
@@ -345,17 +349,24 @@ export type QucikSwitch = {
     addOrUpdate: (key: string) => void
 }
 
-export type Export = {
+export type ExportAct = {
     all: () => ExportMessage[]
     chat: (chatId: string) => ExportMessage[]
     topic: (chatId: string, topicId: string) => ExportMessage[]
 }
 
+export type CacheAct = {
+    get: (keys: string) => Cache
+    del: (keys: string) => void
+    set: (caches: Cache) => void
+}
+
 export interface IChatStore {
-    chat: (name?: string) => ChatBo
+    chat: (name?: string) => ChatAct
     newChat: (name: string, model: () => Promise<Model>) => Promise<void>
     chats: () => Chat[]
-    chatQuickSwitch: () => QucikSwitch
+    chatQuickSwitch: () => QucikSwitchAct
     searchPrompt: (name: string, version?: string) => ChatPrompt[]
-    exprot: () => Export
+    exprot: () => ExportAct
+    cache: () => CacheAct
 }

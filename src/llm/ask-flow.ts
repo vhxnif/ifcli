@@ -11,7 +11,7 @@ import type {
 } from '../types/llm-types'
 import type MCPClient from '../types/mcp-client'
 import type {
-    ChatBo,
+    ChatAct,
     ChatConfig,
     IStore,
     MessageContent,
@@ -21,7 +21,7 @@ import { Display } from './display'
 import { assistant, system, user } from './llm-utils'
 
 export type AskShare = LLMParam & {
-    chat: ChatBo
+    chat: ChatAct
     systemPrompt: string
     withContext: boolean
     contextLimit: number
@@ -360,7 +360,7 @@ async function askFlow({
     noStream = false,
     newTopic,
 }: {
-    chat: ChatBo
+    chat: ChatAct
     client: OpenAI
     userContent: string
     mcps: MCPClient[]

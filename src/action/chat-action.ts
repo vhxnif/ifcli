@@ -129,21 +129,19 @@ export class ChatAction implements IChatAction {
     }
 
     reAsk = async () => {
-        const prevOptions = this.queryCaches(['prev_options'])
-        if (isEmpty(prevOptions)) {
+        const prevOptions = this.chatStore.cache().get('prev_options')
+        if (!prevOptions) {
             throw Error(promptMessage.retryOptionsMisssing)
         }
-        const [it] = prevOptions
-        await this.ask(JSON.parse(it.value) as AskContent)
+        const { value } = prevOptions
+        await this.ask(JSON.parse(value) as AskContent)
     }
 
     ask = async (params: AskContent) => {
-        this.saveOrUpdateCaches([
-            {
-                key: 'prev_options',
-                value: JSON.stringify(params),
-            },
-        ])
+        this.chatStore.cache().set({
+            key: 'prev_options',
+            value: JSON.stringify(params),
+        })
         const { content, chatName, noStream = false, newTopic } = params
         const chat = this.chatStore.chat(chatName)
         let client = this.clientMap.get(chat.getConfig().config.llmType)
@@ -1119,17 +1117,5 @@ export class ChatAction implements IChatAction {
                 path.sep
             }${fileName}.xlsx`,
         })
-    }
-
-    queryCaches = (keys: string[]) => {
-        return this.store.queryCache(keys)
-    }
-
-    saveOrUpdateCaches = (caches: Cache[]) => {
-        this.store.saveOrUpdateCache(caches)
-    }
-
-    deleteCaches = (keys: string[]) => {
-        this.store.deleteCache(keys)
     }
 }
