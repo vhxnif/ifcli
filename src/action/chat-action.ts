@@ -134,9 +134,10 @@ export class ChatAction implements IChatAction {
         })
         const { content, chatName, noStream = false, newTopic } = params
         const chat = this.store.chat.get(chatName)
-        let client = this.clientMap.get(chat.config.value.llmType)
-        if (client === void 0) {
-            this.modifyModel(chatName)
+        const { llmType, model } = chat.config.value
+        let client = this.clientMap.get(llmType)
+        if (client === void 0 || !client.models.includes(model)) {
+            await this.modifyModel(chatName)
             client = this.clientMap.get(chat.config.value.llmType)!
         }
         await askFlow({
