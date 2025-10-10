@@ -17,7 +17,7 @@ import type {
     QucikSwitchAct,
     TopicAct,
     TopicMessageAct,
-} from '../types/store-types'
+} from './store-types'
 import { uuid } from '../util/common-utils'
 
 export class ChatStore implements IChatStore {

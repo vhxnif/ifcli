@@ -1,8 +1,6 @@
 import OpenAi from 'openai'
 import type { LLMSetting } from '../config/app-setting'
-import type {
-    ILLMClient
-} from '../types/llm-types'
+import type { ILLMClient } from './llm-types'
 
 export class OpenAiClient implements ILLMClient {
     openai: OpenAi

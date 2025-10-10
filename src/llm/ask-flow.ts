@@ -8,9 +8,9 @@ import type {
     LLMParam,
     LLMResultChunk,
     LLMToolsCallParam,
-} from '../types/llm-types'
-import type MCPClient from '../types/mcp-client'
-import type { ChatInfo, MessageContent } from '../types/store-types'
+} from './llm-types'
+import type MCPClient from './mcp-client'
+import type { ChatInfo, MessageContent } from '../store/store-types'
 import { isEmpty, println, uuid } from '../util/common-utils'
 import { Display } from './display'
 import { assistant, system, user } from './llm-utils'

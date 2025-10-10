@@ -1,5 +1,5 @@
-import type { MCPConfig } from '../types/mcp-client'
-import type { AppSetting, AppSettingContent } from '../types/store-types'
+import type { MCPConfig } from '../llm/mcp-client'
+import type { AppSetting, AppSettingContent } from '../store/store-types'
 import { isEmpty } from '../util/common-utils'
 import { promptMessage } from './prompt-message'
 import { version } from '../../package.json'

@@ -1,9 +1,15 @@
-import type { LLMMessage, LLMRole } from '../types/llm-types'
+import type { LLMMessage, LLMRole } from './llm-types'
 import type { CatppuccinColorName } from '../util/color-schema'
 
-export type LLMNotifyMessageType = 'waiting' | 'analyzing' | 'thinking' | 'rendering' | 'error' | 'completed'
+export type LLMNotifyMessageType =
+    | 'waiting'
+    | 'analyzing'
+    | 'thinking'
+    | 'rendering'
+    | 'error'
+    | 'completed'
 
-const llmNotifyMessage: Record<LLMNotifyMessageType, string>  = {
+const llmNotifyMessage: Record<LLMNotifyMessageType, string> = {
     waiting: '[Quantum Channel Opening :: Bending Space-Time Continuum...]',
     analyzing:
         '[Semantic Gravity Well Locked :: Decrypting Hyperstring Resonance...]',
@@ -15,14 +21,15 @@ const llmNotifyMessage: Record<LLMNotifyMessageType, string>  = {
         '[Cognitive Sync Module Engaged :: Neural Latency Neutralized—*]',
 }
 
-const llmNotifyMessageColor: Record<LLMNotifyMessageType, CatppuccinColorName> = {
-    waiting: 'teal',
-    analyzing: 'yellow',
-    thinking: 'mauve',
-    rendering: 'pink',
-    error: 'red',
-    completed: 'green',
-}
+const llmNotifyMessageColor: Record<LLMNotifyMessageType, CatppuccinColorName> =
+    {
+        waiting: 'teal',
+        analyzing: 'yellow',
+        thinking: 'mauve',
+        rendering: 'pink',
+        error: 'red',
+        completed: 'green',
+    }
 
 const message = (role: LLMRole, content: string): LLMMessage => ({
     role,

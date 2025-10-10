@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import path from 'path'
-import type { IConfig } from '../types/config-types'
+import type { IConfig } from './config-types'
 import { accessSync, constants, mkdirSync } from 'node:fs'
 import { env, platform } from '../util/platform-utils'
 import { APP_VERSION } from './app-setting'

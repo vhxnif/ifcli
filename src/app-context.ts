@@ -2,8 +2,8 @@ import Database from 'bun:sqlite'
 import { ChatAction } from './action/chat-action'
 import { SettingAction } from './action/setting-action'
 import { AppConfig } from './config/app-config'
-import type { IChatAction, ISettingAction } from './types/action-types'
-import type { IDBClient } from './types/store-types'
+import type { IChatAction, ISettingAction } from './action/action-types'
+import type { IDBClient } from './store/store-types'
 import { themes } from './util/theme'
 import {
     catppuccinColorSchema,

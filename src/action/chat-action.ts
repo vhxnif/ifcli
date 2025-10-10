@@ -5,10 +5,10 @@ import { AppSettingParse, type GeneralSetting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { askFlow } from '../llm/ask-flow'
 import { Display } from '../llm/display'
-import type { AskContent, IChatAction } from '../types/action-types'
-import { temperature } from '../types/constant'
-import type { ILLMClient } from '../types/llm-types'
-import MCPClient from '../types/mcp-client'
+import type { AskContent, IChatAction } from './action-types'
+import { temperature } from '../llm/llm-constant'
+import type { ILLMClient } from '../llm/llm-types'
+import MCPClient from '../llm/mcp-client'
 import path from 'path'
 import {
     Chat,
@@ -23,7 +23,7 @@ import {
     type MCPServerKey,
     type PresetMessageContent,
     ChatPresetMessage,
-} from '../types/store-types'
+} from '../store/store-types'
 import {
     catppuccinColorSchema,
     hex,

@@ -21,11 +21,11 @@ import {
     type PresetMessageContent,
     type RunSql,
     type Scenario,
-} from '../types/store-types'
+} from './store-types'
 import { table_def } from './table-def'
 import { isEmpty, unixnow, uuid } from '../util/common-utils'
 import { defaultSetting } from '../config/app-setting'
-import { temperature } from '../types/constant'
+import { temperature } from '../llm/llm-constant'
 
 export class DBClient implements IDBClient {
     private readonly db: Database

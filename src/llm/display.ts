@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type OpenAI from 'openai'
-import type { LLMResultChunk } from '../types/llm-types'
+import type { LLMResultChunk } from './llm-types'
 import { jsonformat } from '../util/common-utils'
 import {
     llmNotifyMessage,
