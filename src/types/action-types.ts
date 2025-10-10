@@ -1,3 +1,5 @@
+import type { GeneralSetting } from '../config/app-setting'
+
 export type AskContent = {
     content: string
     chatName?: string
@@ -44,4 +46,5 @@ export interface ISettingAction {
     theme: () => Promise<void>
     importSetting: (file: string) => Promise<void>
     exportSetting: () => Promise<void>
+    generalSetting: GeneralSetting
 }

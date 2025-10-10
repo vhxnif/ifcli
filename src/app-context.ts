@@ -2,13 +2,8 @@ import Database from 'bun:sqlite'
 import { ChatAction } from './action/chat-action'
 import { SettingAction } from './action/setting-action'
 import { AppConfig } from './config/app-config'
-import { AppSettingParse } from './config/app-setting'
-import { OpenAiClient } from './llm/open-ai-client'
-import { Store } from './store/store'
 import type { IChatAction, ISettingAction } from './types/action-types'
-import type { IConfig } from './types/config-types'
-import MCPClient from './types/mcp-client'
-import type { IDBClient, IStore } from './types/store-types'
+import type { IDBClient } from './types/store-types'
 import { themes } from './util/theme'
 import {
     catppuccinColorSchema,
@@ -18,36 +13,18 @@ import {
 import { DBClient } from './store/db-client'
 import { ChatStore } from './store/chat-store'
 
-const config: IConfig = new AppConfig()
-const db = new Database(config.dataPath(), { strict: true })
-const store: IStore = new Store(db)
-const dbClient: IDBClient = new DBClient(db)
+const { dataPath } = new AppConfig()
+const dbClient: IDBClient = new DBClient(
+    new Database(dataPath(), { strict: true })
+)
 // setting
-const settingAction: ISettingAction = new SettingAction(store)
-const settingParse = new AppSettingParse(store.appSetting()!)
-const { generalSetting, mcpServers, llmSettings } = settingParse.setting(true)
+const settingAction: ISettingAction = new SettingAction(new ChatStore(dbClient))
+// command action
+const chatAction: IChatAction = new ChatAction(new ChatStore(dbClient))
 
 // theme
-const { palette } = themes[generalSetting.theme]
+const { palette } = themes[settingAction.generalSetting.theme]
 const color = chalkColor(catppuccinColorSchema[palette])
 const display = displaySchema(color)
 
-// command action
-const chatAction: IChatAction = new ChatAction({
-    generalSetting,
-    llmClients: llmSettings.map((it) => new OpenAiClient(it)),
-    mcpClients: mcpServers
-        .filter((it) => it.enable)
-        .map((it) => new MCPClient(it)),
-    chatStore: new ChatStore(dbClient),
-})
-
-export {
-    settingAction,
-    chatAction,
-    store as chatStore,
-    db,
-    generalSetting,
-    color,
-    display,
-}
+export { settingAction, chatAction, color, display }

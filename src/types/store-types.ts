@@ -293,6 +293,10 @@ export interface IDBClient {
     saveOrUpdateCache: (cache: Cache) => void
     queryCache: (key: string) => Cache | null
     deleteCache: (key: string) => void
+
+    // app setting
+    appSetting: () => AppSetting | null
+    addAppSetting: (setting: AppSettingContent) => void
 }
 export type Model = {
     llmType: string
@@ -304,7 +308,7 @@ export type Scenario = {
 }
 
 export type ConfigAct = {
-    config: ChatConfig
+    value: ChatConfig
     modifySystemPrompt: (prompt: string) => void
     modifyContextLimit: (limit: number) => void
     moidfyContext: () => void
@@ -314,46 +318,56 @@ export type ConfigAct = {
 }
 
 export type ConfigExtAct = {
-    ext: ConfigExt
-    updateExt: (ext: ConfigExt) => void
+    value: ConfigExt
+    update: (ext: ConfigExt) => void
 }
 
 export type PresetAct = {
-    presets: () => ChatPresetMessage[]
-    create: (contents: PresetMessageContent[]) => void
+    get: () => ChatPresetMessage[]
+    set: (contents: PresetMessageContent[]) => void
     clear: () => void
 }
 
-export type TopicAct = {
-    topic: () => ChatTopic | null
-    topics: () => ChatTopic[]
-    newTopic: (topicName: string) => string
-    switch: (targetTopicId: string) => void
-    messages: (
+export type TopicMessageAct = {
+    list: (
         topicId: string,
         limit: number,
         withReasoning?: boolean
     ) => ChatMessage[]
-    saveMessage: (messages: MessageContent[]) => void
+    save: (messages: MessageContent[]) => void
 }
 
-export type ChatAct = {
+export type TopicAct = {
+    get: () => ChatTopic | null
+    list: () => ChatTopic[]
+    new: (topicName: string) => string
+    switch: (targetTopicId: string) => void
+    message: TopicMessageAct
+}
+
+export type ChatInfo = {
     chat: Chat
-    getConfig: () => ConfigAct
-    getConfigExt: () => ConfigExtAct
-    getPreset: () => PresetAct
-    getTopic: () => TopicAct
-    removeChat: () => void
+    config: ConfigAct
+    configExt: ConfigExtAct
+    preset: PresetAct
+    topic: TopicAct
+    remove: () => void
     switch: (targetName: string) => void
 }
 
+export type ChatAct = {
+    get: (name?: string) => ChatInfo
+    new: (name: string, model: () => Promise<Model>) => Promise<void>
+    list: () => Chat[]
+}
+
 export type QucikSwitchAct = {
-    history: (key: string) => CmdHistory[]
+    list: (key: string) => CmdHistory[]
     add: (key: string) => void
     get: (key: string) => CmdHistory | null
     delete: (key: string) => void
     update: (key: string, frequency: number) => void
-    addOrUpdate: (key: string) => void
+    saveOrUpdate: (key: string) => void
 }
 
 export type ExportAct = {
@@ -364,8 +378,8 @@ export type ExportAct = {
 
 export type CacheAct = {
     get: (keys: string) => Cache
-    del: (keys: string) => void
     set: (caches: Cache) => void
+    delete: (keys: string) => void
 }
 
 export type PromptAct = {
@@ -374,12 +388,16 @@ export type PromptAct = {
     publish: (name: string, version: string, content: string) => void
 }
 
+export type AppSettingAct = {
+    get: () => AppSetting | null
+    set: (setting: AppSettingContent) => void
+}
+
 export interface IChatStore {
-    chat: (name?: string) => ChatAct
-    newChat: (name: string, model: () => Promise<Model>) => Promise<void>
-    chats: () => Chat[]
-    chatQuickSwitch: () => QucikSwitchAct
-    exprot: () => ExportAct
-    cache: () => CacheAct
-    prompt: () => PromptAct
+    chat: ChatAct
+    quickSwitch: QucikSwitchAct
+    exprot: ExportAct
+    cache: CacheAct
+    prompt: PromptAct
+    appSetting: AppSettingAct
 }

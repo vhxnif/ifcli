@@ -74,31 +74,6 @@ export class DBClient implements IDBClient {
         }
     }
 
-    private appSetting = () => {
-        return this.db
-            .query(
-                `SELECT ${this.appSettingColumn} FROM app_setting order by create_time desc limit 1`
-            )
-            .as(AppSetting)
-            .get()
-    }
-
-    private addAppSetting = (setting: AppSettingContent) => {
-        const { version, generalSetting, mcpServer, llmSetting } = setting
-        this.db
-            .prepare(
-                `INSERT INTO app_setting (id, version, general_setting, mcp_server, llm_setting, create_time) VALUES (?, ?, ?, ?, ?, ?)`
-            )
-            .run(
-                uuid(),
-                version,
-                generalSetting,
-                mcpServer,
-                llmSetting,
-                unixnow()
-            )
-    }
-
     trans = (fs: RunSql): void => {
         this.db.transaction(fs)()
     }
@@ -535,5 +510,30 @@ export class DBClient implements IDBClient {
 
     deleteCache(key: string): void {
         this.db.prepare(`DELETE FROM cache WHERE key = ?`).run(key)
+    }
+
+    appSetting(): AppSetting | null {
+        return this.db
+            .query(
+                `SELECT ${this.appSettingColumn} FROM app_setting order by create_time desc limit 1`
+            )
+            .as(AppSetting)
+            .get()
+    }
+
+    addAppSetting(setting: AppSettingContent): void {
+        const { version, generalSetting, mcpServer, llmSetting } = setting
+        this.db
+            .prepare(
+                `INSERT INTO app_setting (id, version, general_setting, mcp_server, llm_setting, create_time) VALUES (?, ?, ?, ?, ?, ?)`
+            )
+            .run(
+                uuid(),
+                version,
+                generalSetting,
+                mcpServer,
+                llmSetting,
+                unixnow()
+            )
     }
 }

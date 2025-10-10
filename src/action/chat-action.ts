@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { stringWidth } from 'bun'
 import { color, display } from '../app-context'
-import type { GeneralSetting } from '../config/app-setting'
+import { AppSettingParse, type GeneralSetting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { askFlow } from '../llm/ask-flow'
 import { Display } from '../llm/display'
@@ -19,7 +19,6 @@ import {
     ExportMessage,
     type ConfigExt,
     type IChatStore,
-    type IStore,
     type Model,
     type MCPServerKey,
     type PresetMessageContent,
@@ -52,30 +51,27 @@ import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
 import { TextShow } from '../util/text-show'
 import { themes } from '../util/theme'
 import writeXlsxFile, { type Schema } from 'write-excel-file/node'
+import { OpenAiClient } from '../llm/open-ai-client'
 
 export class ChatAction implements IChatAction {
+    private generalSetting: GeneralSetting
     private clientMap: Map<string, ILLMClient> = new Map()
     private mcps: MCPClient[]
-    private generalSetting: GeneralSetting
-    private chatStore: IChatStore
+    private store: IChatStore
 
-    constructor({
-        generalSetting,
-        llmClients,
-        mcpClients,
-        chatStore,
-    }: {
-        generalSetting: GeneralSetting
-        llmClients: ILLMClient[]
-        mcpClients: MCPClient[]
-        chatStore: IChatStore
-    }) {
+    constructor(chatStore: IChatStore) {
+        this.store = chatStore
+        const { generalSetting, mcpServers, llmSettings } = new AppSettingParse(
+            this.store.appSetting.get()!
+        ).setting(true)
         this.generalSetting = generalSetting
-        llmClients.forEach((it) => this.clientMap.set(it.type, it))
-        this.mcps = mcpClients
-        this.chatStore = chatStore
+        this.mcps = mcpServers
+            .filter((it) => it.enable)
+            .map((it) => new MCPClient(it))
+        llmSettings
+            .map((it) => new OpenAiClient(it))
+            .forEach((it) => this.clientMap.set(it.type, it))
     }
-    private text = color.mauve
 
     private selectLLmAndModel = async (): Promise<Model> => {
         const choices = Array.from(this.clientMap.keys()).map((it) => ({
@@ -107,23 +103,23 @@ export class ChatAction implements IChatAction {
     }
 
     newChat = async (name: string) => {
-        this.chatStore.newChat(name, this.selectLLmAndModel)
+        this.store.chat.new(name, this.selectLLmAndModel)
     }
 
     removeChat = async () => {
-        const cts = this.chatStore.chats()
+        const cts = this.store.chat.list()
         if (cts.length == 1) {
             throw Error(promptMessage.oneChatRemain)
         }
         await this.selectChatRun(
             'Remove Chat:',
             cts.filter((it) => !it.select),
-            (answer) => this.chatStore.chat(answer).removeChat()
+            (answer) => this.store.chat.get(answer).remove()
         )
     }
 
     reAsk = async () => {
-        const prevOptions = this.chatStore.cache().get('prev_options')
+        const prevOptions = this.store.cache.get('prev_options')
         if (!prevOptions) {
             throw Error(promptMessage.retryOptionsMisssing)
         }
@@ -132,16 +128,16 @@ export class ChatAction implements IChatAction {
     }
 
     ask = async (params: AskContent) => {
-        this.chatStore.cache().set({
+        this.store.cache.set({
             key: 'prev_options',
             value: JSON.stringify(params),
         })
         const { content, chatName, noStream = false, newTopic } = params
-        const chat = this.chatStore.chat(chatName)
-        let client = this.clientMap.get(chat.getConfig().config.llmType)
+        const chat = this.store.chat.get(chatName)
+        let client = this.clientMap.get(chat.config.value.llmType)
         if (client === void 0) {
             this.modifyModel(chatName)
-            client = this.clientMap.get(chat.getConfig().config.llmType)!
+            client = this.clientMap.get(chat.config.value.llmType)!
         }
         await askFlow({
             chat,
@@ -155,7 +151,7 @@ export class ChatAction implements IChatAction {
     }
 
     changeChat = async (name?: string) => {
-        const chat = this.chatStore.chat()
+        const chat = this.store.chat.get()
         const f = (s: string) => {
             chat.switch(s)
             print(
@@ -167,7 +163,7 @@ export class ChatAction implements IChatAction {
         if (name && (await this.quikeCmd(name, f))) {
             return
         }
-        const chats = this.chatStore.chats()
+        const chats = this.store.chat.list()
         if (isEmpty(chats)) {
             throw Error(promptMessage.chatMissing)
         }
@@ -187,16 +183,16 @@ export class ChatAction implements IChatAction {
             theme: themeStyle(color),
         })
         chat.switch(v)
-        this.chatStore.chatQuickSwitch().addOrUpdate(v)
+        this.store.quickSwitch.saveOrUpdate(v)
     }
 
     private quikeCmd = async (
         subkey: string,
         quikeRun: (s: string) => void | Promise<void>
     ) => {
-        const qk = this.chatStore.chatQuickSwitch()
+        const qk = this.store.quickSwitch
         const cmd = qk
-            .history(subkey)
+            .list(subkey)
             .sort((a, b) => this.frequencyRule(b) - this.frequencyRule(a))[0]
         if (!cmd) {
             return false
@@ -234,8 +230,8 @@ export class ChatAction implements IChatAction {
     }
 
     changeTopic = async () => {
-        const tpfun = this.chatStore.chat().getTopic()
-        const topics = tpfun.topics()
+        const tpfun = this.store.chat.get().topic
+        const topics = tpfun.list()
         const choices: Choice<ChatTopic>[] = topics.map((it) => ({
             name: this.subStr(it.content),
             value: it,
@@ -254,9 +250,9 @@ export class ChatAction implements IChatAction {
     }
 
     printChatConfig = (chatName?: string) => {
-        const chat = this.chatStore.chat(chatName)
-        const cf = chat.getConfig().config
-        const ext = chat.getConfigExt().ext
+        const chat = this.store.chat.get(chatName)
+        const cf = chat.config.value
+        const ext = chat.configExt.value
         const [_, config] = tableConfigWithExt({
             cols: [1, 1, 1, 1],
             alignment: 'left',
@@ -307,12 +303,12 @@ export class ChatAction implements IChatAction {
     }
 
     printChatHistory = async (limit: number, chatName?: string) => {
-        const tpfun = this.chatStore.chat(chatName).getTopic()
-        const tp = tpfun.topic()
+        const { get, message } = this.store.chat.get(chatName).topic
+        const tp = get()
         if (!tp) {
             throw Error(promptMessage.hisMsgMissing)
         }
-        const messages = tpfun.messages(tp.id, limit, true)
+        const messages = message.list(tp.id, limit, true)
         if (isEmpty(messages)) {
             throw Error(promptMessage.hisMsgMissing)
         }
@@ -466,33 +462,33 @@ export class ChatAction implements IChatAction {
     }
 
     modifyContextSize = (size: number, chatName?: string) => {
-        this.chatStore.chat(chatName).getConfig().modifyContextLimit(size)
+        this.store.chat.get(chatName).config.modifyContextLimit(size)
     }
 
     modifyModel = async (chatName?: string) => {
         const model = await this.selectLLmAndModel()
-        this.chatStore.chat(chatName).getConfig().moidfyModel(model)
+        this.store.chat.get(chatName).config.moidfyModel(model)
     }
 
     modifySystemPrompt = (prompt: string, chatName?: string) => {
-        this.chatStore.chat(chatName).getConfig().modifySystemPrompt(prompt)
+        this.store.chat.get(chatName).config.modifySystemPrompt(prompt)
     }
 
     modifyWithContext = (chatName?: string) => {
-        this.chatStore.chat(chatName).getConfig().moidfyContext()
+        this.store.chat.get(chatName).config.moidfyContext()
     }
 
     modifyWithMCP = async (chatName?: string) => {
-        const chat = this.chatStore.chat(chatName)
-        const config = chat.getConfig()
-        const configExt = chat.getConfigExt()
-        const { ext } = configExt
+        const chat = this.store.chat.get(chatName)
+        const config = chat.config
+        const configExt = chat.configExt
+        const { value: ext } = configExt
         const items = await checkbox({
             message: 'Select MCP Server:',
             choices: this.mcpChoices(ext),
         })
         ext.mcpServers = items
-        configExt.updateExt(ext)
+        configExt.update(ext)
         config.modifyMcp(!isEmpty(items))
     }
 
@@ -531,17 +527,16 @@ export class ChatAction implements IChatAction {
             })),
             (answer) => {
                 const [name, value] = temperature[answer]
-                this.chatStore
-                    .chat(chatName)
-                    .getConfig()
-                    .modifyScenario({ name, value })
+                this.store.chat
+                    .get(chatName)
+                    .config.modifyScenario({ name, value })
             }
         )
     }
 
     publishPrompt = async (chatName?: string) => {
-        const cffun = this.chatStore.chat(chatName).getConfig()
-        const { sysPrompt } = cffun.config
+        const cffun = this.store.chat.get(chatName).config
+        const { sysPrompt } = cffun.value
         if (!sysPrompt) {
             throw Error(promptMessage.systemPromptMissing)
         }
@@ -549,7 +544,7 @@ export class ChatAction implements IChatAction {
     }
 
     selectPrompt = async (name: string, chatName?: string) => {
-        const prompts = this.chatStore.prompt().search(name)
+        const prompts = this.store.prompt.search(name)
         if (isEmpty(prompts)) {
             throw Error(promptMessage.systemPromptNoMatching)
         }
@@ -567,13 +562,12 @@ export class ChatAction implements IChatAction {
     }
 
     listPrompt = async (name?: string) => {
-        const promptfun = this.chatStore.prompt()
-
+        const { search, list } = this.store.prompt
         let prompts
         if (name) {
-            prompts = promptfun.search(name)
+            prompts = search(name)
         } else {
-            prompts = promptfun.list()
+            prompts = list()
         }
         if (isEmpty(prompts)) {
             throw Error(promptMessage.systemPromptNoMatching)
@@ -677,7 +671,7 @@ export class ChatAction implements IChatAction {
     }
 
     prompt = (chatName?: string) => {
-        const { sysPrompt } = this.chatStore.chat(chatName).getConfig().config
+        const { sysPrompt } = this.store.chat.get(chatName).config.value
         return sysPrompt
     }
 
@@ -690,7 +684,7 @@ export class ChatAction implements IChatAction {
     }
 
     exportPrompt = async () => {
-        const pts = this.chatStore.prompt().list()
+        const pts = this.store.prompt.list()
         const fileName = (pt: ChatPrompt) => `${pt.name}_${pt.version}.md`
         await Promise.all(pts.map((it) => Bun.write(fileName(it), it.content)))
     }
@@ -701,19 +695,15 @@ export class ChatAction implements IChatAction {
         const promptName = fileName.substring(0, idx)
         const version = fileName.substring(idx + 1, fileName.length)
         const content = await Bun.file(file).text()
-        this.chatStore.prompt().publish(promptName, version, content)
+        this.store.prompt.publish(promptName, version, content)
     }
 
     clearPresetMessage = (chatName?: string) => {
-        this.chatStore.chat(chatName).getPreset().clear()
+        this.store.chat.get(chatName).preset.clear()
     }
 
     printPresetMessage = (chatName?: string) => {
-        const presetMessages = this.chatStore
-            .chat(chatName)
-            .getPreset()
-            .presets()
-
+        const presetMessages = this.store.chat.get(chatName).preset.get()
         const presetMessageText = this.presetMessageText({
             presetMessages,
             colorful: true,
@@ -725,9 +715,9 @@ export class ChatAction implements IChatAction {
     }
 
     editPresetMessage = async (chatName?: string) => {
-        const presetfun = this.chatStore.chat(chatName).getPreset()
+        const presetfun = this.store.chat.get(chatName).preset
         const sourceText = this.presetMessageText({
-            presetMessages: presetfun.presets(),
+            presetMessages: presetfun.get(),
         }).content
         const text = await editor(sourceText)
         if (!text) {
@@ -747,7 +737,7 @@ export class ChatAction implements IChatAction {
                 throw Error(promptMessage.noEdit)
             }
         }
-        presetfun.create(contents)
+        presetfun.set(contents)
     }
 
     private presetMessageText = ({
@@ -848,10 +838,10 @@ export class ChatAction implements IChatAction {
             return
         }
 
-        const promptfun = this.chatStore.prompt()
-        const existsPrompt = promptfun.search(name, version)
+        const { search, publish } = this.store.prompt
+        const existsPrompt = search(name, version)
         if (!isEmpty(existsPrompt)) {
-            promptfun.publish(name, version, prompt)
+            publish(name, version, prompt)
             return
         }
         await this.getPublishPromptInput(prompt)
@@ -900,14 +890,14 @@ export class ChatAction implements IChatAction {
     }
 
     exportAllChatMessage = async (path?: string) => {
-        const msgs = this.chatStore.exprot().all()
+        const msgs = this.store.exprot.all()
         await this.exportXlsx(msgs, `ifcli_all_chat_message_${unixnow()}`, path)
     }
 
     exportChatMessage = async (path?: string) => {
         const { id: chatId } = await this.allChatToSelect()
         await this.exportXlsx(
-            this.chatStore.exprot().chat(chatId),
+            this.store.exprot.chat(chatId),
             `ifcli_chat_message_${unixnow()}`,
             path
         )
@@ -915,20 +905,20 @@ export class ChatAction implements IChatAction {
 
     exportChatTopicMessage = async (path?: string) => {
         const { id: chatId, name } = await this.allChatToSelect()
-        const topics = this.chatStore.chat(name).getTopic().topics()
+        const topics = this.store.chat.get(name).topic.list()
         const { id: topicId } = await this.topicToSelect(topics)
         await this.exportXlsx(
-            this.chatStore.exprot().topic(chatId, topicId),
+            this.store.exprot.topic(chatId, topicId),
             `ifcli_chat_topic_message_${unixnow()}`,
             path
         )
     }
 
     exportTopicMessage = async (path?: string) => {
-        const topics = this.chatStore.chat().getTopic().topics()
+        const topics = this.store.chat.get().topic.list()
         const { id: topicId, chatId } = await this.topicToSelect(topics)
         await this.exportXlsx(
-            this.chatStore.exprot().topic(chatId, topicId),
+            this.store.exprot.topic(chatId, topicId),
             `ifcli_chat_topic_message_${unixnow()}`,
             path
         )
@@ -959,7 +949,7 @@ export class ChatAction implements IChatAction {
     }
 
     private allChatToSelect = async () => {
-        const chats = this.chatStore.chats()
+        const chats = this.store.chat.list()
         const choices: Choice<Chat>[] = chats.map((it) => ({
             name: it.name,
             value: it,

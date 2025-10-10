@@ -2,19 +2,19 @@ import { color } from '../app-context'
 import { AppSettingParse, type GeneralSetting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import type { ISettingAction } from '../types/action-types'
-import type { IStore } from '../types/store-types'
+import type { IChatStore } from '../types/store-types'
 import { editor, isTextSame } from '../util/common-utils'
 import { select, themeStyle, type Choice } from '../util/inquirer-utils'
 import { themes } from '../util/theme'
 
 export class SettingAction implements ISettingAction {
-    private readonly store: IStore
-    constructor(store: IStore) {
+    private readonly store: IChatStore
+    constructor(store: IChatStore) {
         this.store = store
     }
 
     theme = async () => {
-        const st = this.store.appSetting()!
+        const st = this.store.appSetting.get()!
         const parse = new AppSettingParse(st)
         const generalSetting: GeneralSetting = parse.generalSetting()
         await this.updateGeneralSetting({
@@ -42,7 +42,8 @@ export class SettingAction implements ISettingAction {
             [K in keyof GeneralSetting]?: GeneralSetting[K]
         }
     }) => {
-        const st = this.store.appSetting()!
+        const { get, set } = this.store.appSetting
+        const st = get()!
         const parse = new AppSettingParse(st)
         const generalSetting: GeneralSetting = parse.generalSetting()
         const value = await select({
@@ -55,7 +56,7 @@ export class SettingAction implements ISettingAction {
             ...generalSetting,
             ...f(value),
         })
-        this.store.addAppSetting({
+        set({
             ...st,
             generalSetting: newSetting,
         })
@@ -69,7 +70,8 @@ export class SettingAction implements ISettingAction {
     private modifySetting = async (
         mdf: (source: string) => Promise<string>
     ) => {
-        const st = this.store.appSetting()!
+        const { get, set } = this.store.appSetting
+        const st = get()!
         const parse = new AppSettingParse(st)
         const sourceText = parse.editShow()
         const text = await mdf(sourceText)
@@ -90,7 +92,7 @@ export class SettingAction implements ISettingAction {
         if (!add) {
             return
         }
-        this.store.addAppSetting(add)
+        set(add)
     }
 
     importSetting = async (file: string) => {
@@ -99,9 +101,14 @@ export class SettingAction implements ISettingAction {
     }
 
     exportSetting = async () => {
-        const st = this.store.appSetting()!
-        const parse = new AppSettingParse(st)
+        const parse = new AppSettingParse(this.store.appSetting.get()!)
         const sourceText = parse.editShow()
         await Bun.write(`ifcli_setting.json`, sourceText)
+    }
+
+    get generalSetting(): GeneralSetting {
+        const st = this.store.appSetting.get()!
+        const parse = new AppSettingParse(st)
+        return parse.generalSetting()
     }
 }

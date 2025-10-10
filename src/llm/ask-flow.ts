@@ -10,18 +10,13 @@ import type {
     LLMToolsCallParam,
 } from '../types/llm-types'
 import type MCPClient from '../types/mcp-client'
-import type {
-    ChatAct,
-    ChatConfig,
-    IStore,
-    MessageContent,
-} from '../types/store-types'
+import type { ChatInfo, MessageContent } from '../types/store-types'
 import { isEmpty, println, uuid } from '../util/common-utils'
 import { Display } from './display'
 import { assistant, system, user } from './llm-utils'
 
 export type AskShare = LLMParam & {
-    chat: ChatAct
+    chat: ChatInfo
     systemPrompt: string
     withContext: boolean
     contextLimit: number
@@ -60,16 +55,13 @@ class PresetNode extends Node<AskShare> {
 
     override async prep(shared: AskShare): Promise<void> {
         const { chat } = shared
-        const presetMessage = chat
-            .getPreset()
-            .presets()
-            .flatMap(
-                (it) =>
-                    [
-                        { role: 'user', content: it.user },
-                        { role: 'assistant', content: it.assistant },
-                    ] as LLMMessage[]
-            )
+        const presetMessage = chat.preset.get().flatMap(
+            (it) =>
+                [
+                    { role: 'user', content: it.user },
+                    { role: 'assistant', content: it.assistant },
+                ] as LLMMessage[]
+        )
         shared.messages = [...shared.messages, ...presetMessage]
     }
 }
@@ -82,15 +74,15 @@ class ContextNode extends Node<AskShare> {
     override async prep(shared: AskShare): Promise<void> {
         const { chat, userContent, messages, withContext, contextLimit } =
             shared
-        const tpfun = chat.getTopic()
-        const tp = tpfun.topic()
+        const tpfun = chat.topic
+        const tp = tpfun.get()
         if (!tp || shared.newTopic) {
-            shared.topicId = tpfun.newTopic(userContent)
+            shared.topicId = tpfun.new(userContent)
         } else {
             shared.topicId = tp.id
         }
         const context = withContext
-            ? tpfun.messages(shared.topicId, contextLimit).map((it) => {
+            ? tpfun.message.list(shared.topicId, contextLimit).map((it) => {
                   if (it.role === 'user') {
                       return user(it.content)
                   }
@@ -127,7 +119,7 @@ class ToolsNode extends Node<AskShare> {
         if (!shared.withMCP) {
             return
         }
-        const { mcpServers } = shared.chat.getConfigExt().ext
+        const { mcpServers } = shared.chat.configExt.value
         if (isEmpty(mcpServers)) {
             return
         }
@@ -346,7 +338,7 @@ class StoreNode extends Node<AskShare> {
                 pairKey,
             })
         }
-        chat.getTopic().saveMessage(messages)
+        chat.topic.message.save(messages)
     }
 }
 
@@ -360,7 +352,7 @@ async function askFlow({
     noStream = false,
     newTopic,
 }: {
-    chat: ChatAct
+    chat: ChatInfo
     client: OpenAI
     userContent: string
     mcps: MCPClient[]
@@ -369,7 +361,7 @@ async function askFlow({
     newTopic?: boolean
 }) {
     const { model, scenario, sysPrompt, withContext, contextLimit, withMCP } =
-        chat.getConfig().config
+        chat.config.value
     const share: AskShare = {
         chat,
         userContent,
