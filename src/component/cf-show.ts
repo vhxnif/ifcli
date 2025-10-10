@@ -74,8 +74,9 @@ class ConfigShow {
         } = config
         const { mcpServers } = ext
         const arr = [
-            { key: 'Name', value: color.sky(chatName) },
-            { key: 'Model', value: color.sky(`${llmType}/${model}`) },
+            { key: 'Chat Name', value: color.sky(chatName) },
+            { key: 'Provider', value: color.sky(llmType) },
+            { key: 'Model', value: color.sky(model) },
             {
                 key: 'Scenario',
                 value: `${color.sky(scenarioName)}(${color.yellow(scenario)})`,
