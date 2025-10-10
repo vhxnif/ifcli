@@ -139,12 +139,12 @@ program
     .action(async (options, cmd) => {
         const { edit, clear } = options
         const name = cmd.parent?.opts().force as string
+        if (edit) {
+            await chatAction.editPresetMessage(name)
+        }
         if (clear) {
             chatAction.clearPresetMessage(name)
             return
-        }
-        if (edit) {
-            await chatAction.editPresetMessage(name)
         }
         chatAction.printPresetMessage(name)
     })

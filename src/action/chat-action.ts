@@ -25,6 +25,7 @@ import {
     type Model,
     type MCPServerKey,
     type PresetMessageContent,
+    ChatPresetMessage,
 } from '../types/store-types'
 import {
     catppuccinColorSchema,
@@ -767,17 +768,18 @@ export class ChatAction implements IChatAction {
     }
 
     clearPresetMessage = (chatName?: string) => {
-        if (!chatName) {
-            this.store.clearPresetMessage()
-            return
-        }
-        this.store.clearChatPresetMessage(this.getChat(chatName))
+        this.chatStore.chat(chatName).getPreset().clear()
     }
 
     printPresetMessage = (chatName?: string) => {
+        const presetMessages = this.chatStore
+            .chat(chatName)
+            .getPreset()
+            .presets()
+
         const presetMessageText = this.presetMessageText({
+            presetMessages,
             colorful: true,
-            chatName,
         })
         if (presetMessageText.isDefault) {
             throw Error(promptMessage.presetMsgMissing)
@@ -786,7 +788,8 @@ export class ChatAction implements IChatAction {
     }
 
     editPresetMessage = async (chatName?: string) => {
-        const sourceText = this.presetMessageText({ chatName }).content
+        const presetfun = this.chatStore.chat(chatName).getPreset()
+        const sourceText = this.presetMessageText({ presetMessages: presetfun.presets()}).content
         const text = await editor(sourceText)
         if (!text) {
             return
@@ -805,19 +808,15 @@ export class ChatAction implements IChatAction {
                 throw Error(promptMessage.noEdit)
             }
         }
-        if (!chatName) {
-            this.store.createPresetMessage(contents)
-            return
-        }
-        this.store.createChatPresetMessage(this.getChat(chatName), contents)
+        presetfun.create(contents)
     }
 
     private presetMessageText = ({
+        presetMessages,
         colorful = false,
-        chatName,
     }: {
+        presetMessages: ChatPresetMessage[]
         colorful?: boolean
-        chatName?: string
     }): {
         isDefault: boolean
         content: string
@@ -827,13 +826,6 @@ export class ChatAction implements IChatAction {
             `${colorful ? color.yellow.bold('assistant') : 'assistant'}`
         const pairMessage = (user: string, assistant: string) =>
             `[${userType()}]\n${user}\n\n[${assistantType()}]\n${assistant}\n`
-        const getPresetMessages = () => {
-            if (!chatName) {
-                return this.store.selectPresetMessage()
-            }
-            return this.store.selectChatPresetMessage(this.getChat(chatName))
-        }
-        const presetMessages = getPresetMessages()
         if (isEmpty(presetMessages)) {
             const { userPreset, assistantPreset } = promptMessage
             const dfText = pairMessage(userPreset, assistantPreset)
