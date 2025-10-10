@@ -39,7 +39,6 @@ const chatAction: IChatAction = new ChatAction({
     mcpClients: mcpServers
         .filter((it) => it.enable)
         .map((it) => new MCPClient(it)),
-    store,
     chatStore: new ChatStore(dbClient),
 })
 

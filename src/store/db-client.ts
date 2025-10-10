@@ -436,7 +436,7 @@ export class DBClient implements IDBClient {
             .run(name, version, 'system', content, unixnow())
     }
 
-    searchPrompt = (name: string, version?: string) => {
+    searchPrompt(name: string, version?: string): ChatPrompt[] {
         const sql = `SELECT ${this.chatPromptColumn} FROM chat_prompt`
         if (version) {
             return this.db
@@ -450,25 +450,38 @@ export class DBClient implements IDBClient {
             .all(`%${name}%`)
     }
 
-    queryAllExportMessage = () => {
+    listPrompt(): ChatPrompt[] {
+        return this.db
+            .query(`SELECT ${this.chatPromptColumn} FROM chat_prompt`)
+            .as(ChatPrompt)
+            .all()
+    }
+
+    queryAllExportMessage(): ExportMessage[] {
         return this.db.query(this.exportMessageSql({})).as(ExportMessage).all()
     }
 
-    queryChatExportMessage = (chatId: string) => {
+    queryChatExportMessage(chatId: string): ExportMessage[] {
         return this.db
             .query(this.exportMessageSql({ chatId: true }))
             .as(ExportMessage)
             .all(chatId)
     }
 
-    queryChatTopicExportMessage = (chatId: string, topicId: string) => {
+    queryChatTopicExportMessage(
+        chatId: string,
+        topicId: string
+    ): ExportMessage[] {
         return this.db
             .query(this.exportMessageSql({ chatId: true, topicId: true }))
             .as(ExportMessage)
             .all(chatId, topicId)
     }
 
-    private exportMessageSql = (p: { chatId?: boolean; topicId?: boolean }) => {
+    private exportMessageSql(p: {
+        chatId?: boolean
+        topicId?: boolean
+    }): string {
         const { chatId, topicId } = p
         const arr: string[] = []
         if (chatId) {
@@ -506,7 +519,7 @@ export class DBClient implements IDBClient {
             .get(key)
     }
 
-    saveOrUpdateCache = (cache: Cache) => {
+    saveOrUpdateCache(cache: Cache): void {
         const { key, value } = cache
         const v = this.queryCache(key)
         if (v) {

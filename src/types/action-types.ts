@@ -11,8 +11,6 @@ export interface IChatAction {
     ask: (param: AskContent) => Promise<void>
     changeChat: (name?: string) => Promise<void>
     changeTopic: () => Promise<void>
-    printTopics: () => Promise<void>
-    printChats: () => Promise<void>
     printChatConfig: (chatName?: string) => void
     printChatHistory: (limit: number, chatName?: string) => Promise<void>
     modifyContextSize: (size: number, chatName?: string) => void

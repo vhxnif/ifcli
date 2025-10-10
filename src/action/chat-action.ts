@@ -17,8 +17,6 @@ import {
     ChatTopic,
     CmdHistory,
     ExportMessage,
-    type Cache,
-    type ChatConfig,
     type ConfigExt,
     type IChatStore,
     type IStore,
@@ -57,7 +55,6 @@ import writeXlsxFile, { type Schema } from 'write-excel-file/node'
 
 export class ChatAction implements IChatAction {
     private clientMap: Map<string, ILLMClient> = new Map()
-    private store: IStore
     private mcps: MCPClient[]
     private generalSetting: GeneralSetting
     private chatStore: IChatStore
@@ -66,17 +63,14 @@ export class ChatAction implements IChatAction {
         generalSetting,
         llmClients,
         mcpClients,
-        store,
         chatStore,
     }: {
         generalSetting: GeneralSetting
         llmClients: ILLMClient[]
         mcpClients: MCPClient[]
-        store: IStore
         chatStore: IChatStore
     }) {
         this.generalSetting = generalSetting
-        this.store = store
         llmClients.forEach((it) => this.clientMap.set(it.type, it))
         this.mcps = mcpClients
         this.chatStore = chatStore
@@ -158,14 +152,6 @@ export class ChatAction implements IChatAction {
             noStream,
             newTopic,
         })
-    }
-
-    private getChat = (chatName: string) => {
-        const chat = this.store.queryChat(chatName)
-        if (!chat) {
-            throw Error(`The ${chatName} not found.`)
-        }
-        return chat
     }
 
     changeChat = async (name?: string) => {
@@ -265,40 +251,6 @@ export class ChatAction implements IChatAction {
             theme: themeStyle(color),
         })
         tpfun.switch(id)
-    }
-
-    printTopics = async () => {
-        await this.sortedTopics().then((it) =>
-            this.listItems(
-                it,
-                (s) => s.select,
-                (s) => this.subStr(s.content)
-            )
-        )
-    }
-
-    printChats = async () => {
-        await this.sortedChats().then((it) =>
-            this.listItems(
-                it,
-                (s) => s.select,
-                (s) => s.name
-            )
-        )
-    }
-
-    private listItems = <T>(
-        ts: T[],
-        s: (s: T) => boolean,
-        n: (n: T) => string
-    ) => {
-        ts.forEach((it, idx) => {
-            println(
-                `[${idx === 0 ? color.green('*') : color.pink(idx)}] ${
-                    s(it) ? color.yellow(n(it)) : this.text(n(it))
-                }`
-            )
-        })
     }
 
     printChatConfig = (chatName?: string) => {
@@ -570,16 +522,6 @@ export class ChatAction implements IChatAction {
         return choices
     }
 
-    private configExt = (chatId: string) => {
-        const ext = this.store.queryChatConfigExt(chatId)
-        if (ext) {
-            return JSON.parse(ext.ext) as ConfigExt
-        }
-        const def = { mcpServers: [] } as ConfigExt
-        this.store.saveChatCofnigExt(chatId, JSON.stringify(def))
-        return def
-    }
-
     modifyScenario = async (chatName?: string) => {
         await selectRun(
             'Select Scenario:',
@@ -588,14 +530,11 @@ export class ChatAction implements IChatAction {
                 value: k,
             })),
             (answer) => {
-                if (!chatName) {
-                    this.store.modifyScenario(temperature[answer])
-                    return
-                }
-                this.store.modifyChatScenario(
-                    this.getChat(chatName),
-                    temperature[answer]
-                )
+                const [name, value] = temperature[answer]
+                this.chatStore
+                    .chat(chatName)
+                    .getConfig()
+                    .modifyScenario({ name, value })
             }
         )
     }
@@ -606,13 +545,11 @@ export class ChatAction implements IChatAction {
         if (!sysPrompt) {
             throw Error(promptMessage.systemPromptMissing)
         }
-        await this.getPublishPromptInput((name, version) =>
-            cffun.publishPrompt(name, version)
-        )
+        await this.getPublishPromptInput(sysPrompt)
     }
 
     selectPrompt = async (name: string, chatName?: string) => {
-        const prompts = this.chatStore.searchPrompt(name)
+        const prompts = this.chatStore.prompt().search(name)
         if (isEmpty(prompts)) {
             throw Error(promptMessage.systemPromptNoMatching)
         }
@@ -630,11 +567,13 @@ export class ChatAction implements IChatAction {
     }
 
     listPrompt = async (name?: string) => {
+        const promptfun = this.chatStore.prompt()
+
         let prompts
         if (name) {
-            prompts = this.store.searchPrompt(name)
+            prompts = promptfun.search(name)
         } else {
-            prompts = this.store.listPrompt()
+            prompts = promptfun.list()
         }
         if (isEmpty(prompts)) {
             throw Error(promptMessage.systemPromptNoMatching)
@@ -751,7 +690,7 @@ export class ChatAction implements IChatAction {
     }
 
     exportPrompt = async () => {
-        const pts = this.store.listPrompt()
+        const pts = this.chatStore.prompt().list()
         const fileName = (pt: ChatPrompt) => `${pt.name}_${pt.version}.md`
         await Promise.all(pts.map((it) => Bun.write(fileName(it), it.content)))
     }
@@ -762,7 +701,7 @@ export class ChatAction implements IChatAction {
         const promptName = fileName.substring(0, idx)
         const version = fileName.substring(idx + 1, fileName.length)
         const content = await Bun.file(file).text()
-        this.store.publishPrompt(promptName, version, content)
+        this.chatStore.prompt().publish(promptName, version, content)
     }
 
     clearPresetMessage = (chatName?: string) => {
@@ -897,25 +836,25 @@ export class ChatAction implements IChatAction {
             .map(toPresetMessageContent)
     }
 
-    private getPublishPromptInput = async (
-        f: (name: string, version: string) => void
-    ) => {
+    private getPublishPromptInput = async (prompt: string) => {
         const name = await input({ message: 'Prompt Name: ' })
         if (isEmpty(name)) {
-            await this.getPublishPromptInput(f)
+            await this.getPublishPromptInput(prompt)
             return
         }
         const version = await input({ message: 'Prompt Version: ' })
         if (isEmpty(version)) {
-            await this.getPublishPromptInput(f)
+            await this.getPublishPromptInput(prompt)
             return
         }
-        const existsPrompt = this.store.searchPrompt(name, version)
-        if (isEmpty(existsPrompt)) {
-            f(name, version)
+
+        const promptfun = this.chatStore.prompt()
+        const existsPrompt = promptfun.search(name, version)
+        if (!isEmpty(existsPrompt)) {
+            promptfun.publish(name, version, prompt)
             return
         }
-        await this.getPublishPromptInput(f)
+        await this.getPublishPromptInput(prompt)
     }
 
     private selectChatRun = async (
@@ -931,44 +870,6 @@ export class ChatAction implements IChatAction {
             chats.map((it) => ({ name: it.name, value: it.name })),
             f
         )
-    }
-
-    private sortedChats = async (): Promise<Chat[]> => {
-        const cts = this.store.chats()
-        if (isEmpty(cts)) {
-            throw Error(promptMessage.chatMissing)
-        }
-        return this.sortedItem(
-            cts,
-            (s) => s.select,
-            (s) => s.actionTime
-        )
-    }
-
-    private sortedTopics = async (): Promise<ChatTopic[]> => {
-        const tps = this.store.currentChatTopics()
-        if (isEmpty(tps)) {
-            throw Error(promptMessage.topicMissing)
-        }
-        return this.sortedItem(
-            tps,
-            (s) => s.select,
-            (s) => s.createTime
-        )
-    }
-
-    private sortedItem = async <T>(
-        arr: T[],
-        selected: (s: T) => boolean,
-        time: (s: T) => bigint
-    ): Promise<T[]> => {
-        const [st, oths] = await Promise.all([
-            arr.find((it) => selected(it)),
-            arr
-                .filter((it) => !selected(it))
-                .sort((a, b) => Number(time(b) - time(a))),
-        ])
-        return [st!, ...oths]
     }
 
     private subStr = (str: string) => {

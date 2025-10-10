@@ -13,6 +13,7 @@ import type {
     MessageContent,
     Model,
     PresetAct,
+    PromptAct,
     QucikSwitchAct,
     TopicAct,
 } from '../types/store-types'
@@ -48,7 +49,7 @@ export class ChatStore implements IChatStore {
         if (!config) {
             throw new Error(promptMessage.chatConfigMissing)
         }
-        const { id, withContext, sysPrompt } = config
+        const { id, withContext } = config
         return {
             config,
             modifySystemPrompt: (prompt) =>
@@ -62,8 +63,6 @@ export class ChatStore implements IChatStore {
             modifyScenario: (scenario) =>
                 this.client.modifyScenario(id, scenario),
             moidfyModel: (model) => this.client.modifyModel(id, model),
-            publishPrompt: (name, version) =>
-                this.client.publishPrompt(name, version, sysPrompt),
         } as ConfigAct
     }
 
@@ -198,5 +197,13 @@ export class ChatStore implements IChatStore {
             del: (k) => this.client.deleteCache(k),
             set: (c) => this.client.saveOrUpdateCache(c),
         } as CacheAct
+    }
+
+    prompt(): PromptAct {
+        return {
+            list: () => this.client.listPrompt(),
+            search: (n, v) => this.client.searchPrompt(n, v),
+            publish: (n, v, c) => this.client.publishPrompt(n, v, c),
+        } as PromptAct
     }
 }

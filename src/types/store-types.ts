@@ -223,58 +223,52 @@ export interface IDBClient {
     init: () => void
     trans: (fs: RunSql) => void
 
+    // chat
     chats: () => Chat[]
-
     addChat: (name: string) => string
-    addConfig: (chatId: string, model: Model) => void
-    addConfigExt: (chatId: string, ext: string) => void
-    addPreset: (chatId: string, contents: PresetMessageContent[]) => void
-    addTopic: (chatId: string, topicId: string, content: string) => void
-
     selectChat: (name: string, active: boolean) => void
-    unselectTopic: (chatId: string) => void
     currentChat: () => Chat | null
-    currentTopic: (chatId: string) => ChatTopic | null
-    selectTopic: (topicId: string, active: boolean) => void
-
     queryChat: (name: string) => Chat | null
-    queryConfig: (chatId: string) => ChatConfig | null
-    queryConfigExt: (chatId: string) => ChatConfigExt | null
-    queryPreset: (chatId: string) => ChatPresetMessage[]
-    queryTopic: (chatId: string) => ChatTopic[]
+    delChat: (chatId: string) => void
 
+    // config
+    queryConfig: (chatId: string) => ChatConfig | null
+    addConfig: (chatId: string, model: Model) => void
+    delConfig: (chatId: string) => void
     modifySystemPrompt: (configId: string, prompt: string) => void
     modifyContextLimit: (configId: string, limit: number) => void
     modifyContext: (configId: string, active: boolean) => void
     modifyMcp: (configId: string, active: boolean) => void
     modifyScenario: (configId: string, scenario: Scenario) => void
     modifyModel: (configId: string, model: Model) => void
+
+    // ext
+    addConfigExt: (chatId: string, ext: string) => void
+    queryConfigExt: (chatId: string) => ChatConfigExt | null
     updateConfigExt: (chatId: string, ext: string) => void
-
-    delChat: (chatId: string) => void
-    delConfig: (chatId: string) => void
     delConfigExt: (chatId: string) => void
-    delPreset: (chatId: string) => void
-    delChatTopic: (chatId: string) => void
-    delMessage: (topicId: string) => void
 
+    // preset
+    addPreset: (chatId: string, contents: PresetMessageContent[]) => void
+    queryPreset: (chatId: string) => ChatPresetMessage[]
+    delPreset: (chatId: string) => void
+
+    // topic
+    addTopic: (chatId: string, topicId: string, content: string) => void
+    unselectTopic: (chatId: string) => void
+    currentTopic: (chatId: string) => ChatTopic | null
+    selectTopic: (topicId: string, active: boolean) => void
+    queryTopic: (chatId: string) => ChatTopic[]
+    delChatTopic: (chatId: string) => void
+
+    // message
+    delMessage: (topicId: string) => void
     queryMessage: (
         topicId: string,
         limit: number,
         withReasoning?: boolean
     ) => ChatMessage[]
     saveMessage: (messages: MessageContent[]) => void
-
-    queryCmdHis: (type: CmdHistoryType, key: string) => CmdHistory[]
-    addCmdHis: (type: CmdHistoryType, key: string) => void
-    getCmdHis: (type: CmdHistoryType, key: string) => CmdHistory | null
-    delCmdHis: (type: CmdHistoryType, key: string) => void
-    updateCmdHis: (type: CmdHistoryType, key: string, frequency: number) => void
-    addOrUpdateCmdHis: (type: CmdHistoryType, key: string) => void
-
-    publishPrompt: (name: string, version: string, content: string) => void
-    searchPrompt: (name: string, version?: string) => ChatPrompt[]
-
     queryAllExportMessage: () => ExportMessage[]
     queryChatExportMessage: (chatId: string) => ExportMessage[]
     queryChatTopicExportMessage: (
@@ -282,6 +276,20 @@ export interface IDBClient {
         topicId: string
     ) => ExportMessage[]
 
+    // quick cmd
+    queryCmdHis: (type: CmdHistoryType, key: string) => CmdHistory[]
+    addCmdHis: (type: CmdHistoryType, key: string) => void
+    getCmdHis: (type: CmdHistoryType, key: string) => CmdHistory | null
+    delCmdHis: (type: CmdHistoryType, key: string) => void
+    updateCmdHis: (type: CmdHistoryType, key: string, frequency: number) => void
+    addOrUpdateCmdHis: (type: CmdHistoryType, key: string) => void
+
+    // prompt
+    publishPrompt: (name: string, version: string, content: string) => void
+    searchPrompt: (name: string, version?: string) => ChatPrompt[]
+    listPrompt: () => ChatPrompt[]
+
+    // cache
     saveOrUpdateCache: (cache: Cache) => void
     queryCache: (key: string) => Cache | null
     deleteCache: (key: string) => void
@@ -303,7 +311,6 @@ export type ConfigAct = {
     moidfyModel: (model: Model) => void
     modifyMcp: (active: boolean) => void
     modifyScenario: (scenario: Scenario) => void
-    publishPrompt: (name: string, version: string) => void
 }
 
 export type ConfigExtAct = {
@@ -361,12 +368,18 @@ export type CacheAct = {
     set: (caches: Cache) => void
 }
 
+export type PromptAct = {
+    list: () => ChatPrompt[]
+    search: (name: string, version?: string) => ChatPrompt[]
+    publish: (name: string, version: string, content: string) => void
+}
+
 export interface IChatStore {
     chat: (name?: string) => ChatAct
     newChat: (name: string, model: () => Promise<Model>) => Promise<void>
     chats: () => Chat[]
     chatQuickSwitch: () => QucikSwitchAct
-    searchPrompt: (name: string, version?: string) => ChatPrompt[]
     exprot: () => ExportAct
     cache: () => CacheAct
+    prompt: () => PromptAct
 }
