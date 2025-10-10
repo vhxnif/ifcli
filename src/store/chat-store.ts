@@ -1,18 +1,19 @@
 import { promptMessage } from '../config/prompt-message'
 import type {
+    Chat,
+    ChatBo,
+    ChatPrompt,
+    ConfigBo,
+    ConfigExt,
+    ConfigExtBo,
+    Export,
     IChatStore,
     IDBClient,
-    ChatBo,
-    ConfigBo,
-    ConfigExtBo,
-    ConfigExt,
+    MessageContent,
     Model,
     PresetBo,
-    TopicBo,
-    MessageContent,
-    Chat,
     QucikSwitch,
-    ChatPrompt,
+    TopicBo,
 } from '../types/store-types'
 import { uuid } from '../util/common-utils'
 
@@ -179,5 +180,14 @@ export class ChatStore implements IChatStore {
 
     searchPrompt(name: string, version?: string): ChatPrompt[] {
         return this.client.searchPrompt(name, version)
+    }
+
+    exprot(): Export {
+        return {
+            all: () => this.client.queryAllExportMessage(),
+            chat: (chatId) => this.client.queryChatExportMessage(chatId),
+            topic: (chatId, topicId) =>
+                this.client.queryChatTopicExportMessage(chatId, topicId),
+        } as Export
     }
 }

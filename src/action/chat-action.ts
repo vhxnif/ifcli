@@ -789,7 +789,9 @@ export class ChatAction implements IChatAction {
 
     editPresetMessage = async (chatName?: string) => {
         const presetfun = this.chatStore.chat(chatName).getPreset()
-        const sourceText = this.presetMessageText({ presetMessages: presetfun.presets()}).content
+        const sourceText = this.presetMessageText({
+            presetMessages: presetfun.presets(),
+        }).content
         const text = await editor(sourceText)
         if (!text) {
             return
@@ -999,35 +1001,35 @@ export class ChatAction implements IChatAction {
     }
 
     exportAllChatMessage = async (path?: string) => {
-        const msgs = this.store.queryAllExportMessage()
+        const msgs = this.chatStore.exprot().all()
         await this.exportXlsx(msgs, `ifcli_all_chat_message_${unixnow()}`, path)
     }
 
     exportChatMessage = async (path?: string) => {
         const { id: chatId } = await this.allChatToSelect()
         await this.exportXlsx(
-            this.store.queryChatExportMessage(chatId),
+            this.chatStore.exprot().chat(chatId),
             `ifcli_chat_message_${unixnow()}`,
             path
         )
     }
 
     exportChatTopicMessage = async (path?: string) => {
-        const { id: chatId } = await this.allChatToSelect()
-        const topics = this.store.queryTopic(chatId)
+        const { id: chatId, name } = await this.allChatToSelect()
+        const topics = this.chatStore.chat(name).getTopic().topics()
         const { id: topicId } = await this.topicToSelect(topics)
         await this.exportXlsx(
-            this.store.queryChatTopicExportMessage(chatId, topicId),
+            this.chatStore.exprot().topic(chatId, topicId),
             `ifcli_chat_topic_message_${unixnow()}`,
             path
         )
     }
 
     exportTopicMessage = async (path?: string) => {
-        const topics = this.store.currentChatTopics()
-        const { id, chatId } = await this.topicToSelect(topics)
+        const topics = this.chatStore.chat().getTopic().topics()
+        const { id: topicId, chatId } = await this.topicToSelect(topics)
         await this.exportXlsx(
-            this.store.queryChatTopicExportMessage(chatId, id),
+            this.chatStore.exprot().topic(chatId, topicId),
             `ifcli_chat_topic_message_${unixnow()}`,
             path
         )
@@ -1058,7 +1060,7 @@ export class ChatAction implements IChatAction {
     }
 
     private allChatToSelect = async () => {
-        const chats = this.store.chats()
+        const chats = this.chatStore.chats()
         const choices: Choice<Chat>[] = chats.map((it) => ({
             name: it.name,
             value: it,

@@ -10,6 +10,7 @@ import {
     ChatPrompt,
     ChatTopic,
     CmdHistory,
+    ExportMessage,
     SqliteTable,
     type AppSettingContent,
     type CmdHistoryType,
@@ -447,5 +448,54 @@ export class DBClient implements IDBClient {
             .query(`${sql} WHERE name LIKE ?`)
             .as(ChatPrompt)
             .all(`%${name}%`)
+    }
+
+    queryAllExportMessage = () => {
+        return this.db.query(this.exportMessageSql({})).as(ExportMessage).all()
+    }
+
+    queryChatExportMessage = (chatId: string) => {
+        return this.db
+            .query(this.exportMessageSql({ chatId: true }))
+            .as(ExportMessage)
+            .all(chatId)
+    }
+
+    queryChatTopicExportMessage = (chatId: string, topicId: string) => {
+        return this.db
+            .query(this.exportMessageSql({ chatId: true, topicId: true }))
+            .as(ExportMessage)
+            .all(chatId, topicId)
+    }
+
+    private exportMessageSql = (p: { chatId?: boolean; topicId?: boolean }) => {
+        const { chatId, topicId } = p
+        const arr: string[] = []
+        if (chatId) {
+            arr.push('c.id = ?')
+        }
+        if (topicId) {
+            arr.push('t.id = ?')
+        }
+        let where = ''
+        if (arr.length > 0) {
+            where = `where ${arr.join(' and ')}`
+        }
+        return `
+            select 
+            	c.name as chatName,
+            	case when f.with_context = 1 then t.content else null end as topicName,
+            	max(case when m."role" = 'user' then m.content end) as "user",
+            	max(case when m."role" = 'reasoning' then m.content end) as reasoning,
+            	max(case when m."role" = 'assistant' then m.content end) as assistant,
+            	DATETIME(m.action_time / 1000, 'unixepoch')  as actionTime
+            from chat c 
+            inner join chat_topic t on c.id = t.chat_id 
+            inner join chat_message m on m.topic_id = t.id
+            inner join chat_config f on f.chat_id = c.id 
+            ${where}
+            GROUP by m.pair_key
+            order by c.name, t.create_time, m.action_time;
+        `
     }
 }

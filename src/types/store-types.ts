@@ -274,6 +274,13 @@ export interface IDBClient {
 
     publishPrompt: (name: string, version: string, content: string) => void
     searchPrompt: (name: string, version?: string) => ChatPrompt[]
+
+    queryAllExportMessage: () => ExportMessage[]
+    queryChatExportMessage: (chatId: string) => ExportMessage[]
+    queryChatTopicExportMessage: (
+        chatId: string,
+        topicId: string
+    ) => ExportMessage[]
 }
 export type Model = {
     llmType: string
@@ -338,10 +345,17 @@ export type QucikSwitch = {
     addOrUpdate: (key: string) => void
 }
 
+export type Export = {
+    all: () => ExportMessage[]
+    chat: (chatId: string) => ExportMessage[]
+    topic: (chatId: string, topicId: string) => ExportMessage[]
+}
+
 export interface IChatStore {
     chat: (name?: string) => ChatBo
     newChat: (name: string, model: () => Promise<Model>) => Promise<void>
     chats: () => Chat[]
     chatQuickSwitch: () => QucikSwitch
     searchPrompt: (name: string, version?: string) => ChatPrompt[]
+    exprot: () => Export
 }
