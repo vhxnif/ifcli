@@ -739,14 +739,12 @@ export class ChatAction implements IChatAction {
     }
 
     prompt = (chatName?: string) => {
-        if (!chatName) {
-            return this.store.currentChatConfig().sysPrompt
-        }
-        return this.store.queryChatConfig(this.getChat(chatName).id).sysPrompt
+        const { sysPrompt } = this.chatStore.chat(chatName).getConfig().config
+        return sysPrompt
     }
 
     printPrompt = (chatName?: string) => {
-        const pt = this.prompt(chatName)
+        const pt = prompt(chatName)
         if (!pt) {
             throw Error(promptMessage.systemPromptMissing)
         }
