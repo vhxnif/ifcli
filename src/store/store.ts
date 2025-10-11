@@ -173,8 +173,10 @@ export class Store implements IStore {
     ): Promise<void> {
         const chat = this.client.queryChat(name)
         const f = () => {
-            const { name: source } = this.client.currentChat()!
-            this.client.selectChat(source, false)
+            const selected = this.client.currentChat()
+            if (selected) {
+                this.client.selectChat(selected.name, false)
+            }
             this.client.selectChat(name, true)
         }
         if (chat) {
