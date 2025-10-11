@@ -35,7 +35,9 @@
         "ifsetting": "build/setting-command.js"
     },
     "scripts": {
-        "build": "bun build ./src/*-command.ts --outdir ./build --target bun --minify"
+        "build": "bun build ./src/*-command.ts --outdir ./build --target bun --minify",
+        "test": "bun test",
+        "test:watch": "bun test --watch"
     },
     "devDependencies": {
         "@commander-js/extra-typings": "^13.1.0",

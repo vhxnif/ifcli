@@ -5,7 +5,7 @@ export class SqliteTable {
 export class Chat {
     id!: string
     name!: string
-    select!: boolean
+    select!: number // SQLite stores booleans as 0/1
     actionTime!: bigint
     selectTime!: bigint
 }
@@ -14,7 +14,7 @@ export class ChatTopic {
     id!: string
     chatId!: string
     content!: string
-    select!: boolean
+    select!: number // SQLite stores booleans as 0/1
     selectTime!: bigint
     createTime!: bigint
 }
@@ -32,8 +32,8 @@ export class ChatConfig {
     id!: string
     chatId!: string
     sysPrompt!: string
-    withContext!: boolean
-    withMCP!: boolean
+    withContext!: number // SQLite stores booleans as 0/1
+    withMCP!: number // SQLite stores booleans as 0/1
     contextLimit!: number
     llmType!: string
     model!: string
@@ -90,9 +90,11 @@ export class CmdHistory {
     frequency!: number
 }
 
+export type MessageRoleType = 'user' | 'assistant' | 'reasoning' | 'toolscall'
+
 export type MessageContent = {
     topicId: string
-    role: 'user' | 'assistant' | 'reasoning' | 'toolscall'
+    role: MessageRoleType
     content: string
     pairKey: string
 }

@@ -65,7 +65,7 @@ export class Store implements IStore {
                 this.client.modifySystemPrompt(id, prompt),
             modifyContextLimit: (limit) =>
                 this.client.modifyContextLimit(id, limit),
-            moidfyContext: () => this.client.modifyContext(id, !withContext),
+            moidfyContext: () => this.client.modifyContext(id, withContext === 0),
             modifyMcp: (active) => {
                 this.client.modifyMcp(id, active)
             },
