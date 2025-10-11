@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { cmdAct, color } from './app-context'
+import { act, color } from './app-context'
 import { APP_VERSION } from './config/app-setting'
 import { commanderHelpConfiguration } from './util/color-schema'
-import { editor, isEmpty, print, stdin } from './util/common-utils'
+import { editor, matchRun, print, stdin } from './util/common-utils'
 
 const program = new Command()
     .configureHelp(commanderHelpConfiguration(color))
@@ -23,7 +23,7 @@ program
     .argument('[string]')
     .action(async (content, option) => {
         const { edit, syncCall, newTopic, force, retry, attachment } = option
-        const { run, reRun } = cmdAct.chat.ask
+        const { run, reRun } = act.chat.ask
         const ask = async (ct: string) => {
             let str = ct
             if (attachment) {
@@ -45,26 +45,23 @@ program
                 await ask(text)
             }
         }
-        switch (true) {
-            case retry:
-                await reRun()
-                break
-            case !isEmpty(content):
-                await ask(content!)
-                break
-            case edit:
-                await getContentAndAsk(async () => await editor(''))
-                break
-            default:
-                await getContentAndAsk(stdin)
-        }
+        const contentRun = async () => await ask(content!)
+        const editRun = async () =>
+            await getContentAndAsk(async () => await editor(''))
+        const stdinRun = async () => await getContentAndAsk(stdin)
+        await matchRun([
+            [retry, reRun],
+            [content, contentRun],
+            [edit, editRun],
+            [true, stdinRun],
+        ])
     })
 
 program
     .command('new')
     .description('create a new chat session')
     .argument('<name>', 'name for the new chat session')
-    .action(async (content) => await cmdAct.chat.new(content))
+    .action(async (content) => await act.chat.new(content))
 
 program
     .command('history')
@@ -77,14 +74,14 @@ program
     )
     .action(async ({ limit }, cmd) => {
         const force = cmd.parent?.opts()?.force as string
-        await cmdAct.chat.msgHistory(Number(limit), force)
+        await act.chat.msgHistory(Number(limit), force)
     })
 
 program
     .command('remove')
     .alias('rm')
     .description('delete a chat session')
-    .action(async () => await cmdAct.chat.remove())
+    .action(async () => await act.chat.remove())
 
 program
     .command('switch')
@@ -93,7 +90,7 @@ program
     .option('-t, --topic', 'switch to a different topic')
     .argument('[name]', 'target chat session name')
     .action(async (name, { topic }) => {
-        const { chat, topic: cgTopic } = cmdAct.chat.switch
+        const { chat, topic: cgTopic } = act.chat.switch
         if (topic) {
             await cgTopic()
             return
@@ -111,7 +108,7 @@ program
     .option('-p, --publish', 'publish prompt to shared library')
     .action(async ({ query, modify, cover, publish }, cmd) => {
         const name = cmd.parent?.opts().force as string
-        const { list, get, set, show, publish: ps } = cmdAct.chat.prompt
+        const { list, get, set, show, publish: ps } = act.chat.prompt
         const modifyRun = async () => {
             await editor(get(name)).then((text) => {
                 if (text) {
@@ -125,25 +122,17 @@ program
                 set(str.trim(), name)
             }
         }
-        switch (true) {
-            case !isEmpty(query):
-                await list(query!, name)
-                break
-            case modify:
-                await modifyRun()
-                break
-            case typeof cover === 'boolean':
-                await coverStdinRun()
-                break
-            case typeof cover === 'string':
-                set(cover, name)
-                break
-            case publish:
-                await ps(name)
-                break
-            default:
-                show(name)
-        }
+        const coverRun = () => set((cover as string)!, name)
+        await matchRun(
+            [
+                [query, async () => await list(query!, name)],
+                [modify, modifyRun],
+                [typeof cover === 'boolean', coverStdinRun],
+                [typeof cover === 'string', coverRun],
+                [publish, async () => await ps(name)],
+            ],
+            () => show(name)
+        )
     })
 
 program
@@ -155,56 +144,39 @@ program
     .action(async (options, cmd) => {
         const { edit, clear } = options
         const name = cmd.parent?.opts().force as string
-        const preset = cmdAct.chat.preset
-        switch (true) {
-            case edit:
-                await preset.edit(name)
-                break
-            case clear:
-                preset.clear(name)
-                break
-            default:
-                preset.show(name)
-        }
+        const pt = act.chat.preset
+        await matchRun(
+            [
+                [edit, async () => await pt.edit(name)],
+                [clear, () => pt.clear(name)],
+            ],
+            () => pt.show(name)
+        )
     })
 
 program
     .command('config')
     .alias('cf')
     .description('configure chat settings')
-    .option('-c, --context-size <number>', 'set context window size')
     .option('-m, --model', 'switch AI model')
-    .option('-o, --with-context', 'enable/disable context memory', false)
-    .option('-p, --with-mcp', 'enable/disable MCP tools', false)
-    .option('-u, --use-scenario', 'select conversation scenario')
-    .action(
-        async (
-            { contextSize, model, withContext, withMcp, useScenario },
-            cmd
-        ) => {
-            const name = cmd.parent?.opts().force as string
-            const cf = cmdAct.chat.config
-            switch (true) {
-                case !isEmpty(contextSize):
-                    cf.contextSize(Number(contextSize), name)
-                    break
-                case model:
-                    await cf.model(name)
-                    break
-                case withContext:
-                    cf.context(name)
-                    break
-                case withMcp:
-                    await cf.mcp(name)
-                    break
-                case useScenario:
-                    await cf.scenario(name)
-                    break
-                default:
-                    cf.show(name)
-            }
-        }
-    )
+    .option('-c, --context', 'enable/disable context memory', false)
+    .option('-z, --context-size <number>', 'set context window size')
+    .option('-p, --mcp', 'enable/disable MCP tools', false)
+    .option('-s, --scenario', 'select conversation scenario')
+    .action(async ({ contextSize, model, context, mcp, scenario }, cmd) => {
+        const name = cmd.parent?.opts().force as string
+        const cf = act.chat.config
+        await matchRun(
+            [
+                [contextSize, () => cf.contextSize(Number(contextSize), name)],
+                [model, () => cf.model(name)],
+                [context, () => cf.context(name)],
+                [mcp, () => cf.mcp(name)],
+                [scenario, () => cf.scenario(name)],
+            ],
+            () => cf.show(name)
+        )
+    })
 
 program
     .command('export')
@@ -215,20 +187,16 @@ program
     .option('-c, --chat', 'export all topics from selected chat')
     .option('-t, --topic', 'export specific topic from selected chat')
     .action(async (path, { all, chat, topic }) => {
-        const exp = cmdAct.chat.export
-        switch (true) {
-            case all:
-                await exp.all(path)
-                break
-            case chat:
-                await exp.chat(path)
-                break
-            case topic:
-                await exp.chatTopic(path)
-                break
-            default:
-                await exp.topic(path)
+        const exp = act.chat.export
+        const f = (pf: (p?: string) => Promise<void>) => {
+            return async () => await pf(path)
         }
+        await matchRun([
+            [all, f(exp.all)],
+            [chat, f(exp.chat)],
+            [topic, f(exp.chatTopic)],
+            [true, f(exp.topic)],
+        ])
     })
 
 program.parseAsync().catch((e: unknown) => {

@@ -132,7 +132,7 @@ export type SettingCmdAct = {
     prompt: AppPromptAct
 }
 
-export interface ICmdAct {
+export interface IAct {
     chat: ChatCmdAct
     setting: SettingCmdAct
 }

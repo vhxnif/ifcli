@@ -86,19 +86,34 @@ const jsonformat = (jsonString: string) => {
     }
 }
 
+export type VoidResult = Promise<void> | void
+export type OptionType = string | boolean | undefined
+export type OptionAction = () => VoidResult
+
+const matchRun = async (
+    orderedMatchItems: [OptionType, OptionAction][],
+    defaultAction?: () => VoidResult
+): Promise<void> => {
+    await orderedMatchItems.find((it) => it[0])?.[1]()
+    if (defaultAction) {
+        await defaultAction()
+    }
+}
+
 export {
-    jsonformat,
-    exit,
-    editor,
-    isTextSame,
-    stringWidth,
-    stdin,
-    uuid,
-    unixnow,
     containsChinese,
+    editor,
+    exit,
+    groupBy,
+    isEmpty,
+    isTextSame,
+    jsonformat,
+    log,
+    matchRun,
     print,
     println,
-    log,
-    isEmpty,
-    groupBy,
+    stdin,
+    stringWidth,
+    unixnow,
+    uuid,
 }

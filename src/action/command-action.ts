@@ -9,7 +9,7 @@ import type {
     ConfigAct,
     ExportAct,
     IChatAct,
-    ICmdAct,
+    IAct,
     ISettingAct,
     PresetAct,
     PromptAct,
@@ -19,7 +19,7 @@ import type {
 import { ChatAct } from './chat-action'
 import { SettingAct } from './setting-action'
 
-export class CmdAct implements ICmdAct {
+export class Act implements IAct {
     private readonly chatAct: IChatAct
     private readonly settingAct: ISettingAct
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { cmdAct, color } from './app-context'
+import { act, color } from './app-context'
 import { APP_VERSION } from './config/app-setting'
-import { isEmpty, print } from './util/common-utils'
 import { commanderHelpConfiguration } from './util/color-schema'
+import { matchRun, print } from './util/common-utils'
 
 const program = new Command().configureHelp(commanderHelpConfiguration(color))
 
@@ -19,24 +19,16 @@ program
     .description('manage application configuration')
     .option('-m, --modify', 'edit application settings')
     .option('-t, --theme', 'change color theme')
-    .option('-e, --exp', 'export configuration to file')
-    .option('-i, --imp <file>', 'import configuration from file')
-    .action(async ({ modify, theme, exp, imp }) => {
-        const cf = cmdAct.setting.config
-        switch (true) {
-            case modify:
-                await cf.modify()
-                break
-            case theme:
-                await cf.theme()
-                break
-            case exp:
-                await cf.export()
-                break
-            case !isEmpty(imp):
-                await cf.import(imp!)
-                break
-        }
+    .option('-e, --export', 'export configuration to file')
+    .option('-i, --import <file>', 'import configuration from file')
+    .action(async ({ modify, theme, export: exp, import: imp }) => {
+        const cf = act.setting.config
+        await matchRun([
+            [modify, cf.modify],
+            [theme, cf.theme],
+            [exp, cf.export],
+            [imp, async () => await cf.import(imp!)],
+        ])
     })
 
 program
@@ -45,15 +37,11 @@ program
     .option('-l, --list', 'list configured MCP servers')
     .option('-t, --test', 'test MCP server connectivity')
     .action(async ({ list, test }) => {
-        const tools = cmdAct.setting.mcp.tools
-        switch (true) {
-            case list:
-                await tools.list()
-                break
-            case test:
-                await tools.test()
-                break
-        }
+        const tools = act.setting.mcp.tools
+        await matchRun([
+            [list, tools.list],
+            [test, tools.test],
+        ])
     })
 
 program
@@ -61,11 +49,11 @@ program
     .alias('pt')
     .description('manage system prompts library')
     .option('-l, --list [name]', 'list prompts (optionally filter by name)')
-    .option('-e, --exp', 'export prompts to files')
-    .option('-i, --imp <file>', 'import prompt from file')
+    .option('-e, --export', 'export prompts to files')
+    .option('-i, --import <file>', 'import prompt from file')
     .option('-d, --delete [name]', 'delete prompt (optionally specify name)')
-    .action(async ({ list, exp, imp, delete: del }) => {
-        const pt = cmdAct.setting.prompt
+    .action(async ({ list, export: exp, import: imp, delete: del }) => {
+        const pt = act.setting.prompt
         const listRun = async () => {
             if (typeof list === 'string') {
                 await pt.list(list)
@@ -80,20 +68,12 @@ program
             }
             await pt.delete()
         }
-        switch (true) {
-            case list:
-                await listRun()
-                break
-            case del:
-                await deleteRun()
-                break
-            case exp:
-                await pt.export()
-                break
-            case !isEmpty(imp):
-                await pt.import(imp!)
-                break
-        }
+        await matchRun([
+            [list, listRun],
+            [del, deleteRun],
+            [exp, pt.export],
+            [imp, async () => await pt.import(imp!)],
+        ])
     })
 
 program.parseAsync().catch((e: unknown) => {
