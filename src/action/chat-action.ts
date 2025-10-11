@@ -51,9 +51,7 @@ import { TextShow } from '../component/text-show'
 import { themes } from '../util/theme'
 import writeXlsxFile, { type Schema } from 'write-excel-file/node'
 import { OpenAiClient } from '../llm/open-ai-client'
-import { configShow } from '../component/cf-show'
-import { verify } from 'crypto'
-import { version } from 'os'
+import { simpleShow } from '../component/cf-show'
 
 export class ChatAction implements IChatAction {
     private generalSetting: GeneralSetting
@@ -256,7 +254,7 @@ export class ChatAction implements IChatAction {
         const chat = this.store.chat.get(chatName)
         const cf = chat.config.value
         const ext = chat.configExt.value
-        configShow.chatConfigShow(chat.value.name, cf, ext, color)
+        simpleShow.chatConfigShow(chat.value.name, cf, ext, color)
     }
 
     printChatHistory = async (limit: number, chatName?: string) => {
@@ -613,7 +611,7 @@ export class ChatAction implements IChatAction {
                 }
             })
         )
-        configShow.mcpHealthCheckShow(data, color)
+        simpleShow.mcpHealthCheckShow(data, color)
     }
 
     testTool = async () => {
@@ -627,7 +625,7 @@ export class ChatAction implements IChatAction {
             try {
                 await m.connect()
                 const res = await m.listTools()
-                configShow.mcpTestShow(
+                simpleShow.mcpTestShow(
                     res.tools.map((it) => ({
                         name: it.name,
                         description: it.description ?? '',

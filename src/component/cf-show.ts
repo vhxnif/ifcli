@@ -10,7 +10,7 @@ import type { GeneralSetting } from '../config/app-setting'
 import { themes } from '../util/theme'
 import type { ChatConfig, ConfigExt } from '../store/store-types'
 
-class ConfigShow {
+class SimpleShow {
     constructor() {}
 
     yes(color: Record<CatppuccinColorName, ChalkInstance>) {
@@ -113,4 +113,4 @@ class ConfigShow {
     }
 }
 
-export const configShow = new ConfigShow()
+export const simpleShow = new SimpleShow()
