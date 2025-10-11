@@ -229,6 +229,7 @@ export class Store implements IStore {
             list: () => this.client.listPrompt(),
             search: (n, v) => this.client.searchPrompt(n, v),
             publish: (n, v, c) => this.client.publishPrompt(n, v, c),
+            delete: (n, v) => this.client.deletePrompt(n, v),
         } as PromptAct
     }
 

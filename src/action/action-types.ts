@@ -24,6 +24,7 @@ export interface IChatAction {
     publishPrompt: (chatName?: string) => Promise<void>
     selectPrompt: (name: string, chatName?: string) => Promise<void>
     listPrompt: (name?: string) => Promise<void>
+    deletePrompt: (name?: string) => Promise<void>
     tools: () => Promise<void>
     testTool: () => Promise<void>
 

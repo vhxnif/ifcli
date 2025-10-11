@@ -52,6 +52,8 @@ import { themes } from '../util/theme'
 import writeXlsxFile, { type Schema } from 'write-excel-file/node'
 import { OpenAiClient } from '../llm/open-ai-client'
 import { configShow } from '../component/cf-show'
+import { verify } from 'crypto'
+import { version } from 'os'
 
 export class ChatAction implements IChatAction {
     private generalSetting: GeneralSetting
@@ -517,21 +519,7 @@ export class ChatAction implements IChatAction {
     }
 
     listPrompt = async (name?: string) => {
-        const { search, list } = this.store.prompt
-        let prompts
-        if (name) {
-            prompts = search(name)
-        } else {
-            prompts = list()
-        }
-        if (isEmpty(prompts)) {
-            throw Error(promptMessage.systemPromptNoMatching)
-        }
-        const choices: Choice<ChatPrompt>[] = prompts.map((it) => ({
-            name: it.name,
-            value: it,
-            description: this.promptChoiceDesc(it),
-        }))
+        const choices = this.promptChoice(name)
         const ptShow = async (df?: string) => {
             const value = await select({
                 message: 'System Prompt:',
@@ -547,6 +535,38 @@ export class ChatAction implements IChatAction {
             await ptShow(name)
         }
         await ptShow()
+    }
+
+    deletePrompt = async (name?: string): Promise<void> => {
+        const choices = this.promptChoice(name)
+        const value = await select({
+            message: 'Delete Prompt:',
+            choices,
+            theme: themeStyle(color),
+        })
+        if (!value) {
+            throw Error(promptMessage.systemPromptNoMatching)
+        }
+        const { name: ptName, version } = value
+        this.store.prompt.delete(ptName, version)
+    }
+
+    private promptChoice = (name?: string): Choice<ChatPrompt>[] => {
+        const { search, list } = this.store.prompt
+        let prompts
+        if (name) {
+            prompts = search(name)
+        } else {
+            prompts = list()
+        }
+        if (isEmpty(prompts)) {
+            throw Error(promptMessage.systemPromptNoMatching)
+        }
+        return prompts.map((it) => ({
+            name: it.name,
+            value: it,
+            description: this.promptChoiceDesc(it),
+        }))
     }
 
     private promptChoiceDesc = (pt: ChatPrompt) => {

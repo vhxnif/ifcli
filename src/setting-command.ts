@@ -63,7 +63,8 @@ program
     .option('-l, --list [name]', 'list prompts (optionally filter by name)')
     .option('-e, --exp', 'export prompts to files')
     .option('-i, --imp <file>', 'import prompt from file')
-    .action(async ({ list, exp, imp }) => {
+    .option('-d, --delete [name]', 'delete prompt (optionally specify name)')
+    .action(async ({ list, exp, imp, delete: del }) => {
         if (list) {
             if (typeof list === 'string') {
                 await chatAction.listPrompt(list)
@@ -78,6 +79,14 @@ program
         }
         if (imp) {
             await chatAction.importPrompt(imp)
+            return
+        }
+        if (del) {
+            if (typeof del === 'string') {
+                await chatAction.deletePrompt(del)
+                return
+            }
+            await chatAction.deletePrompt()
             return
         }
     })

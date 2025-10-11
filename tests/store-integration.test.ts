@@ -341,6 +341,43 @@ describe('Store - Integration Tests with Memory Database', () => {
       expect(prompts[0].content).toBe(promptContent)
       expect(allPrompts).toHaveLength(1)
     })
+
+    test('should delete prompts', () => {
+      // Arrange
+      const promptName = 'test-prompt'
+      const promptVersion = '1.0'
+      const promptContent = 'Test prompt content'
+
+      // Act
+      store.prompt.publish(promptName, promptVersion, promptContent)
+      const promptsBeforeDelete = store.prompt.list()
+      store.prompt.delete(promptName, promptVersion)
+      const promptsAfterDelete = store.prompt.list()
+
+      // Assert
+      expect(promptsBeforeDelete).toHaveLength(1)
+      expect(promptsAfterDelete).toHaveLength(0)
+    })
+
+    test('should delete specific prompt version', () => {
+      // Arrange
+      const promptName = 'test-prompt'
+      const promptVersion1 = '1.0'
+      const promptVersion2 = '2.0'
+      const promptContent = 'Test prompt content'
+
+      // Act
+      store.prompt.publish(promptName, promptVersion1, promptContent)
+      store.prompt.publish(promptName, promptVersion2, promptContent)
+      const promptsBeforeDelete = store.prompt.list()
+      store.prompt.delete(promptName, promptVersion1)
+      const promptsAfterDelete = store.prompt.list()
+
+      // Assert
+      expect(promptsBeforeDelete).toHaveLength(2)
+      expect(promptsAfterDelete).toHaveLength(1)
+      expect(promptsAfterDelete[0].version).toBe(promptVersion2)
+    })
   })
 
   describe('App setting operations', () => {

@@ -432,6 +432,12 @@ export class DBClient implements IDBClient {
             .all()
     }
 
+    deletePrompt(name: string, version: string): void {
+        this.db
+            .prepare(`DELETE FROM chat_prompt WHERE name = ? and version = ?`)
+            .run(name, version)
+    }
+
     queryAllExportMessage(): ExportMessage[] {
         return this.db.query(this.exportMessageSql({})).as(ExportMessage).all()
     }

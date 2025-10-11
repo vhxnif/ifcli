@@ -200,6 +200,7 @@ export interface IDBClient {
     publishPrompt: (name: string, version: string, content: string) => void
     searchPrompt: (name: string, version?: string) => ChatPrompt[]
     listPrompt: () => ChatPrompt[]
+    deletePrompt: (name: string, version: string) => void
 
     // cache
     saveOrUpdateCache: (cache: Cache) => void
@@ -298,6 +299,7 @@ export type PromptAct = {
     list: () => ChatPrompt[]
     search: (name: string, version?: string) => ChatPrompt[]
     publish: (name: string, version: string, content: string) => void
+    delete: (name: string, version: string) => void
 }
 
 export type AppSettingAct = {
