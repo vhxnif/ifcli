@@ -49,16 +49,16 @@ Each release includes a version-specific SQLite database file (`ifcli_<version>.
 ```bash
 Usage: ifsetting|ist [options] [command]
 
-Setting management
+Manage application settings and configuration
 
 Options:
   -V, --version        output the version number
   -h, --help           display help for command
 
 Commands:
-  config|cf [options]  configuration management
-  mcp [options]        MCP server management
-  prompt|pt [options]  system prompt management
+  config|cf [options]  manage application configuration
+  mcp [options]        manage MCP (Model Context Protocol) servers
+  prompt|pt [options]  manage system prompts library
   help [command]       display help for command
 ```
 
@@ -67,26 +67,27 @@ Commands:
 ```bash
 Usage: ifchat|ict [options] [command] [string]
 
-Chat with AI
+Interactive AI chat interface
 
 Options:
   -V, --version                output the version number
   -f, --force <name>           use specified chat session
-  -s, --sync-call              synchronous call (non-streaming)
-  -e, --edit                   use editor for input
-  -t, --new-topic              start new topic
-  -r, --retry                  retry last question
+  -s, --sync-call              use synchronous (non-streaming) mode
+  -e, --edit                   open editor for input
+  -t, --new-topic              start a new conversation topic
+  -r, --retry                  retry the last question
+  -a, --attachment <file>      attach file content to message
   -h, --help                   display help for command
 
 Commands:
-  new <string>                 create new chat
-  history|hs [options]         view chat history
-  remove|rm                    remove chat session
-  switch|st [options] [name]   switch to another chat or topic
-  prompt|pt [options]          prompt manager
-  preset|ps [options]          preset message manager
-  config|cf [options]          manage chat configuration
-  export|exp [options] [path]  export chat messages
+  new <string>                 create a new chat session
+  history|hs [options]         view chat conversation history
+  remove|rm                    delete a chat session
+  switch|st [options] [name]   switch between chat sessions or topics
+  prompt|pt [options]          manage system prompts
+  preset|ps [options]          manage preset message templates
+  config|cf [options]          configure chat settings
+  export|exp [options] [path]  export chat conversations
 ```
 
 ## Application Settings

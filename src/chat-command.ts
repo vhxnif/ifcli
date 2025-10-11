@@ -13,13 +13,13 @@ program
     .name('ifchat')
     .alias('ict')
     .version(`${APP_VERSION}`)
-    .description('chat with AI')
+    .description('Interactive AI chat interface')
     .option('-f, --force <name>', 'use specified chat session')
-    .option('-s, --sync-call', 'synchronous call (non-streaming)')
-    .option('-e, --edit', 'use editor for input')
-    .option('-t, --new-topic', 'start new topic')
-    .option('-r, --retry', 'retry last question')
-    .option('-a, --attachment <file>', 'include file as attachment')
+    .option('-s, --sync-call', 'use synchronous (non-streaming) mode')
+    .option('-e, --edit', 'open editor for input')
+    .option('-t, --new-topic', 'start a new conversation topic')
+    .option('-r, --retry', 'retry the last question')
+    .option('-a, --attachment <file>', 'attach file content to message')
     .argument('[string]')
     .action(async (content, option) => {
         const { edit, syncCall, newTopic, force, retry, attachment } = option
@@ -62,15 +62,15 @@ program
 
 program
     .command('new')
-    .description('create new chat')
-    .argument('<string>')
+    .description('create a new chat session')
+    .argument('<name>', 'name for the new chat session')
     .action(async (content) => await chatAction.newChat(content))
 
 program
     .command('history')
     .alias('hs')
-    .description('view chat history')
-    .option('-l, --limit <limit>', 'history message limit', '100')
+    .description('view chat conversation history')
+    .option('-l, --limit <number>', 'maximum number of messages to display', '100')
     .action(async ({ limit }, cmd) => {
         const force = cmd.parent?.opts()?.force as string
         chatAction.printChatHistory(Number(limit), force)
@@ -79,15 +79,15 @@ program
 program
     .command('remove')
     .alias('rm')
-    .description('remove chat session')
+    .description('delete a chat session')
     .action(async () => await chatAction.removeChat())
 
 program
     .command('switch')
     .alias('st')
-    .description('switch to another chat or topic')
-    .option('-t, --topic', 'switch to anther topic')
-    .argument('[name]')
+    .description('switch between chat sessions or topics')
+    .option('-t, --topic', 'switch to a different topic')
+    .argument('[name]', 'target chat session name')
     .action(async (name, { topic }) => {
         if (topic) {
             await chatAction.changeTopic()
@@ -99,11 +99,11 @@ program
 program
     .command('prompt')
     .alias('pt')
-    .description('prompt manager')
-    .option('-q, --query <name>', 'query and set prompt for current chat')
-    .option('-m, --modify', "modify the current chat's prompt")
-    .option('-c, --cover [prompt]', "override the current chat's prompt")
-    .option('-p, --publish', 'publish  prompt')
+    .description('manage system prompts')
+    .option('-q, --query <name>', 'search and set prompt for current chat')
+    .option('-m, --modify', 'edit the current chat prompt')
+    .option('-c, --cover [prompt]', 'replace the current chat prompt')
+    .option('-p, --publish', 'publish prompt to shared library')
     .action(async ({ query, modify, cover, publish }, cmd) => {
         const name = cmd.parent?.opts().force as string
         if (query) {
@@ -139,9 +139,9 @@ program
 program
     .command('preset')
     .alias('ps')
-    .description('preset message manager')
-    .option('-e, --edit', 'edit preset message')
-    .option('-c, --clear', 'clear preset message')
+    .description('manage preset message templates')
+    .option('-e, --edit', 'edit preset messages')
+    .option('-c, --clear', 'clear all preset messages')
     .action(async (options, cmd) => {
         const { edit, clear } = options
         const name = cmd.parent?.opts().force as string
@@ -158,12 +158,12 @@ program
 program
     .command('config')
     .alias('cf')
-    .description('manage chat config')
-    .option('-c, --context-size <contextSize>', 'update context size')
-    .option('-m, --model', `switch model`)
-    .option('-o, --with-context', 'change with-context', false)
-    .option('-p, --with-mcp', 'change with-mcp', false)
-    .option('-u, --use-scenario', 'use scenario')
+    .description('configure chat settings')
+    .option('-c, --context-size <number>', 'set context window size')
+    .option('-m, --model', 'switch AI model')
+    .option('-o, --with-context', 'enable/disable context memory', false)
+    .option('-p, --with-mcp', 'enable/disable MCP tools', false)
+    .option('-u, --use-scenario', 'select conversation scenario')
     .action(
         async (
             { contextSize, model, withContext, withMcp, useScenario },
@@ -192,11 +192,11 @@ program
 program
     .command('export')
     .alias('exp')
-    .argument('[path]', 'default: $HOME')
-    .description('export chat message')
-    .option('-a, --all', 'export all chat messages')
-    .option('-c, --chat', 'select chat and export all topic messages')
-    .option('-t, --topic', 'select chat and topic then export topic messages')
+    .argument('[path]', 'export directory (default: $HOME)')
+    .description('export chat conversations')
+    .option('-a, --all', 'export all chat sessions')
+    .option('-c, --chat', 'export all topics from selected chat')
+    .option('-t, --topic', 'export specific topic from selected chat')
     .action(async (path, { all, chat, topic }) => {
         if (all) {
             await chatAction.exportAllChatMessage(path)
