@@ -44,10 +44,10 @@ export class ChatConfig {
 
 export class ChatConfigExt {
     id!: string
-    chat_id!: string
+    chatId!: string
     ext!: string
-    createTime!: string
-    updateTime!: string
+    createTime!: bigint
+    updateTime!: bigint
 }
 
 export class ChatPrompt {

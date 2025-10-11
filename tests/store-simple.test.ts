@@ -5,14 +5,15 @@ import type { IDBClient } from '../src/store/store-types'
 // Mock DBClient to avoid complex database operations
 const createMockDBClient = (): IDBClient => {
   const mockClient = {
+    init: mock(() => {}),
     chats: mock(() => []),
     addChat: mock((name: string) => `chat-${name}`),
     queryChat: mock((name: string) => ({
       id: `chat-${name}`,
       name,
       select: 0,
-      actionTime: Date.now(),
-      selectTime: Date.now()
+      actionTime: BigInt(Date.now()),
+      selectTime: BigInt(Date.now())
     })),
     currentChat: mock(() => null),
     selectChat: mock(() => {}),
@@ -29,14 +30,14 @@ const createMockDBClient = (): IDBClient => {
       model: 'deepseek-chat',
       scenarioName: 'general',
       scenario: 0.7,
-      updateTime: Date.now()
+      updateTime: BigInt(Date.now())
     })),
     queryConfigExt: mock((chatId: string) => ({
       id: `config-ext-${chatId}`,
       chatId,
       ext: JSON.stringify({ mcpServers: [] }),
-      createTime: Date.now(),
-      updateTime: Date.now()
+      createTime: BigInt(Date.now()),
+      updateTime: BigInt(Date.now())
     })),
     modifySystemPrompt: mock(() => {}),
     modifyContextLimit: mock(() => {}),
@@ -172,9 +173,9 @@ describe('Store - Simple Business Logic Tests', () => {
   describe('Quick switch operations', () => {
     test('should delegate list to DBClient', () => {
       // Arrange
-      const mockQueryCmdHis = mockDBClient.queryCmdHis
+      const mockQueryCmdHis = mockDBClient.queryCmdHis as ReturnType<typeof mock>
       mockQueryCmdHis.mockReturnValue([
-        { id: '1', type: 'chat_switch', key: 'test', lastSwitchTime: Date.now(), frequency: 1 }
+        { id: '1', type: 'chat_switch', key: 'test', lastSwitchTime: BigInt(Date.now()), frequency: 1 }
       ])
 
       // Act
@@ -198,9 +199,9 @@ describe('Store - Simple Business Logic Tests', () => {
 
     test('should delegate get to DBClient', () => {
       // Arrange
-      const mockGetCmdHis = mockDBClient.getCmdHis
+      const mockGetCmdHis = mockDBClient.getCmdHis as ReturnType<typeof mock>
       mockGetCmdHis.mockReturnValue({
-        id: '1', type: 'chat_switch', key: 'test', lastSwitchTime: Date.now(), frequency: 1
+        id: '1', type: 'chat_switch', key: 'test', lastSwitchTime: BigInt(Date.now()), frequency: 1
       })
 
       // Act
@@ -248,7 +249,7 @@ describe('Store - Simple Business Logic Tests', () => {
   describe('Cache operations', () => {
     test('should delegate get to DBClient', () => {
       // Arrange
-      const mockQueryCache = mockDBClient.queryCache
+      const mockQueryCache = mockDBClient.queryCache as ReturnType<typeof mock>
       mockQueryCache.mockReturnValue({ key: 'test', value: 'test-value' })
 
       // Act
@@ -285,9 +286,9 @@ describe('Store - Simple Business Logic Tests', () => {
   describe('Prompt operations', () => {
     test('should delegate list to DBClient', () => {
       // Arrange
-      const mockListPrompt = mockDBClient.listPrompt
+      const mockListPrompt = mockDBClient.listPrompt as ReturnType<typeof mock>
       mockListPrompt.mockReturnValue([
-        { name: 'test', version: '1.0', role: 'system', content: 'test content', modifyTime: Date.now() }
+        { name: 'test', version: '1.0', role: 'system', content: 'test content', modifyTime: BigInt(Date.now()) }
       ])
 
       // Act
@@ -300,9 +301,9 @@ describe('Store - Simple Business Logic Tests', () => {
 
     test('should delegate search to DBClient', () => {
       // Arrange
-      const mockSearchPrompt = mockDBClient.searchPrompt
+      const mockSearchPrompt = mockDBClient.searchPrompt as ReturnType<typeof mock>
       mockSearchPrompt.mockReturnValue([
-        { name: 'test', version: '1.0', role: 'system', content: 'test content', modifyTime: Date.now() }
+        { name: 'test', version: '1.0', role: 'system', content: 'test content', modifyTime: BigInt(Date.now()) }
       ])
 
       // Act
@@ -359,7 +360,7 @@ describe('Store - Simple Business Logic Tests', () => {
   describe('Export operations', () => {
     test('should delegate all to DBClient', () => {
       // Arrange
-      const mockQueryAllExportMessage = mockDBClient.queryAllExportMessage
+      const mockQueryAllExportMessage = mockDBClient.queryAllExportMessage as ReturnType<typeof mock>
       mockQueryAllExportMessage.mockReturnValue([
         { chatName: 'test', topicName: 'topic', user: 'hello', reasoning: null, assistant: 'hi', actionTime: '2024-01-01' }
       ])
@@ -374,7 +375,7 @@ describe('Store - Simple Business Logic Tests', () => {
 
     test('should delegate chat to DBClient', () => {
       // Arrange
-      const mockQueryChatExportMessage = mockDBClient.queryChatExportMessage
+      const mockQueryChatExportMessage = mockDBClient.queryChatExportMessage as ReturnType<typeof mock>
       mockQueryChatExportMessage.mockReturnValue([
         { chatName: 'test', topicName: 'topic', user: 'hello', reasoning: null, assistant: 'hi', actionTime: '2024-01-01' }
       ])
@@ -389,7 +390,7 @@ describe('Store - Simple Business Logic Tests', () => {
 
     test('should delegate topic to DBClient', () => {
       // Arrange
-      const mockQueryChatTopicExportMessage = mockDBClient.queryChatTopicExportMessage
+      const mockQueryChatTopicExportMessage = mockDBClient.queryChatTopicExportMessage as ReturnType<typeof mock>
       mockQueryChatTopicExportMessage.mockReturnValue([
         { chatName: 'test', topicName: 'topic', user: 'hello', reasoning: null, assistant: 'hi', actionTime: '2024-01-01' }
       ])

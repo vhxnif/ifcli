@@ -54,24 +54,39 @@ export class Store implements IStore {
     }
 
     private config(chatId: string): ConfigAct {
-        const config = this.client.queryConfig(chatId)
+        let config = this.client.queryConfig(chatId)
         if (!config) {
             throw new Error(promptMessage.chatConfigMissing)
         }
         const { id, withContext } = config
         return {
-            value: config,
-            modifySystemPrompt: (prompt) =>
-                this.client.modifySystemPrompt(id, prompt),
-            modifyContextLimit: (limit) =>
-                this.client.modifyContextLimit(id, limit),
-            moidfyContext: () => this.client.modifyContext(id, withContext === 0),
+            get value() {
+                return config!
+            },
+            modifySystemPrompt: (prompt) => {
+                this.client.modifySystemPrompt(id, prompt)
+                config = this.client.queryConfig(chatId)!
+            },
+            modifyContextLimit: (limit) => {
+                this.client.modifyContextLimit(id, limit)
+                config = this.client.queryConfig(chatId)!
+            },
+            moidfyContext: () => {
+                this.client.modifyContext(id, withContext === 0)
+                config = this.client.queryConfig(chatId)!
+            },
             modifyMcp: (active) => {
                 this.client.modifyMcp(id, active)
+                config = this.client.queryConfig(chatId)!
             },
-            modifyScenario: (scenario) =>
-                this.client.modifyScenario(id, scenario),
-            moidfyModel: (model) => this.client.modifyModel(id, model),
+            modifyScenario: (scenario) => {
+                this.client.modifyScenario(id, scenario)
+                config = this.client.queryConfig(chatId)!
+            },
+            moidfyModel: (model) => {
+                this.client.modifyModel(id, model)
+                config = this.client.queryConfig(chatId)!
+            },
         } as ConfigAct
     }
 
