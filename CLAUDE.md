@@ -65,6 +65,35 @@ bunx prettier --write src/
 
 ## Development Guidelines
 
+### Code Quality Checks
+
+#### ESLint Validation
+After making code changes, always run ESLint to ensure code style consistency:
+```bash
+# Check all source files
+bunx eslint src/
+
+# Check specific file
+bunx eslint src/path/to/file.ts
+
+# Auto-fix fixable issues
+bunx eslint src/ --fix
+```
+
+#### IDE Configuration
+Ensure your IDE is configured with the following settings:
+- **TypeScript**: Enable strict mode and type checking
+- **ESLint**: Enable automatic linting on save
+- **Prettier**: Configure to match project style (single quotes, no semicolons)
+- **EditorConfig**: Use 4-space indentation
+
+#### Pre-Change Validation Checklist
+Before committing changes, verify:
+1. ✅ ESLint passes without errors
+2. ✅ TypeScript compilation succeeds (`bun run build`)
+3. ✅ Code follows project style guidelines
+4. ✅ No console warnings in development mode
+
 ### Code Style
 - **Semicolons**: Disabled (ESLint rule: `semi: ['error', 'never']`)
 - **Quotes**: Single quotes preferred
