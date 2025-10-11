@@ -5,7 +5,7 @@ import { AppSettingParse, type GeneralSetting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { askFlow } from '../llm/ask-flow'
 import { Display } from '../component/llm-result-show'
-import type { AskContent, IChatAction } from './action-types'
+import type { AskContent, IChatAct } from './action-types'
 import { temperature } from '../llm/llm-constant'
 import type { ILLMClient } from '../llm/llm-types'
 import MCPClient from '../llm/mcp-client'
@@ -53,7 +53,7 @@ import writeXlsxFile, { type Schema } from 'write-excel-file/node'
 import { OpenAiClient } from '../llm/open-ai-client'
 import { simpleShow } from '../component/simple-show'
 
-export class ChatAction implements IChatAction {
+export class ChatAct implements IChatAct {
     private generalSetting: GeneralSetting
     private clientMap: Map<string, ILLMClient> = new Map()
     private mcps: MCPClient[]

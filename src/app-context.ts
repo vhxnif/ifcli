@@ -1,28 +1,13 @@
 import Database from 'bun:sqlite'
-import { ChatAction } from './action/chat-action'
-import { SettingAction } from './action/setting-action'
-import { AppConfig } from './config/app-config'
-import type {
-    IChatAction,
-    ICommanndAct,
-    ISettingAction,
-} from './action/action-types'
-import type { IDBClient } from './store/store-types'
-import { themes } from './util/theme'
-import { catppuccinColorSchema, chalkColor } from './util/color-schema'
-import { DBClient } from './store/db-client'
+import type { ICmdAct } from './action/action-types'
+import { CmdAct } from './action/command-action'
+import { DataPathConfig } from './config/data-config'
 import { Store } from './store/store'
-import { CommandAction } from './action/command-action'
+import { chalkThemeColor } from './util/color-schema'
 
-const { dataPath } = new AppConfig()
-const database = new Database(dataPath(), { strict: true })
-const client: IDBClient = new DBClient(database)
-const store = new Store(client)
-const settingAction: ISettingAction = new SettingAction(store)
-const chatAction: IChatAction = new ChatAction(store)
-const cmdAct: ICommanndAct = new CommandAction({ chatAction })
-// theme
-const { palette } = themes[settingAction.generalSetting.theme]
-const color = chalkColor(catppuccinColorSchema[palette])
+const { databasePath } = new DataPathConfig()
+const store = new Store(new Database(databasePath, { strict: true }))
+const cmdAct: ICmdAct = new CmdAct(store)
+const color = chalkThemeColor(cmdAct.setting.config.general().theme)
 
-export { settingAction, chatAction, cmdAct, color }
+export { cmdAct, color }

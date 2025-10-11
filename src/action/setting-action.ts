@@ -1,13 +1,13 @@
 import { color } from '../app-context'
 import { AppSettingParse, type GeneralSetting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
-import type { ISettingAction } from './action-types'
+import type { ISettingAct } from './action-types'
 import type { IStore } from '../store/store-types'
 import { editor, isTextSame } from '../util/common-utils'
 import { select, themeStyle, type Choice } from '../util/inquirer-utils'
 import { themes } from '../util/theme'
 
-export class SettingAction implements ISettingAction {
+export class SettingAct implements ISettingAct {
     private readonly store: IStore
     constructor(store: IStore) {
         this.store = store

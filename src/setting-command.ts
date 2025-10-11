@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { chatAction, color, settingAction } from './app-context'
+import { cmdAct, color } from './app-context'
 import { APP_VERSION } from './config/app-setting'
-import { print } from './util/common-utils'
+import { isEmpty, print } from './util/common-utils'
 import { commanderHelpConfiguration } from './util/color-schema'
 
 const program = new Command().configureHelp(commanderHelpConfiguration(color))
@@ -22,21 +22,20 @@ program
     .option('-e, --exp', 'export configuration to file')
     .option('-i, --imp <file>', 'import configuration from file')
     .action(async ({ modify, theme, exp, imp }) => {
-        if (modify) {
-            await settingAction.setting()
-            return
-        }
-        if (theme) {
-            await settingAction.theme()
-            return
-        }
-        if (exp) {
-            await settingAction.exportSetting()
-            return
-        }
-        if (imp) {
-            await settingAction.importSetting(imp)
-            return
+        const cf = cmdAct.setting.config
+        switch (true) {
+            case modify:
+                await cf.modify()
+                break
+            case theme:
+                await cf.theme()
+                break
+            case exp:
+                await cf.export()
+                break
+            case !isEmpty(imp):
+                await cf.import(imp!)
+                break
         }
     })
 
@@ -46,13 +45,14 @@ program
     .option('-l, --list', 'list configured MCP servers')
     .option('-t, --test', 'test MCP server connectivity')
     .action(async ({ list, test }) => {
-        if (list) {
-            await chatAction.tools()
-            return
-        }
-        if (test) {
-            await chatAction.testTool()
-            return
+        const tools = cmdAct.setting.mcp.tools
+        switch (true) {
+            case list:
+                await tools.list()
+                break
+            case test:
+                await tools.test()
+                break
         }
     })
 
@@ -65,29 +65,34 @@ program
     .option('-i, --imp <file>', 'import prompt from file')
     .option('-d, --delete [name]', 'delete prompt (optionally specify name)')
     .action(async ({ list, exp, imp, delete: del }) => {
-        if (list) {
+        const pt = cmdAct.setting.prompt
+        const listRun = async () => {
             if (typeof list === 'string') {
-                await chatAction.listPrompt(list)
+                await pt.list(list)
                 return
             }
-            await chatAction.listPrompt()
-            return
+            await pt.list()
         }
-        if (exp) {
-            await chatAction.exportPrompt()
-            return
-        }
-        if (imp) {
-            await chatAction.importPrompt(imp)
-            return
-        }
-        if (del) {
+        const deleteRun = async () => {
             if (typeof del === 'string') {
-                await chatAction.deletePrompt(del)
+                await pt.delete(del)
                 return
             }
-            await chatAction.deletePrompt()
-            return
+            await pt.delete()
+        }
+        switch (true) {
+            case list:
+                await listRun()
+                break
+            case del:
+                await deleteRun()
+                break
+            case exp:
+                await pt.export()
+                break
+            case !isEmpty(imp):
+                await pt.import(imp!)
+                break
         }
     })
 

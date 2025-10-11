@@ -1,431 +1,464 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import Database from 'bun:sqlite'
-import { DBClient } from '../src/store/db-client'
 import { Store } from '../src/store/store'
-import type { Model, PresetMessageContent, Cache, AppSettingContent } from '../src/store/store-types'
+import type {
+    Model,
+    PresetMessageContent,
+    Cache,
+    AppSettingContent,
+} from '../src/store/store-types'
 
 // Helper functions for test data
 const createModel = (llmType: string, model: string): Model => ({
-  llmType,
-  model,
+    llmType,
+    model,
 })
 
-const createPresetMessage = (user: string, assistant: string): PresetMessageContent => ({
-  user,
-  assistant,
+const createPresetMessage = (
+    user: string,
+    assistant: string
+): PresetMessageContent => ({
+    user,
+    assistant,
 })
 
 const createAppSetting = (content: {
-  version: string
-  generalSetting: string
-  mcpServer: string
-  llmSetting: string
+    version: string
+    generalSetting: string
+    mcpServer: string
+    llmSetting: string
 }): AppSettingContent => ({
-  ...content,
+    ...content,
 })
 
 describe('Store - Integration Tests with Memory Database', () => {
-  let db: Database
-  let dbClient: DBClient
-  let store: Store
+    let db: Database
+    let store: Store
 
-  beforeEach(() => {
-    // Create in-memory database for testing
-    db = new Database(':memory:')
-    dbClient = new DBClient(db)
-    store = new Store(dbClient)
-  })
-
-  afterEach(() => {
-    db.close()
-  })
-
-  describe('Chat operations', () => {
-    test('should create and retrieve chat', async () => {
-      // Arrange
-      const chatName = 'test-chat'
-      const model: Model = createModel('deepseek', 'deepseek-chat')
-
-      // Act
-      await store.chat.new(chatName, async () => model)
-      const chatInfo = store.chat.get(chatName)
-      const chats = store.chat.list()
-
-      // Assert
-      expect(chatInfo).toBeDefined()
-      expect(chatInfo.value.name).toBe(chatName)
-      expect(chats).toHaveLength(1)
-      expect(chats[0].name).toBe(chatName)
+    beforeEach(() => {
+        // Create in-memory database for testing
+        db = new Database(':memory:')
+        store = new Store(db)
     })
 
-    test('should switch between chats', async () => {
-      // Arrange
-      const chat1 = 'chat-1'
-      const chat2 = 'chat-2'
-      const model: Model = createModel('deepseek', 'deepseek-chat')
-
-      // Act
-      await store.chat.new(chat1, async () => model)
-      await store.chat.new(chat2, async () => model)
-
-      const chat1Info = store.chat.get(chat1)
-      chat1Info.switch(chat2)
-
-      const currentChat = store.chat.get()
-
-      // Assert
-      expect(currentChat.value.name).toBe(chat2)
+    afterEach(() => {
+        db.close()
     })
 
-    test('should remove chat', async () => {
-      // Arrange
-      const chatName = 'test-chat'
-      const model: Model = createModel('deepseek', 'deepseek-chat')
+    describe('Chat operations', () => {
+        test('should create and retrieve chat', async () => {
+            // Arrange
+            const chatName = 'test-chat'
+            const model: Model = createModel('deepseek', 'deepseek-chat')
 
-      // Act
-      await store.chat.new(chatName, async () => model)
-      const chatInfo = store.chat.get(chatName)
-      chatInfo.remove()
+            // Act
+            await store.chat.new(chatName, async () => model)
+            const chatInfo = store.chat.get(chatName)
+            const chats = store.chat.list()
 
-      const chats = store.chat.list()
+            // Assert
+            expect(chatInfo).toBeDefined()
+            expect(chatInfo.value.name).toBe(chatName)
+            expect(chats).toHaveLength(1)
+            expect(chats[0].name).toBe(chatName)
+        })
 
-      // Assert
-      expect(chats).toHaveLength(0)
-    })
-  })
+        test('should switch between chats', async () => {
+            // Arrange
+            const chat1 = 'chat-1'
+            const chat2 = 'chat-2'
+            const model: Model = createModel('deepseek', 'deepseek-chat')
 
-  describe('Configuration operations', () => {
-    test('should modify system prompt', async () => {
-      // Arrange
-      const chatName = 'test-chat'
-      const model: Model = createModel('deepseek', 'deepseek-chat')
-      const newPrompt = 'New system prompt'
+            // Act
+            await store.chat.new(chat1, async () => model)
+            await store.chat.new(chat2, async () => model)
 
-      // Act
-      await store.chat.new(chatName, async () => model)
-      const chatInfo = store.chat.get(chatName)
-      chatInfo.config.modifySystemPrompt(newPrompt)
+            const chat1Info = store.chat.get(chat1)
+            chat1Info.switch(chat2)
 
-      // Assert
-      expect(chatInfo.config.value.sysPrompt).toBe(newPrompt)
-    })
+            const currentChat = store.chat.get()
 
-    test('should modify context limit', async () => {
-      // Arrange
-      const chatName = 'test-chat'
-      const model: Model = createModel('deepseek', 'deepseek-chat')
-      const newLimit = 20
+            // Assert
+            expect(currentChat.value.name).toBe(chat2)
+        })
 
-      // Act
-      await store.chat.new(chatName, async () => model)
-      const chatInfo = store.chat.get(chatName)
-      chatInfo.config.modifyContextLimit(newLimit)
+        test('should remove chat', async () => {
+            // Arrange
+            const chatName = 'test-chat'
+            const model: Model = createModel('deepseek', 'deepseek-chat')
 
-      // Assert
-      expect(chatInfo.config.value.contextLimit).toBe(newLimit)
-    })
+            // Act
+            await store.chat.new(chatName, async () => model)
+            const chatInfo = store.chat.get(chatName)
+            chatInfo.remove()
 
-    test('should toggle context', async () => {
-      // Arrange
-      const chatName = 'test-chat'
-      const model: Model = createModel('deepseek', 'deepseek-chat')
+            const chats = store.chat.list()
 
-      // Act
-      await store.chat.new(chatName, async () => model)
-      const chatInfo = store.chat.get(chatName)
-      const initialContext = chatInfo.config.value.withContext
-      chatInfo.config.moidfyContext()
-
-      // Assert
-      expect(chatInfo.config.value.withContext).toBe(initialContext === 1 ? 0 : 1)
+            // Assert
+            expect(chats).toHaveLength(0)
+        })
     })
 
-    test('should modify MCP setting', async () => {
-      // Arrange
-      const chatName = 'test-chat'
-      const model: Model = createModel('deepseek', 'deepseek-chat')
+    describe('Configuration operations', () => {
+        test('should modify system prompt', async () => {
+            // Arrange
+            const chatName = 'test-chat'
+            const model: Model = createModel('deepseek', 'deepseek-chat')
+            const newPrompt = 'New system prompt'
 
-      // Act
-      await store.chat.new(chatName, async () => model)
-      const chatInfo = store.chat.get(chatName)
-      chatInfo.config.modifyMcp(true)
+            // Act
+            await store.chat.new(chatName, async () => model)
+            const chatInfo = store.chat.get(chatName)
+            chatInfo.config.modifySystemPrompt(newPrompt)
 
-      // Assert
-      expect(chatInfo.config.value.withMCP).toBe(1)
-    })
-  })
+            // Assert
+            expect(chatInfo.config.value.sysPrompt).toBe(newPrompt)
+        })
 
-  describe('Topic operations', () => {
-    test('should create and switch topics', async () => {
-      // Arrange
-      const chatName = 'test-chat'
-      const model: Model = createModel('deepseek', 'deepseek-chat')
+        test('should modify context limit', async () => {
+            // Arrange
+            const chatName = 'test-chat'
+            const model: Model = createModel('deepseek', 'deepseek-chat')
+            const newLimit = 20
 
-      // Act
-      await store.chat.new(chatName, async () => model)
-      const chatInfo = store.chat.get(chatName)
-      const topicId = chatInfo.topic.new('test-topic')
+            // Act
+            await store.chat.new(chatName, async () => model)
+            const chatInfo = store.chat.get(chatName)
+            chatInfo.config.modifyContextLimit(newLimit)
 
-      // Assert
-      expect(topicId).toBeDefined()
-      expect(chatInfo.topic.get()?.content).toBe('test-topic')
-    })
+            // Assert
+            expect(chatInfo.config.value.contextLimit).toBe(newLimit)
+        })
 
-    test('should list topics', async () => {
-      // Arrange
-      const chatName = 'test-chat'
-      const model: Model = createModel('deepseek', 'deepseek-chat')
+        test('should toggle context', async () => {
+            // Arrange
+            const chatName = 'test-chat'
+            const model: Model = createModel('deepseek', 'deepseek-chat')
 
-      // Act
-      await store.chat.new(chatName, async () => model)
-      const chatInfo = store.chat.get(chatName)
-      chatInfo.topic.new('topic-1')
-      chatInfo.topic.new('topic-2')
+            // Act
+            await store.chat.new(chatName, async () => model)
+            const chatInfo = store.chat.get(chatName)
+            const initialContext = chatInfo.config.value.withContext
+            chatInfo.config.moidfyContext()
 
-      const topics = chatInfo.topic.list()
+            // Assert
+            expect(chatInfo.config.value.withContext).toBe(
+                initialContext === 1 ? 0 : 1
+            )
+        })
 
-      // Assert
-      expect(topics).toHaveLength(2)
-      expect(topics.some(t => t.content === 'topic-1')).toBe(true)
-      expect(topics.some(t => t.content === 'topic-2')).toBe(true)
-    })
-  })
+        test('should modify MCP setting', async () => {
+            // Arrange
+            const chatName = 'test-chat'
+            const model: Model = createModel('deepseek', 'deepseek-chat')
 
-  describe('Message operations', () => {
-    test('should save and retrieve messages', async () => {
-      // Arrange
-      const chatName = 'test-chat'
-      const model: Model = createModel('deepseek', 'deepseek-chat')
+            // Act
+            await store.chat.new(chatName, async () => model)
+            const chatInfo = store.chat.get(chatName)
+            chatInfo.config.modifyMcp(true)
 
-      // Act
-      await store.chat.new(chatName, async () => model)
-      const chatInfo = store.chat.get(chatName)
-      const topicId = chatInfo.topic.new('test-topic')
-
-      const messages = [
-        { topicId, role: 'user' as const, content: 'Hello', pairKey: 'pair-1' },
-        { topicId, role: 'assistant' as const, content: 'Hi there', pairKey: 'pair-1' },
-      ]
-
-      chatInfo.topic.message.save(messages)
-      const retrievedMessages = chatInfo.topic.message.list(topicId, 10)
-
-      // Assert
-      expect(retrievedMessages).toHaveLength(2)
-      expect(retrievedMessages.some(m => m.content === 'Hello')).toBe(true)
-      expect(retrievedMessages.some(m => m.content === 'Hi there')).toBe(true)
-    })
-  })
-
-  describe('Preset operations', () => {
-    test('should set and get preset messages', async () => {
-      // Arrange
-      const chatName = 'test-chat'
-      const model: Model = createModel('deepseek', 'deepseek-chat')
-      const presetMessages: PresetMessageContent[] = [
-        createPresetMessage('User message 1', 'Assistant response 1'),
-        createPresetMessage('User message 2', 'Assistant response 2'),
-      ]
-
-      // Act
-      await store.chat.new(chatName, async () => model)
-      const chatInfo = store.chat.get(chatName)
-      chatInfo.preset.set(presetMessages)
-      const retrievedPresets = chatInfo.preset.get()
-
-      // Assert
-      expect(retrievedPresets).toHaveLength(2)
-      expect(retrievedPresets[0].user).toBe('User message 1')
-      expect(retrievedPresets[0].assistant).toBe('Assistant response 1')
+            // Assert
+            expect(chatInfo.config.value.withMCP).toBe(1)
+        })
     })
 
-    test('should clear preset messages', async () => {
-      // Arrange
-      const chatName = 'test-chat'
-      const model: Model = createModel('deepseek', 'deepseek-chat')
-      const presetMessages: PresetMessageContent[] = [
-        createPresetMessage('User message', 'Assistant response'),
-      ]
+    describe('Topic operations', () => {
+        test('should create and switch topics', async () => {
+            // Arrange
+            const chatName = 'test-chat'
+            const model: Model = createModel('deepseek', 'deepseek-chat')
 
-      // Act
-      await store.chat.new(chatName, async () => model)
-      const chatInfo = store.chat.get(chatName)
-      chatInfo.preset.set(presetMessages)
-      chatInfo.preset.clear()
-      const retrievedPresets = chatInfo.preset.get()
+            // Act
+            await store.chat.new(chatName, async () => model)
+            const chatInfo = store.chat.get(chatName)
+            const topicId = chatInfo.topic.new('test-topic')
 
-      // Assert
-      expect(retrievedPresets).toHaveLength(0)
-    })
-  })
+            // Assert
+            expect(topicId).toBeDefined()
+            expect(chatInfo.topic.get()?.content).toBe('test-topic')
+        })
 
-  describe('Quick switch operations', () => {
-    test('should manage quick switch history', () => {
-      // Arrange
-      const key = 'test-key'
+        test('should list topics', async () => {
+            // Arrange
+            const chatName = 'test-chat'
+            const model: Model = createModel('deepseek', 'deepseek-chat')
 
-      // Act
-      store.quickSwitch.add(key)
-      const history = store.quickSwitch.get(key)
-      const searchResults = store.quickSwitch.list('test')
+            // Act
+            await store.chat.new(chatName, async () => model)
+            const chatInfo = store.chat.get(chatName)
+            chatInfo.topic.new('topic-1')
+            chatInfo.topic.new('topic-2')
 
-      // Assert
-      expect(history).toBeDefined()
-      expect(history?.key).toBe(key)
-      expect(searchResults).toHaveLength(1)
-      expect(searchResults[0].key).toBe(key)
-    })
+            const topics = chatInfo.topic.list()
 
-    test('should update quick switch frequency', () => {
-      // Arrange
-      const key = 'test-key'
-
-      // Act
-      store.quickSwitch.add(key)
-      store.quickSwitch.update(key, 5)
-      const history = store.quickSwitch.get(key)
-
-      // Assert
-      expect(history?.frequency).toBeGreaterThanOrEqual(5)
+            // Assert
+            expect(topics).toHaveLength(2)
+            expect(topics.some((t) => t.content === 'topic-1')).toBe(true)
+            expect(topics.some((t) => t.content === 'topic-2')).toBe(true)
+        })
     })
 
-    test('should delete quick switch entry', () => {
-      // Arrange
-      const key = 'test-key'
+    describe('Message operations', () => {
+        test('should save and retrieve messages', async () => {
+            // Arrange
+            const chatName = 'test-chat'
+            const model: Model = createModel('deepseek', 'deepseek-chat')
 
-      // Act
-      store.quickSwitch.add(key)
-      store.quickSwitch.delete(key)
-      const history = store.quickSwitch.get(key)
+            // Act
+            await store.chat.new(chatName, async () => model)
+            const chatInfo = store.chat.get(chatName)
+            const topicId = chatInfo.topic.new('test-topic')
 
-      // Assert
-      expect(history).toBeNull()
-    })
-  })
+            const messages = [
+                {
+                    topicId,
+                    role: 'user' as const,
+                    content: 'Hello',
+                    pairKey: 'pair-1',
+                },
+                {
+                    topicId,
+                    role: 'assistant' as const,
+                    content: 'Hi there',
+                    pairKey: 'pair-1',
+                },
+            ]
 
-  describe('Cache operations', () => {
-    test('should manage cache entries', () => {
-      // Arrange
-      const cacheKey = 'test-key'
-      const cacheValue = 'test-value'
-      const cache: Cache = { key: cacheKey, value: cacheValue }
+            chatInfo.topic.message.save(messages)
+            const retrievedMessages = chatInfo.topic.message.list(topicId, 10)
 
-      // Act
-      store.cache.set(cache)
-      const retrievedCache = store.cache.get(cacheKey)
-
-      store.cache.delete(cacheKey)
-      const deletedCache = store.cache.get(cacheKey)
-
-      // Assert
-      expect(retrievedCache?.value).toBe(cacheValue)
-      expect(deletedCache).toBeNull()
-    })
-  })
-
-  describe('Prompt operations', () => {
-    test('should publish and search prompts', () => {
-      // Arrange
-      const promptName = 'test-prompt'
-      const promptVersion = '1.0'
-      const promptContent = 'Test prompt content'
-
-      // Act
-      store.prompt.publish(promptName, promptVersion, promptContent)
-      const prompts = store.prompt.search(promptName)
-      const allPrompts = store.prompt.list()
-
-      // Assert
-      expect(prompts).toHaveLength(1)
-      expect(prompts[0].name).toBe(promptName)
-      expect(prompts[0].content).toBe(promptContent)
-      expect(allPrompts).toHaveLength(1)
+            // Assert
+            expect(retrievedMessages).toHaveLength(2)
+            expect(retrievedMessages.some((m) => m.content === 'Hello')).toBe(
+                true
+            )
+            expect(
+                retrievedMessages.some((m) => m.content === 'Hi there')
+            ).toBe(true)
+        })
     })
 
-    test('should delete prompts', () => {
-      // Arrange
-      const promptName = 'test-prompt'
-      const promptVersion = '1.0'
-      const promptContent = 'Test prompt content'
+    describe('Preset operations', () => {
+        test('should set and get preset messages', async () => {
+            // Arrange
+            const chatName = 'test-chat'
+            const model: Model = createModel('deepseek', 'deepseek-chat')
+            const presetMessages: PresetMessageContent[] = [
+                createPresetMessage('User message 1', 'Assistant response 1'),
+                createPresetMessage('User message 2', 'Assistant response 2'),
+            ]
 
-      // Act
-      store.prompt.publish(promptName, promptVersion, promptContent)
-      const promptsBeforeDelete = store.prompt.list()
-      store.prompt.delete(promptName, promptVersion)
-      const promptsAfterDelete = store.prompt.list()
+            // Act
+            await store.chat.new(chatName, async () => model)
+            const chatInfo = store.chat.get(chatName)
+            chatInfo.preset.set(presetMessages)
+            const retrievedPresets = chatInfo.preset.get()
 
-      // Assert
-      expect(promptsBeforeDelete).toHaveLength(1)
-      expect(promptsAfterDelete).toHaveLength(0)
+            // Assert
+            expect(retrievedPresets).toHaveLength(2)
+            expect(retrievedPresets[0].user).toBe('User message 1')
+            expect(retrievedPresets[0].assistant).toBe('Assistant response 1')
+        })
+
+        test('should clear preset messages', async () => {
+            // Arrange
+            const chatName = 'test-chat'
+            const model: Model = createModel('deepseek', 'deepseek-chat')
+            const presetMessages: PresetMessageContent[] = [
+                createPresetMessage('User message', 'Assistant response'),
+            ]
+
+            // Act
+            await store.chat.new(chatName, async () => model)
+            const chatInfo = store.chat.get(chatName)
+            chatInfo.preset.set(presetMessages)
+            chatInfo.preset.clear()
+            const retrievedPresets = chatInfo.preset.get()
+
+            // Assert
+            expect(retrievedPresets).toHaveLength(0)
+        })
     })
 
-    test('should delete specific prompt version', () => {
-      // Arrange
-      const promptName = 'test-prompt'
-      const promptVersion1 = '1.0'
-      const promptVersion2 = '2.0'
-      const promptContent = 'Test prompt content'
+    describe('Quick switch operations', () => {
+        test('should manage quick switch history', () => {
+            // Arrange
+            const key = 'test-key'
 
-      // Act
-      store.prompt.publish(promptName, promptVersion1, promptContent)
-      store.prompt.publish(promptName, promptVersion2, promptContent)
-      const promptsBeforeDelete = store.prompt.list()
-      store.prompt.delete(promptName, promptVersion1)
-      const promptsAfterDelete = store.prompt.list()
+            // Act
+            store.quickSwitch.add(key)
+            const history = store.quickSwitch.get(key)
+            const searchResults = store.quickSwitch.list('test')
 
-      // Assert
-      expect(promptsBeforeDelete).toHaveLength(2)
-      expect(promptsAfterDelete).toHaveLength(1)
-      expect(promptsAfterDelete[0].version).toBe(promptVersion2)
+            // Assert
+            expect(history).toBeDefined()
+            expect(history?.key).toBe(key)
+            expect(searchResults).toHaveLength(1)
+            expect(searchResults[0].key).toBe(key)
+        })
+
+        test('should update quick switch frequency', () => {
+            // Arrange
+            const key = 'test-key'
+
+            // Act
+            store.quickSwitch.add(key)
+            store.quickSwitch.update(key, 5)
+            const history = store.quickSwitch.get(key)
+
+            // Assert
+            expect(history?.frequency).toBeGreaterThanOrEqual(5)
+        })
+
+        test('should delete quick switch entry', () => {
+            // Arrange
+            const key = 'test-key'
+
+            // Act
+            store.quickSwitch.add(key)
+            store.quickSwitch.delete(key)
+            const history = store.quickSwitch.get(key)
+
+            // Assert
+            expect(history).toBeNull()
+        })
     })
-  })
 
-  describe('App setting operations', () => {
-    test('should set and get app settings', () => {
-      // Arrange
-      const newSetting: AppSettingContent = createAppSetting({
-        version: '1.0.0',
-        generalSetting: JSON.stringify({ theme: 'dark' }),
-        mcpServer: '[]',
-        llmSetting: '[]',
-      })
+    describe('Cache operations', () => {
+        test('should manage cache entries', () => {
+            // Arrange
+            const cacheKey = 'test-key'
+            const cacheValue = 'test-value'
+            const cache: Cache = { key: cacheKey, value: cacheValue }
 
-      // Act
-      store.appSetting.set(newSetting)
-      const appSetting = store.appSetting.get()
+            // Act
+            store.cache.set(cache)
+            const retrievedCache = store.cache.get(cacheKey)
 
-      // Assert
-      expect(appSetting?.version).toBe('1.0.0')
-      expect(appSetting?.generalSetting).toBe(JSON.stringify({ theme: 'dark' }))
+            store.cache.delete(cacheKey)
+            const deletedCache = store.cache.get(cacheKey)
+
+            // Assert
+            expect(retrievedCache?.value).toBe(cacheValue)
+            expect(deletedCache).toBeNull()
+        })
     })
-  })
 
-  describe('Export operations', () => {
-    test('should query export messages', async () => {
-      // Arrange
-      const chatName = 'test-chat'
-      const model: Model = createModel('deepseek', 'deepseek-chat')
+    describe('Prompt operations', () => {
+        test('should publish and search prompts', () => {
+            // Arrange
+            const promptName = 'test-prompt'
+            const promptVersion = '1.0'
+            const promptContent = 'Test prompt content'
 
-      // Act
-      await store.chat.new(chatName, async () => model)
-      const chatInfo = store.chat.get(chatName)
-      const topicId = chatInfo.topic.new('test-topic')
+            // Act
+            store.prompt.publish(promptName, promptVersion, promptContent)
+            const prompts = store.prompt.search(promptName)
+            const allPrompts = store.prompt.list()
 
-      const messages = [
-        { topicId, role: 'user' as const, content: 'Hello', pairKey: 'pair-1' },
-        { topicId, role: 'assistant' as const, content: 'Hi there', pairKey: 'pair-1' },
-      ]
+            // Assert
+            expect(prompts).toHaveLength(1)
+            expect(prompts[0].name).toBe(promptName)
+            expect(prompts[0].content).toBe(promptContent)
+            expect(allPrompts).toHaveLength(1)
+        })
 
-      chatInfo.topic.message.save(messages)
+        test('should delete prompts', () => {
+            // Arrange
+            const promptName = 'test-prompt'
+            const promptVersion = '1.0'
+            const promptContent = 'Test prompt content'
 
-      const allExports = store.exprot.all()
-      const chatExports = store.exprot.chat(chatInfo.value.id)
-      const topicExports = store.exprot.topic(chatInfo.value.id, topicId)
+            // Act
+            store.prompt.publish(promptName, promptVersion, promptContent)
+            const promptsBeforeDelete = store.prompt.list()
+            store.prompt.delete(promptName, promptVersion)
+            const promptsAfterDelete = store.prompt.list()
 
-      // Assert
-      expect(allExports).toBeDefined()
-      expect(chatExports).toBeDefined()
-      expect(topicExports).toBeDefined()
+            // Assert
+            expect(promptsBeforeDelete).toHaveLength(1)
+            expect(promptsAfterDelete).toHaveLength(0)
+        })
+
+        test('should delete specific prompt version', () => {
+            // Arrange
+            const promptName = 'test-prompt'
+            const promptVersion1 = '1.0'
+            const promptVersion2 = '2.0'
+            const promptContent = 'Test prompt content'
+
+            // Act
+            store.prompt.publish(promptName, promptVersion1, promptContent)
+            store.prompt.publish(promptName, promptVersion2, promptContent)
+            const promptsBeforeDelete = store.prompt.list()
+            store.prompt.delete(promptName, promptVersion1)
+            const promptsAfterDelete = store.prompt.list()
+
+            // Assert
+            expect(promptsBeforeDelete).toHaveLength(2)
+            expect(promptsAfterDelete).toHaveLength(1)
+            expect(promptsAfterDelete[0].version).toBe(promptVersion2)
+        })
     })
-  })
+
+    describe('App setting operations', () => {
+        test('should set and get app settings', () => {
+            // Arrange
+            const newSetting: AppSettingContent = createAppSetting({
+                version: '1.0.0',
+                generalSetting: JSON.stringify({ theme: 'dark' }),
+                mcpServer: '[]',
+                llmSetting: '[]',
+            })
+
+            // Act
+            store.appSetting.set(newSetting)
+            const appSetting = store.appSetting.get()
+
+            // Assert
+            expect(appSetting?.version).toBe('1.0.0')
+            expect(appSetting?.generalSetting).toBe(
+                JSON.stringify({ theme: 'dark' })
+            )
+        })
+    })
+
+    describe('Export operations', () => {
+        test('should query export messages', async () => {
+            // Arrange
+            const chatName = 'test-chat'
+            const model: Model = createModel('deepseek', 'deepseek-chat')
+
+            // Act
+            await store.chat.new(chatName, async () => model)
+            const chatInfo = store.chat.get(chatName)
+            const topicId = chatInfo.topic.new('test-topic')
+
+            const messages = [
+                {
+                    topicId,
+                    role: 'user' as const,
+                    content: 'Hello',
+                    pairKey: 'pair-1',
+                },
+                {
+                    topicId,
+                    role: 'assistant' as const,
+                    content: 'Hi there',
+                    pairKey: 'pair-1',
+                },
+            ]
+
+            chatInfo.topic.message.save(messages)
+
+            const allExports = store.exprot.all()
+            const chatExports = store.exprot.chat(chatInfo.value.id)
+            const topicExports = store.exprot.topic(chatInfo.value.id, topicId)
+
+            // Assert
+            expect(allExports).toBeDefined()
+            expect(chatExports).toBeDefined()
+            expect(topicExports).toBeDefined()
+        })
+    })
 })

@@ -1,6 +1,7 @@
 import type { HelpConfiguration } from '@commander-js/extra-typings'
 import type { ChalkInstance } from 'chalk'
 import chalk from 'chalk'
+import { themes } from './theme'
 
 export type CatppuccinColorTheme = 'latte' | 'frappe' | 'macchiato' | 'mocha'
 
@@ -151,14 +152,16 @@ const mocha: Record<CatppuccinColorName, string> = {
 const chalkColor = (
     schema: Record<CatppuccinColorName, string>
 ): Record<CatppuccinColorName, ChalkInstance> => {
-    return Object.keys(schema).reduce(
-        (obj, it) => {
-            const k = it as CatppuccinColorName
-            obj[k] = chalk.hex(schema[k])
-            return obj
-        },
-        {} as Record<CatppuccinColorName, ChalkInstance>
-    )
+    return Object.keys(schema).reduce((obj, it) => {
+        const k = it as CatppuccinColorName
+        obj[k] = chalk.hex(schema[k])
+        return obj
+    }, {} as Record<CatppuccinColorName, ChalkInstance>)
+}
+
+const chalkThemeColor = (theme: string) => {
+    const { palette } = themes[theme]
+    return chalkColor(catppuccinColorSchema[palette])
 }
 
 const catppuccinColorSchema: Record<
@@ -183,14 +186,11 @@ const displayDef: Record<string, CatppuccinColorName> = {
 const displaySchema = (
     cl: Record<CatppuccinColorName, ChalkInstance>
 ): Record<string, ChalkInstance> => {
-    return Object.keys(displayDef).reduce(
-        (obj, it) => {
-            const k = displayDef[it]
-            obj[it] = cl[k]
-            return obj
-        },
-        {} as Record<string, ChalkInstance>
-    )
+    return Object.keys(displayDef).reduce((obj, it) => {
+        const k = displayDef[it]
+        obj[it] = cl[k]
+        return obj
+    }, {} as Record<string, ChalkInstance>)
 }
 
 const hex = (color: string): ChalkInstance => chalk.hex(color)
@@ -207,12 +207,13 @@ const commanderHelpConfiguration = (
         styleArgumentText: (str) => color.pink(str),
         styleSubcommandText: (str) => color.sapphire.italic(str),
         styleOptionTerm: (str) => color.mauve.italic(str),
-    }) as HelpConfiguration
+    } as HelpConfiguration)
 
 export {
     catppuccinColorSchema,
     displaySchema,
     chalkColor,
+    chalkThemeColor,
     hex,
     commanderHelpConfiguration,
 }

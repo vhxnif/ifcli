@@ -1,16 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import path from 'path'
-import type { IConfig } from './config-types'
 import { accessSync, constants, mkdirSync } from 'node:fs'
+import path from 'path'
 import { env, platform } from '../util/platform-utils'
 import { APP_VERSION } from './app-setting'
 
-export class AppConfig implements IConfig {
-    appName = (): string => 'ifcli'
-    configPath = (): string | undefined => {
-        const platformConfigPath = this.platformConfigPath()
-        const appName = this.appName()
+export class DataPathConfig {
+    private get appName(): string {
+        return 'ifcli'
+    }
+    get configPath(): string | undefined {
+        const platformConfigPath = this.platformConfigPath
+        const appName = this.appName
         const appConfig = `${platformConfigPath}${path.sep}${appName}`
         try {
             accessSync(platformConfigPath, constants.F_OK)
@@ -27,7 +28,7 @@ export class AppConfig implements IConfig {
             return appConfig
         }
     }
-    platformConfigPath = (): string => {
+    get platformConfigPath(): string {
         if (!['win32', 'linux', 'darwin'].includes(platform)) {
             throw Error(`${platform} not supported.`)
         }
@@ -37,6 +38,7 @@ export class AppConfig implements IConfig {
         }
         return pt
     }
-    dataPath = (): string =>
-        `${this.configPath()}${path.sep}${this.appName()}_${APP_VERSION}.sqlite`
+    get databasePath(): string {
+        return `${this.configPath}${path.sep}${this.appName}_${APP_VERSION}.sqlite`
+    }
 }

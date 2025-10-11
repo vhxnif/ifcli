@@ -6,7 +6,7 @@ export type AskContent = {
     noStream?: boolean
     newTopic?: boolean
 }
-export interface IChatAction {
+export interface IChatAct {
     newChat: (name: string) => Promise<void>
     removeChat: () => Promise<void>
     reAsk: () => Promise<void>
@@ -42,7 +42,7 @@ export interface IChatAction {
     exportTopicMessage: (path?: string) => Promise<void>
 }
 
-export interface ISettingAction {
+export interface ISettingAct {
     setting: () => Promise<void>
     theme: () => Promise<void>
     importSetting: (file: string) => Promise<void>
@@ -90,7 +90,7 @@ export type ExportAct = {
     topic: (path?: string) => Promise<void>
 }
 
-export type ChatCommandAct = {
+export type ChatCmdAct = {
     ask: AskAct
     new: (name: string) => Promise<void>
     msgHistory: (limit: number, chatName?: string) => Promise<void>
@@ -102,6 +102,37 @@ export type ChatCommandAct = {
     export: ExportAct
 }
 
-export interface ICommanndAct {
-    chat: ChatCommandAct
+export type AppConfigAct = {
+    general: () => GeneralSetting
+    modify: () => Promise<void>
+    theme: () => Promise<void>
+    import: (file: string) => Promise<void>
+    export: () => Promise<void>
+}
+
+export type AppMCPToolsAct = {
+    list: () => Promise<void>
+    test: () => Promise<void>
+}
+
+export type AppMCPAct = {
+    tools: AppMCPToolsAct
+}
+
+export type AppPromptAct = {
+    list: (name?: string) => Promise<void>
+    export: () => Promise<void>
+    import: (file: string) => Promise<void>
+    delete: (name?: string) => Promise<void>
+}
+
+export type SettingCmdAct = {
+    config: AppConfigAct
+    mcp: AppMCPAct
+    prompt: AppPromptAct
+}
+
+export interface ICmdAct {
+    chat: ChatCmdAct
+    setting: SettingCmdAct
 }

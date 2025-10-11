@@ -19,11 +19,13 @@ import type {
     TopicMessageAct,
 } from './store-types'
 import { uuid } from '../util/common-utils'
+import type Database from 'bun:sqlite'
+import { DBClient } from './db-client'
 
 export class Store implements IStore {
     private readonly client: IDBClient
-    constructor(client: IDBClient) {
-        this.client = client
+    constructor(db: Database) {
+        this.client = new DBClient(db)
     }
 
     get chat(): ChatAct {
