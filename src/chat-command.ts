@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { chatAction, color } from './app-context'
+import { cmdAct, color } from './app-context'
 import { APP_VERSION } from './config/app-setting'
-import { editor, print, stdin } from './util/common-utils'
 import { commanderHelpConfiguration } from './util/color-schema'
+import { editor, isEmpty, print, stdin } from './util/common-utils'
 
 const program = new Command()
     .configureHelp(commanderHelpConfiguration(color))
@@ -23,27 +23,19 @@ program
     .argument('[string]')
     .action(async (content, option) => {
         const { edit, syncCall, newTopic, force, retry, attachment } = option
-        if (retry) {
-            await chatAction.reAsk()
-            return
-        }
+        const { run, reRun } = cmdAct.chat.ask
         const ask = async (ct: string) => {
             let str = ct
             if (attachment) {
                 const fileContent = await Bun.file(attachment).text()
                 str = `# User\n\n${ct}\n\n# Attachment \n\n${fileContent}`
             }
-
-            await chatAction.ask({
+            await run({
                 content: str,
                 chatName: force,
                 noStream: syncCall ? true : false,
                 newTopic,
             })
-        }
-        if (content) {
-            await ask(content)
-            return
         }
         const getContentAndAsk = async (
             f: () => Promise<string | undefined>
@@ -53,34 +45,46 @@ program
                 await ask(text)
             }
         }
-        if (edit) {
-            await getContentAndAsk(async () => await editor(''))
-            return
+        switch (true) {
+            case retry:
+                await reRun()
+                break
+            case !isEmpty(content):
+                await ask(content!)
+                break
+            case edit:
+                await getContentAndAsk(async () => await editor(''))
+                break
+            default:
+                await getContentAndAsk(stdin)
         }
-        await getContentAndAsk(stdin)
     })
 
 program
     .command('new')
     .description('create a new chat session')
     .argument('<name>', 'name for the new chat session')
-    .action(async (content) => await chatAction.newChat(content))
+    .action(async (content) => await cmdAct.chat.new(content))
 
 program
     .command('history')
     .alias('hs')
     .description('view chat conversation history')
-    .option('-l, --limit <number>', 'maximum number of messages to display', '100')
+    .option(
+        '-l, --limit <number>',
+        'maximum number of messages to display',
+        '100'
+    )
     .action(async ({ limit }, cmd) => {
         const force = cmd.parent?.opts()?.force as string
-        chatAction.printChatHistory(Number(limit), force)
+        await cmdAct.chat.msgHistory(Number(limit), force)
     })
 
 program
     .command('remove')
     .alias('rm')
     .description('delete a chat session')
-    .action(async () => await chatAction.removeChat())
+    .action(async () => await cmdAct.chat.remove())
 
 program
     .command('switch')
@@ -89,11 +93,12 @@ program
     .option('-t, --topic', 'switch to a different topic')
     .argument('[name]', 'target chat session name')
     .action(async (name, { topic }) => {
+        const { chat, topic: cgTopic } = cmdAct.chat.switch
         if (topic) {
-            await chatAction.changeTopic()
+            await cgTopic()
             return
         }
-        await chatAction.changeChat(name)
+        await chat(name)
     })
 
 program
@@ -106,34 +111,39 @@ program
     .option('-p, --publish', 'publish prompt to shared library')
     .action(async ({ query, modify, cover, publish }, cmd) => {
         const name = cmd.parent?.opts().force as string
-        if (query) {
-            await chatAction.selectPrompt(query, name)
-            return
-        }
-        if (modify) {
-            await editor(chatAction.prompt(name)).then((text) => {
+        const { list, get, set, show, publish: ps } = cmdAct.chat.prompt
+        const modifyRun = async () => {
+            await editor(get(name)).then((text) => {
                 if (text) {
-                    chatAction.modifySystemPrompt(text, name)
+                    set(text, name)
                 }
             })
-            return
         }
-        if (typeof cover === 'boolean') {
+        const coverStdinRun = async () => {
             const str = await stdin()
             if (typeof str === 'string') {
-                chatAction.modifySystemPrompt(str.trim(), name)
+                set(str.trim(), name)
             }
-            return
         }
-        if (typeof cover === 'string') {
-            chatAction.modifySystemPrompt(cover, name)
-            return
+        switch (true) {
+            case !isEmpty(query):
+                await list(query!, name)
+                break
+            case modify:
+                await modifyRun()
+                break
+            case typeof cover === 'boolean':
+                await coverStdinRun()
+                break
+            case typeof cover === 'string':
+                set(cover, name)
+                break
+            case publish:
+                await ps(name)
+                break
+            default:
+                show(name)
         }
-        if (publish) {
-            await chatAction.publishPrompt(name)
-            return
-        }
-        chatAction.printPrompt(name)
     })
 
 program
@@ -145,14 +155,17 @@ program
     .action(async (options, cmd) => {
         const { edit, clear } = options
         const name = cmd.parent?.opts().force as string
-        if (edit) {
-            await chatAction.editPresetMessage(name)
+        const preset = cmdAct.chat.preset
+        switch (true) {
+            case edit:
+                await preset.edit(name)
+                break
+            case clear:
+                preset.clear(name)
+                break
+            default:
+                preset.show(name)
         }
-        if (clear) {
-            chatAction.clearPresetMessage(name)
-            return
-        }
-        chatAction.printPresetMessage(name)
     })
 
 program
@@ -170,22 +183,26 @@ program
             cmd
         ) => {
             const name = cmd.parent?.opts().force as string
-            if (contextSize) {
-                chatAction.modifyContextSize(Number(contextSize), name)
+            const cf = cmdAct.chat.config
+            switch (true) {
+                case !isEmpty(contextSize):
+                    cf.contextSize(Number(contextSize), name)
+                    break
+                case model:
+                    await cf.model(name)
+                    break
+                case withContext:
+                    cf.context(name)
+                    break
+                case withMcp:
+                    await cf.mcp(name)
+                    break
+                case useScenario:
+                    await cf.scenario(name)
+                    break
+                default:
+                    cf.show(name)
             }
-            if (model) {
-                await chatAction.modifyModel(name)
-            }
-            if (withContext) {
-                chatAction.modifyWithContext(name)
-            }
-            if (withMcp) {
-                await chatAction.modifyWithMCP(name)
-            }
-            if (useScenario) {
-                await chatAction.modifyScenario(name)
-            }
-            chatAction.printChatConfig(name)
         }
     )
 
@@ -198,19 +215,20 @@ program
     .option('-c, --chat', 'export all topics from selected chat')
     .option('-t, --topic', 'export specific topic from selected chat')
     .action(async (path, { all, chat, topic }) => {
-        if (all) {
-            await chatAction.exportAllChatMessage(path)
-            return
+        const exp = cmdAct.chat.export
+        switch (true) {
+            case all:
+                await exp.all(path)
+                break
+            case chat:
+                await exp.chat(path)
+                break
+            case topic:
+                await exp.chatTopic(path)
+                break
+            default:
+                await exp.topic(path)
         }
-        if (chat) {
-            await chatAction.exportChatMessage(path)
-            return
-        }
-        if (topic) {
-            await chatAction.exportChatTopicMessage(path)
-            return
-        }
-        await chatAction.exportTopicMessage(path)
     })
 
 program.parseAsync().catch((e: unknown) => {

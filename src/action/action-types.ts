@@ -28,7 +28,7 @@ export interface IChatAction {
     tools: () => Promise<void>
     testTool: () => Promise<void>
 
-    prompt: (chatName?: string) => string
+    queryPrompt: (chatName?: string) => string
     printPrompt: (chatName?: string) => void
     exportPrompt: () => Promise<void>
     importPrompt: (file: string) => Promise<void>
@@ -48,4 +48,60 @@ export interface ISettingAction {
     importSetting: (file: string) => Promise<void>
     exportSetting: () => Promise<void>
     generalSetting: GeneralSetting
+}
+
+export type AskAct = {
+    run: (param: AskContent) => Promise<void>
+    reRun: () => Promise<void>
+}
+
+export type SwitchAct = {
+    chat: (name?: string) => Promise<void>
+    topic: () => Promise<void>
+}
+
+export type PromptAct = {
+    list: (name: string, chatName?: string) => Promise<void>
+    get: (chatName?: string) => string
+    set: (prompt: string, chatName?: string) => void
+    show: (chatName?: string) => void
+    publish: (chatName?: string) => Promise<void>
+}
+
+export type PresetAct = {
+    edit: (chatName?: string) => Promise<void>
+    clear: (chatName?: string) => void
+    show: (chatName?: string) => void
+}
+
+export type ConfigAct = {
+    contextSize: (size: number, chatName?: string) => void
+    model: (chatName?: string) => Promise<void>
+    context: (chatName?: string) => void
+    mcp: (chatName?: string) => Promise<void>
+    scenario: (chatName?: string) => Promise<void>
+    show: (chatName?: string) => void
+}
+
+export type ExportAct = {
+    all: (path?: string) => Promise<void>
+    chat: (path?: string) => Promise<void>
+    chatTopic: (path?: string) => Promise<void>
+    topic: (path?: string) => Promise<void>
+}
+
+export type ChatCommandAct = {
+    ask: AskAct
+    new: (name: string) => Promise<void>
+    msgHistory: (limit: number, chatName?: string) => Promise<void>
+    remove: () => Promise<void>
+    switch: SwitchAct
+    prompt: PromptAct
+    preset: PresetAct
+    config: ConfigAct
+    export: ExportAct
+}
+
+export interface ICommanndAct {
+    chat: ChatCommandAct
 }

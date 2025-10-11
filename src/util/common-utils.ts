@@ -51,10 +51,11 @@ type IsEmpty = {
     (str: undefined): boolean
     (str: null): boolean
     (str: string): boolean
+    (str: string | undefined): boolean
     <T>(arr: T[]): boolean
 }
 
-const isEmpty: IsEmpty = <T,>(param: string | T[] | undefined | null) => {
+const isEmpty: IsEmpty = <T>(param: string | T[] | undefined | null) => {
     if (!param) {
         return true
     }

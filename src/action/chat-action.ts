@@ -51,7 +51,7 @@ import { TextShow } from '../component/text-show'
 import { themes } from '../util/theme'
 import writeXlsxFile, { type Schema } from 'write-excel-file/node'
 import { OpenAiClient } from '../llm/open-ai-client'
-import { simpleShow } from '../component/cf-show'
+import { simpleShow } from '../component/simple-show'
 
 export class ChatAction implements IChatAction {
     private generalSetting: GeneralSetting
@@ -638,13 +638,13 @@ export class ChatAction implements IChatAction {
         })
     }
 
-    prompt = (chatName?: string) => {
+    queryPrompt = (chatName?: string) => {
         const { sysPrompt } = this.store.chat.get(chatName).config.value
         return sysPrompt
     }
 
     printPrompt = (chatName?: string) => {
-        const pt = this.prompt(chatName)
+        const pt = this.queryPrompt(chatName)
         if (!pt) {
             throw Error(promptMessage.systemPromptMissing)
         }
