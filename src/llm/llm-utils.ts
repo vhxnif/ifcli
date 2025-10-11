@@ -10,15 +10,12 @@ export type LLMNotifyMessageType =
     | 'completed'
 
 const llmNotifyMessage: Record<LLMNotifyMessageType, string> = {
-    waiting: '[Quantum Channel Opening :: Bending Space-Time Continuum...]',
-    analyzing:
-        '[Semantic Gravity Well Locked :: Decrypting Hyperstring Resonance...]',
-    thinking: '[Neural Matrix Active :: Traversing Knowledge Nebula...]',
-    rendering:
-        '[Holographic Interface Online :: Rendering Multidimensional Data Streams—*]',
-    error: '[Unknown Particle Storm Detected :: Rebooting Chrono-Sync Protocols...]',
-    completed:
-        '[Cognitive Sync Module Engaged :: Neural Latency Neutralized—*]',
+    waiting: 'Booting cognitive engine...',
+    analyzing: 'Parsing input streams...',
+    thinking: 'Orchestrating neural processes...',
+    rendering: 'Assembling response framework...',
+    error: 'System protocol violation',
+    completed: 'Cognitive cycle complete',
 }
 
 const llmNotifyMessageColor: Record<LLMNotifyMessageType, CatppuccinColorName> =
