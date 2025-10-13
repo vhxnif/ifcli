@@ -100,6 +100,14 @@ const matchRun = async (
     }
 }
 
+const parseIntNumber = (str: string | undefined, def: number) => {
+    if (!str) {
+        return def
+    }
+    const num = parseInt(str)
+    return isNaN(num) ? def : num
+}
+
 export {
     containsChinese,
     editor,
@@ -116,4 +124,5 @@ export {
     stringWidth,
     unixnow,
     uuid,
+    parseIntNumber,
 }

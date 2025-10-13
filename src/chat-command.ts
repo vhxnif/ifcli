@@ -3,7 +3,13 @@ import { Command } from '@commander-js/extra-typings'
 import { act, color } from './app-context'
 import { APP_VERSION } from './config/app-setting'
 import { commanderHelpConfiguration } from './util/color-schema'
-import { editor, matchRun, print, stdin } from './util/common-utils'
+import {
+    editor,
+    matchRun,
+    parseIntNumber,
+    print,
+    stdin,
+} from './util/common-utils'
 
 const program = new Command()
     .configureHelp(commanderHelpConfiguration(color))
@@ -74,7 +80,7 @@ program
     )
     .action(async ({ limit }, cmd) => {
         const force = cmd.parent?.opts()?.force as string
-        await act.chat.msgHistory(Number(limit), force)
+        await act.chat.msgHistory(parseIntNumber(limit, 100), force)
     })
 
 program
@@ -166,15 +172,11 @@ program
     .action(async ({ contextSize, model, context, mcp, scenario }, cmd) => {
         const name = cmd.parent?.opts().force as string
         const cf = act.chat.config
-        const toNumber = (str: string) => {
-            const num = parseInt(str)
-            return isNaN(num) ? 10 : num
-        }
         await matchRun(
             [
                 [
                     contextSize,
-                    () => cf.contextSize(toNumber(contextSize!), name),
+                    () => cf.contextSize(parseIntNumber(contextSize, 10), name),
                 ],
                 [model, () => cf.model(name)],
                 [context, () => cf.context(name)],
