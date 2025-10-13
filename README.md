@@ -76,7 +76,7 @@ Options:
   -e, --edit                   open editor for input
   -t, --new-topic              start a new conversation topic
   -r, --retry                  retry the last question
-  -a, --attachment <file>      attach file content to message
+  -a, --attachment <file>      attach text file content to message
   -h, --help                   display help for command
 
 Commands:

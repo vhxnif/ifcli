@@ -25,7 +25,7 @@ program
     .option('-e, --edit', 'open editor for input')
     .option('-t, --new-topic', 'start a new conversation topic')
     .option('-r, --retry', 'retry the last question')
-    .option('-a, --attachment <file>', 'attach file content to message')
+    .option('-a, --attachment <file>', 'attach text file content to message')
     .argument('[string]')
     .action(async (content, option) => {
         const { edit, syncCall, newTopic, force, retry, attachment } = option
