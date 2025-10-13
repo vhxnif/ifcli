@@ -13,7 +13,7 @@
         "MCP Client",
         "MCP-sse",
         "MCP-stdio",
-        "MCP-streamable",
+        "MCP-http",
         "bun",
         "chat"
     ],

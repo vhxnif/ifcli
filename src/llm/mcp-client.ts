@@ -17,7 +17,7 @@ import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js'
 import type { RunnableToolFunction } from 'openai/lib/RunnableFunction.mjs'
 import { println, uuid } from '../util/common-utils'
 
-export type MCPConnectType = 'streamable' | 'sse' | 'stdio'
+export type MCPConnectType = 'http' | 'sse' | 'stdio'
 
 export interface MCPConfig {
     name: string
@@ -37,8 +37,8 @@ export interface StdioConfig extends MCPConfig {
     params: StdioServerParameters
 }
 
-export interface StreamableConfig extends MCPConfig {
-    type: 'streamable'
+export interface HttpConfig extends MCPConfig {
+    type: 'http'
     url: string
     opts?: StreamableHTTPClientTransportOptions
 }
@@ -70,7 +70,7 @@ export default class MCPClient {
             return
         }
         const { url, opts } = config as SSEConfig
-        if (config.type === 'streamable') {
+        if (config.type === 'http') {
             this.transport = new StreamableHTTPClientTransport(
                 new URL(url),
                 opts

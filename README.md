@@ -106,23 +106,26 @@ Commands:
             "url": "http://localhost:3000/sse"
         },
         {
-            "name": "weather",
-            "version": "v2",
-            "enable": true,
-            "type": "streamable",
-            "url": "http://localhost:3000/mcp"
-        },
-        {
-            "name": "weather",
-            "version": "v3",
+            "name": "sequential-thingking",
+            "version": "v1",
             "enable": true,
             "type": "stdio",
             "params": {
-                "command": "bun",
+                "command": "npx",
                 "args": [
-                    "run",
-                    "/Users/chen/workspace/weather-mcp/src/mcp/stdio-server.ts"
+                    "-y",
+                    "@modelcontextprotocol/server-sequential-thinking"
                 ]
+            }
+        },
+        {
+            "name": "context7",
+            "version": "v1",
+            "enable": true,
+            "type": "http",
+            "url": "https://mcp.context7.com/mcp",
+            "headers": {
+                "CONTEXT7_API_KEY": "<your api key>"
             }
         }
     ],
@@ -175,14 +178,14 @@ Commands:
 | apiKey  | string   | false    |
 | models  | string[] | true     |
 
-### MCP Server (Streamable)
+### MCP Server (http)
 
 | Field   | Type                                 | Required |
 | :------ | :----------------------------------- | :------- |
 | name    | string                               | true     |
 | version | string                               | true     |
 | enable  | boolean                              | true     |
-| type    | 'streamable'                         | true     |
+| type    | 'http'                               | true     |
 | url     | string                               | true     |
 | opts    | StreamableHTTPClientTransportOptions | false    |
 
