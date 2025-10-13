@@ -30,14 +30,16 @@ program
     .action(async (content, option) => {
         const { edit, syncCall, newTopic, force, retry, attachment } = option
         const { run, reRun } = act.chat.ask
-        const ask = async (ct: string) => {
-            let str = ct
-            if (attachment) {
-                const fileContent = await Bun.file(attachment).text()
-                str = `# User\n\n${ct}\n\n# Attachment \n\n${fileContent}`
+        const withAttachment = async (ct: string) => {
+            if (!attachment) {
+                return ct
             }
+            const fileContent = await Bun.file(attachment).text()
+            return `# User\n\n${ct}\n\n# Attachment \n\n${fileContent}`
+        }
+        const ask = async (ct: string) => {
             await run({
-                content: str,
+                content: await withAttachment(ct),
                 chatName: force,
                 noStream: syncCall ? true : false,
                 newTopic,
