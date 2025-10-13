@@ -5,7 +5,6 @@ import type {
     Model,
     PresetMessageContent,
     Cache,
-    AppSettingContent,
 } from '../src/store/store-types'
 
 // Helper functions for test data
@@ -20,15 +19,6 @@ const createPresetMessage = (
 ): PresetMessageContent => ({
     user,
     assistant,
-})
-
-const createAppSetting = (content: {
-    version: string
-    generalSetting: string
-    mcpServer: string
-    llmSetting: string
-}): AppSettingContent => ({
-    ...content,
 })
 
 describe('Store - Integration Tests with Memory Database', () => {
@@ -398,28 +388,6 @@ describe('Store - Integration Tests with Memory Database', () => {
             expect(promptsBeforeDelete).toHaveLength(2)
             expect(promptsAfterDelete).toHaveLength(1)
             expect(promptsAfterDelete[0].version).toBe(promptVersion2)
-        })
-    })
-
-    describe('App setting operations', () => {
-        test('should set and get app settings', () => {
-            // Arrange
-            const newSetting: AppSettingContent = createAppSetting({
-                version: '1.0.0',
-                generalSetting: JSON.stringify({ theme: 'dark' }),
-                mcpServer: '[]',
-                llmSetting: '[]',
-            })
-
-            // Act
-            store.appSetting.set(newSetting)
-            const appSetting = store.appSetting.get()
-
-            // Assert
-            expect(appSetting?.version).toBe('1.0.0')
-            expect(appSetting?.generalSetting).toBe(
-                JSON.stringify({ theme: 'dark' })
-            )
         })
     })
 

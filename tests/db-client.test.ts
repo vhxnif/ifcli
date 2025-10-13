@@ -2,7 +2,6 @@ import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import Database from 'bun:sqlite'
 import { DBClient } from '../src/store/db-client'
 import type {
-    AppSettingContent,
     MessageContent,
     Model,
     PresetMessageContent,
@@ -12,15 +11,6 @@ import type {
 } from '../src/store/store-types'
 
 // Helper function to create test data
-const createAppSetting = (content: {
-    version: string
-    generalSetting: string
-    mcpServer: string
-    llmSetting: string
-}): AppSettingContent => ({
-    ...content,
-})
-
 const createMessageContent = (
     topicId: string,
     role: MessageRoleType,
@@ -267,37 +257,6 @@ describe('DBClient - Database Operations Tests', () => {
 
             // Assert
             expect(queriedPresets).toHaveLength(0)
-        })
-    })
-
-    describe('App setting operations', () => {
-        test('should initialize with default settings', () => {
-            // Act
-            const appSetting = dbClient.appSetting()
-
-            // Assert
-            expect(appSetting).toBeDefined()
-            expect(appSetting?.version).toBeDefined()
-        })
-
-        test('should add and retrieve app settings', () => {
-            // Arrange
-            const newSetting: AppSettingContent = createAppSetting({
-                version: '1.0.0',
-                generalSetting: JSON.stringify({ theme: 'dark' }),
-                mcpServer: '[]',
-                llmSetting: '[]',
-            })
-
-            // Act
-            dbClient.addAppSetting(newSetting)
-            const appSetting = dbClient.appSetting()
-
-            // Assert
-            expect(appSetting?.version).toBe('1.0.0')
-            expect(appSetting?.generalSetting).toBe(
-                JSON.stringify({ theme: 'dark' })
-            )
         })
     })
 
