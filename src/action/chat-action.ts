@@ -67,7 +67,14 @@ export class ChatAct implements IChatAct {
         this.generalSetting = generalSetting
         this.mcps = mcpServers
             .filter((it) => it.enable)
-            .map((it) => new MCPClient(it))
+            .map((it) => {
+                try {
+                    return new MCPClient(it)
+                } catch (e: unknown) {
+                    return null
+                }
+            })
+            .filter((it) => it != null)
         llmSettings
             .map((it) => new OpenAiClient(it))
             .forEach((it) => this.clientMap.set(it.type, it))
