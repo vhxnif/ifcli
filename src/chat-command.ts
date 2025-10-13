@@ -168,7 +168,10 @@ program
         const cf = act.chat.config
         await matchRun(
             [
-                [contextSize, () => cf.contextSize(Number(contextSize), name)],
+                [
+                    contextSize,
+                    () => cf.contextSize(parseInt(contextSize!), name),
+                ],
                 [model, () => cf.model(name)],
                 [context, () => cf.context(name)],
                 [mcp, () => cf.mcp(name)],

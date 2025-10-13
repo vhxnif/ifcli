@@ -1,14 +1,14 @@
-import { isEmpty, println } from '../util/common-utils'
+import type { ChalkInstance } from 'chalk'
+import type { GeneralSetting } from '../config/app-setting'
+import type { ChatConfig, ConfigExt } from '../store/store-types'
 import {
     catppuccinColorSchema,
     hex,
     type CatppuccinColorName,
 } from '../util/color-schema'
-import type { ChalkInstance } from 'chalk'
-import { TextShow } from './text-show'
-import type { GeneralSetting } from '../config/app-setting'
+import { isEmpty, println } from '../util/common-utils'
 import { themes } from '../util/theme'
-import type { ChatConfig, ConfigExt } from '../store/store-types'
+import { TextShow } from './text-show'
 
 class SimpleShow {
     constructor() {}
@@ -82,10 +82,12 @@ class SimpleShow {
                 value: `${color.sky(scenarioName)}(${color.yellow(scenario)})`,
             },
             {
+                key: 'Context Size',
+                value: `${color.yellow(contextLimit)}`,
+            },
+            {
                 key: 'Context',
-                value: withContext
-                    ? color.yellow(contextLimit)
-                    : this.no(color),
+                value: withContext ? this.yes(color) : this.no(color),
             },
             {
                 key: 'MCP',
