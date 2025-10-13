@@ -808,7 +808,7 @@ export class ChatAct implements IChatAct {
 
         const { search, publish } = this.store.prompt
         const existsPrompt = search(name, version)
-        if (!isEmpty(existsPrompt)) {
+        if (isEmpty(existsPrompt)) {
             publish(name, version, prompt)
             return
         }
