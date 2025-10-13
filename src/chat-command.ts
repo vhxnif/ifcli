@@ -166,11 +166,15 @@ program
     .action(async ({ contextSize, model, context, mcp, scenario }, cmd) => {
         const name = cmd.parent?.opts().force as string
         const cf = act.chat.config
+        const toNumber = (str: string) => {
+            const num = parseInt(str)
+            return isNaN(num) ? 10 : num
+        }
         await matchRun(
             [
                 [
                     contextSize,
-                    () => cf.contextSize(parseInt(contextSize!), name),
+                    () => cf.contextSize(toNumber(contextSize!), name),
                 ],
                 [model, () => cf.model(name)],
                 [context, () => cf.context(name)],
