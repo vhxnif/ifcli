@@ -31,9 +31,9 @@ export class Act implements IAct {
     get chat(): ChatCmdAct {
         return {
             ask: this.askAct(),
-            new: (n) => this.chatAct.newChat(n),
+            new: async (n) => await this.chatAct.newChat(n),
             msgHistory: (l, n) => this.chatAct.printChatHistory(l, n),
-            remove: () => this.chatAct.removeChat(),
+            remove: this.chatAct.removeChat,
             switch: this.switchAct(),
             prompt: this.promptAct(),
             preset: this.presetAct(),
@@ -44,31 +44,31 @@ export class Act implements IAct {
 
     private askAct(): AskAct {
         return {
-            run: (p) => this.chatAct.ask(p),
-            reRun: () => this.chatAct.reAsk(),
+            run: async (p) => await this.chatAct.ask(p),
+            reRun: this.chatAct.reAsk,
         } as AskAct
     }
 
     private switchAct(): SwitchAct {
         return {
-            chat: (n) => this.chatAct.changeChat(n),
-            topic: () => this.chatAct.changeTopic(),
+            chat: async (n) => await this.chatAct.changeChat(n),
+            topic: this.chatAct.changeTopic,
         } as SwitchAct
     }
 
     private promptAct(): PromptAct {
         return {
-            list: (p, n) => this.chatAct.selectPrompt(p, n),
+            list: async (p, n) => await this.chatAct.selectPrompt(p, n),
             get: (n) => this.chatAct.queryPrompt(n),
             set: (c, n) => this.chatAct.modifySystemPrompt(c, n),
             show: (n) => this.chatAct.printPrompt(n),
-            publish: (n) => this.chatAct.publishPrompt(n),
+            publish: async (n) => await this.chatAct.publishPrompt(n),
         } as PromptAct
     }
 
     private presetAct(): PresetAct {
         return {
-            edit: (n) => this.chatAct.editPresetMessage(n),
+            edit: async (n) => await this.chatAct.editPresetMessage(n),
             clear: (n) => this.chatAct.clearPresetMessage(n),
             show: (n) => this.chatAct.printPresetMessage(n),
         } as PresetAct
@@ -77,20 +77,21 @@ export class Act implements IAct {
     private configAct(): ConfigAct {
         return {
             contextSize: (l, n) => this.chatAct.modifyContextSize(l, n),
-            model: (n) => this.chatAct.modifyModel(n),
+            model: async (n) => await this.chatAct.modifyModel(n),
             context: (n) => this.chatAct.modifyWithContext(n),
-            mcp: (n) => this.chatAct.modifyWithMCP(n),
-            scenario: (n) => this.chatAct.modifyScenario(n),
+            mcp: async (n) => await this.chatAct.modifyWithMCP(n),
+            scenario: async (n) => await this.chatAct.modifyScenario(n),
             show: (n) => this.chatAct.printChatConfig(n),
         } as ConfigAct
     }
 
     private exportAct(): ExportAct {
         return {
-            all: (p) => this.chatAct.exportAllChatMessage(p),
-            chat: (p) => this.chatAct.exportChatMessage(p),
-            chatTopic: (p) => this.chatAct.exportChatTopicMessage(p),
-            topic: (p) => this.chatAct.exportTopicMessage(p),
+            all: async (p) => await this.chatAct.exportAllChatMessage(p),
+            chat: async (p) => await this.chatAct.exportChatMessage(p),
+            chatTopic: async (p) =>
+                await this.chatAct.exportChatTopicMessage(p),
+            topic: async (p) => await this.chatAct.exportTopicMessage(p),
         } as ExportAct
     }
 
@@ -105,28 +106,28 @@ export class Act implements IAct {
     private appConfigAct(): AppConfigAct {
         return {
             general: () => this.settingAct.generalSetting,
-            modify: () => this.settingAct.setting(),
-            theme: () => this.settingAct.theme(),
-            import: (f) => this.settingAct.importSetting(f),
-            export: () => this.settingAct.exportSetting(),
+            modify: this.settingAct.setting,
+            theme: this.settingAct.theme,
+            import: async (f) => await this.settingAct.importSetting(f),
+            export: this.settingAct.exportSetting,
         } as AppConfigAct
     }
 
     private appMCPAct(): AppMCPAct {
         return {
             tools: {
-                list: () => this.chatAct.tools(),
-                test: () => this.chatAct.testTool(),
+                list: this.chatAct.tools,
+                test: this.chatAct.testTool,
             } as AppMCPToolsAct,
         } as AppMCPAct
     }
 
     private appPromptAct(): AppPromptAct {
         return {
-            list: (n) => this.chatAct.listPrompt(n),
-            export: () => this.chatAct.exportPrompt(),
-            import: (f) => this.chatAct.importPrompt(f),
-            delete: (n) => this.chatAct.deletePrompt(n),
+            list: async (n) => await this.chatAct.listPrompt(n),
+            export: this.chatAct.exportPrompt,
+            import: async (f) => await this.chatAct.importPrompt(f),
+            delete: async (n) => await this.chatAct.deletePrompt(n),
         } as AppPromptAct
     }
 }
