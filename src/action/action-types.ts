@@ -1,5 +1,3 @@
-import type { GeneralSetting } from '../config/app-setting'
-
 export type AskContent = {
     content: string
     chatName?: string
@@ -45,9 +43,6 @@ export interface IChatAct {
 export interface ISettingAct {
     setting: () => Promise<void>
     theme: () => Promise<void>
-    importSetting: (file: string) => Promise<void>
-    exportSetting: () => Promise<void>
-    generalSetting: GeneralSetting
 }
 
 export type AskAct = {
@@ -103,11 +98,8 @@ export type ChatCmdAct = {
 }
 
 export type AppConfigAct = {
-    general: () => GeneralSetting
     modify: () => Promise<void>
     theme: () => Promise<void>
-    import: (file: string) => Promise<void>
-    export: () => Promise<void>
 }
 
 export type AppMCPToolsAct = {

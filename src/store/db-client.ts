@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import Database from 'bun:sqlite'
 import {
-    AppSetting,
     Cache,
     Chat,
     ChatConfig,
@@ -13,7 +12,6 @@ import {
     CmdHistory,
     ExportMessage,
     SqliteTable,
-    type AppSettingContent,
     type CmdHistoryType,
     type IDBClient,
     type MessageContent,
@@ -24,14 +22,11 @@ import {
 } from './store-types'
 import { table_def } from './table-def'
 import { isEmpty, unixnow, uuid } from '../util/common-utils'
-import { defaultSetting } from '../config/app-setting'
 import { temperature } from '../llm/llm-constant'
 
 export class DBClient implements IDBClient {
     private readonly db: Database
 
-    private readonly appSettingColumn =
-        'id, version, general_setting as generalSetting, mcp_server as mcpServer, llm_setting as llmSetting, create_time as createTime'
     private readonly chatColumn =
         'id, name, "select", action_time as actionTime, select_time as selectTime'
     private readonly chatMessageColumn =
@@ -47,8 +42,6 @@ export class DBClient implements IDBClient {
 
     private readonly cmdHistoryColumn =
         'id, type, key, last_switch_time as lastSwitchTime, frequency'
-    private readonly mcpToolsColumn =
-        'id, name, version, tools, create_time as createTime, update_time as updateTime'
 
     private readonly chatConfigExtColumn =
         'id, chat_id as chatId, ext, create_time as createTime, update_time as updateTime'
@@ -69,9 +62,6 @@ export class DBClient implements IDBClient {
             .forEach(([_, v]) => {
                 this.db.run(v)
             })
-        if (!this.appSetting()) {
-            this.addAppSetting(defaultSetting)
-        }
     }
 
     trans = (fs: RunSql): void => {
@@ -516,30 +506,5 @@ export class DBClient implements IDBClient {
 
     deleteCache(key: string): void {
         this.db.prepare(`DELETE FROM cache WHERE key = ?`).run(key)
-    }
-
-    appSetting(): AppSetting | null {
-        return this.db
-            .query(
-                `SELECT ${this.appSettingColumn} FROM app_setting order by create_time desc limit 1`
-            )
-            .as(AppSetting)
-            .get()
-    }
-
-    addAppSetting(setting: AppSettingContent): void {
-        const { version, generalSetting, mcpServer, llmSetting } = setting
-        this.db
-            .prepare(
-                `INSERT INTO app_setting (id, version, general_setting, mcp_server, llm_setting, create_time) VALUES (?, ?, ?, ?, ?, ?)`
-            )
-            .run(
-                uuid(),
-                version,
-                generalSetting,
-                mcpServer,
-                llmSetting,
-                unixnow()
-            )
     }
 }

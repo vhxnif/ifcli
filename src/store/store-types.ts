@@ -66,15 +66,6 @@ export class ChatPresetMessage {
     create_time!: bigint
 }
 
-export class AppSetting {
-    id!: string
-    version!: string
-    generalSetting!: string
-    mcpServer!: string
-    llmSetting!: string
-    createTime!: bigint
-}
-
 export class Cache {
     key!: string
     value!: string
@@ -102,13 +93,6 @@ export type MessageContent = {
 export type PresetMessageContent = {
     user: string
     assistant: string
-}
-
-export type AppSettingContent = {
-    version: string
-    generalSetting: string
-    mcpServer: string
-    llmSetting: string
 }
 
 export class ExportMessage {
@@ -206,10 +190,6 @@ export interface IDBClient {
     saveOrUpdateCache: (cache: Cache) => void
     queryCache: (key: string) => Cache | null
     deleteCache: (key: string) => void
-
-    // app setting
-    appSetting: () => AppSetting | null
-    addAppSetting: (setting: AppSettingContent) => void
 }
 export type Model = {
     llmType: string
@@ -302,16 +282,10 @@ export type PromptAct = {
     delete: (name: string, version: string) => void
 }
 
-export type AppSettingAct = {
-    get: () => AppSetting | null
-    set: (setting: AppSettingContent) => void
-}
-
 export interface IStore {
     chat: ChatAct
     quickSwitch: QucikSwitchAct
     exprot: ExportAct
     cache: CacheAct
     prompt: PromptAct
-    appSetting: AppSettingAct
 }

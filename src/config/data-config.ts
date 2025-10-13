@@ -9,7 +9,7 @@ export class DataPathConfig {
     private get appName(): string {
         return 'ifcli'
     }
-    get configPath(): string | undefined {
+    private get configPath(): string | undefined {
         const platformConfigPath = this.platformConfigPath
         const appName = this.appName
         const appConfig = `${platformConfigPath}${path.sep}${appName}`
@@ -28,7 +28,7 @@ export class DataPathConfig {
             return appConfig
         }
     }
-    get platformConfigPath(): string {
+    private get platformConfigPath(): string {
         if (!['win32', 'linux', 'darwin'].includes(platform)) {
             throw Error(`${platform} not supported.`)
         }
@@ -38,7 +38,13 @@ export class DataPathConfig {
         }
         return pt
     }
-    get databasePath(): string {
+    get database(): string {
         return `${this.configPath}${path.sep}${this.appName}_${APP_VERSION}.sqlite`
     }
+
+    get setting(): string {
+        return `${this.configPath}${path.sep}${this.appName}.json`
+    }
 }
+
+export const dataPath = new DataPathConfig()

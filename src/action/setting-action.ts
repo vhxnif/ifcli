@@ -1,65 +1,29 @@
 import { color } from '../app-context'
-import { AppSettingParse, type GeneralSetting } from '../config/app-setting'
+import { appSetting, appSettingCover } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
-import type { ISettingAct } from './action-types'
-import type { IStore } from '../store/store-types'
-import { editor, isTextSame } from '../util/common-utils'
-import { select, themeStyle, type Choice } from '../util/inquirer-utils'
+import { editor, isTextSame, jsonformat, objToJson } from '../util/common-utils'
+import { select, themeStyle } from '../util/inquirer-utils'
 import { themes } from '../util/theme'
+import type { ISettingAct } from './action-types'
 
 export class SettingAct implements ISettingAct {
-    private readonly store: IStore
-    constructor(store: IStore) {
-        this.store = store
-    }
+    constructor() {}
 
     theme = async () => {
-        const st = this.store.appSetting.get()!
-        const parse = new AppSettingParse(st)
-        const generalSetting: GeneralSetting = parse.generalSetting()
-        await this.updateGeneralSetting({
+        const setting = await appSetting()
+        const value = await select({
             message: 'Select Theme:',
             choices: Object.keys(themes).map((it) => ({
                 name: it,
                 value: it,
                 description: themes[it].palette,
             })),
-            df: generalSetting.theme,
-            f: (v) => ({ theme: v }),
-        })
-    }
-
-    private updateGeneralSetting = async ({
-        message,
-        choices,
-        df,
-        f,
-    }: {
-        message: string
-        choices: Choice<string>[]
-        df?: string
-        f: (value: string) => {
-            [K in keyof GeneralSetting]?: GeneralSetting[K]
-        }
-    }) => {
-        const { get, set } = this.store.appSetting
-        const st = get()!
-        const parse = new AppSettingParse(st)
-        const generalSetting: GeneralSetting = parse.generalSetting()
-        const value = await select({
-            message,
-            choices,
-            default: df,
+            default: setting.generalSetting.theme,
             theme: themeStyle(color),
         })
-        const newSetting = parse.generalSettingParse({
-            ...generalSetting,
-            ...f(value),
-        })
-        set({
-            ...st,
-            generalSetting: newSetting,
-        })
+
+        setting.generalSetting.theme = value
+        await appSettingCover(objToJson(setting))
     }
 
     setting = async () => {
@@ -70,45 +34,16 @@ export class SettingAct implements ISettingAct {
     private modifySetting = async (
         mdf: (source: string) => Promise<string>
     ) => {
-        const { get, set } = this.store.appSetting
-        const st = get()!
-        const parse = new AppSettingParse(st)
-        const sourceText = parse.editShow()
+        const setting = await appSetting()
+        const sourceText = objToJson(setting)
         const text = await mdf(sourceText)
         if (!text) {
             return
         }
-        if (isTextSame(sourceText, text)) {
+        const fmtText = jsonformat(text)
+        if (isTextSame(sourceText, fmtText)) {
             throw Error(promptMessage.noEdit)
         }
-        const setting = parse.editSettingParse(text)
-        if (!setting) {
-            return
-        }
-        if (isTextSame(sourceText, parse.editShow(setting))) {
-            throw Error(promptMessage.noEdit)
-        }
-        const add = parse.editParse(setting)
-        if (!add) {
-            return
-        }
-        set(add)
-    }
-
-    importSetting = async (file: string) => {
-        const text = async () => await Bun.file(file).text()
-        await this.modifySetting(text)
-    }
-
-    exportSetting = async () => {
-        const parse = new AppSettingParse(this.store.appSetting.get()!)
-        const sourceText = parse.editShow()
-        await Bun.write(`ifcli_setting.json`, sourceText)
-    }
-
-    get generalSetting(): GeneralSetting {
-        const st = this.store.appSetting.get()!
-        const parse = new AppSettingParse(st)
-        return parse.generalSetting()
+        await appSettingCover(fmtText)
     }
 }

@@ -86,6 +86,10 @@ const jsonformat = (jsonString: string) => {
     }
 }
 
+const objToJson = (obj: unknown) => {
+    return JSON.stringify(obj, null, 4)
+}
+
 export type VoidResult = Promise<void> | void
 export type OptionType = string | boolean | undefined
 export type OptionAction = () => VoidResult
@@ -116,6 +120,7 @@ export {
     isEmpty,
     isTextSame,
     jsonformat,
+    objToJson,
     log,
     matchRun,
     print,

@@ -1,28 +1,31 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { stringWidth } from 'bun'
+import path from 'path'
+import writeXlsxFile, { type Schema } from 'write-excel-file/node'
 import { color } from '../app-context'
-import { AppSettingParse, type GeneralSetting } from '../config/app-setting'
+import { Display } from '../component/llm-result-show'
+import { simpleShow } from '../component/simple-show'
+import { TextShow } from '../component/text-show'
+import { type GeneralSetting, type Setting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { askFlow } from '../llm/ask-flow'
-import { Display } from '../component/llm-result-show'
-import type { AskContent, IChatAct } from './action-types'
 import { temperature } from '../llm/llm-constant'
 import type { ILLMClient } from '../llm/llm-types'
 import MCPClient from '../llm/mcp-client'
-import path from 'path'
+import { OpenAiClient } from '../llm/open-ai-client'
 import {
     Chat,
     ChatMessage,
+    ChatPresetMessage,
     ChatPrompt,
     ChatTopic,
     CmdHistory,
     ExportMessage,
     type ConfigExt,
     type IStore,
-    type Model,
     type MCPServerKey,
+    type Model,
     type PresetMessageContent,
-    ChatPresetMessage,
 } from '../store/store-types'
 import {
     catppuccinColorSchema,
@@ -39,19 +42,16 @@ import {
     unixnow,
 } from '../util/common-utils'
 import {
+    checkbox,
     input,
     select,
-    checkbox,
     selectRun,
     themeStyle,
     type Choice,
 } from '../util/inquirer-utils'
 import { env, terminal } from '../util/platform-utils'
-import { TextShow } from '../component/text-show'
 import { themes } from '../util/theme'
-import writeXlsxFile, { type Schema } from 'write-excel-file/node'
-import { OpenAiClient } from '../llm/open-ai-client'
-import { simpleShow } from '../component/simple-show'
+import type { AskContent, IChatAct } from './action-types'
 
 export class ChatAct implements IChatAct {
     private generalSetting: GeneralSetting
@@ -59,11 +59,9 @@ export class ChatAct implements IChatAct {
     private mcps: MCPClient[]
     private store: IStore
 
-    constructor(chatStore: IStore) {
+    constructor(chatStore: IStore, setting: Setting) {
         this.store = chatStore
-        const { generalSetting, mcpServers, llmSettings } = new AppSettingParse(
-            this.store.appSetting.get()!
-        ).setting(true)
+        const { generalSetting, mcpServers, llmSettings } = setting
         this.generalSetting = generalSetting
         this.mcps = mcpServers
             .filter((it) => it.enable)

@@ -1,3 +1,4 @@
+import type { Setting } from '../config/app-setting'
 import type { IStore } from '../store/store-types'
 import type {
     AppConfigAct,
@@ -8,8 +9,8 @@ import type {
     ChatCmdAct,
     ConfigAct,
     ExportAct,
-    IChatAct,
     IAct,
+    IChatAct,
     ISettingAct,
     PresetAct,
     PromptAct,
@@ -23,9 +24,9 @@ export class Act implements IAct {
     private readonly chatAct: IChatAct
     private readonly settingAct: ISettingAct
 
-    constructor(store: IStore) {
-        this.chatAct = new ChatAct(store)
-        this.settingAct = new SettingAct(store)
+    constructor(store: IStore, setting: Setting) {
+        this.chatAct = new ChatAct(store, setting)
+        this.settingAct = new SettingAct()
     }
 
     get chat(): ChatCmdAct {
@@ -105,11 +106,8 @@ export class Act implements IAct {
 
     private appConfigAct(): AppConfigAct {
         return {
-            general: () => this.settingAct.generalSetting,
             modify: this.settingAct.setting,
             theme: this.settingAct.theme,
-            import: async (f) => await this.settingAct.importSetting(f),
-            export: this.settingAct.exportSetting,
         } as AppConfigAct
     }
 

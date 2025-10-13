@@ -1,6 +1,8 @@
+import type Database from 'bun:sqlite'
 import { promptMessage } from '../config/prompt-message'
+import { uuid } from '../util/common-utils'
+import { DBClient } from './db-client'
 import type {
-    AppSettingAct,
     CacheAct,
     ChatAct,
     ChatInfo,
@@ -8,8 +10,8 @@ import type {
     ConfigExt,
     ConfigExtAct,
     ExportAct,
-    IStore,
     IDBClient,
+    IStore,
     MessageContent,
     Model,
     PresetAct,
@@ -18,9 +20,6 @@ import type {
     TopicAct,
     TopicMessageAct,
 } from './store-types'
-import { uuid } from '../util/common-utils'
-import type Database from 'bun:sqlite'
-import { DBClient } from './db-client'
 
 export class Store implements IStore {
     private readonly client: IDBClient
@@ -233,12 +232,5 @@ export class Store implements IStore {
             publish: (n, v, c) => this.client.publishPrompt(n, v, c),
             delete: (n, v) => this.client.deletePrompt(n, v),
         } as PromptAct
-    }
-
-    get appSetting(): AppSettingAct {
-        return {
-            get: () => this.client.appSetting(),
-            set: (c) => this.client.addAppSetting(c),
-        } as AppSettingAct
     }
 }

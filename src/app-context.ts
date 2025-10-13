@@ -1,13 +1,15 @@
 import Database from 'bun:sqlite'
 import type { IAct } from './action/action-types'
 import { Act } from './action/command-action'
-import { DataPathConfig } from './config/data-config'
 import { Store } from './store/store'
 import { chalkThemeColor } from './util/color-schema'
+import { appSetting, initAppSetting } from './config/app-setting'
+import { dataPath } from './config/data-config'
 
-const { databasePath } = new DataPathConfig()
-const store = new Store(new Database(databasePath, { strict: true }))
-const act: IAct = new Act(store)
-const color = chalkThemeColor(act.setting.config.general().theme)
+await initAppSetting()
+const setting = await appSetting()
+const store = new Store(new Database(dataPath.database, { strict: true }))
+const act: IAct = new Act(store, setting)
+const color = chalkThemeColor(setting.generalSetting.theme)
 
 export { act, color }

@@ -1,8 +1,6 @@
-import type { MCPConfig } from '../llm/mcp-client'
-import type { AppSetting, AppSettingContent } from '../store/store-types'
-import { isEmpty } from '../util/common-utils'
-import { promptMessage } from './prompt-message'
 import { version } from '../../package.json'
+import type { MCPConfig } from '../llm/mcp-client'
+import { dataPath } from './data-config'
 
 export type LLMSetting = {
     name: string
@@ -48,122 +46,25 @@ export const defaultLLMSettings: LLMSetting[] = [
     },
 ]
 
-export const defaultSetting: AppSettingContent = {
-    version: APP_VERSION,
-    generalSetting: JSON.stringify(defaultGeneralSetting),
-    mcpServer: '[]',
-    llmSetting: '[]',
+export async function initAppSetting(): Promise<void> {
+    const f = Bun.file(dataPath.setting)
+    const ext = await f.exists()
+    if (ext) {
+        return
+    }
+    const defSetting = {
+        generalSetting: defaultGeneralSetting,
+        llmSettings: defaultLLMSettings,
+        mcpServers: [],
+    }
+    f.write(JSON.stringify(defSetting, null, 2))
 }
 
-export class AppSettingParse {
-    private readonly appSetting: AppSetting
-    constructor(appSetting: AppSetting) {
-        this.appSetting = appSetting
-    }
+export async function appSetting(): Promise<Setting> {
+    const json = await Bun.file(dataPath.setting).text()
+    return JSON.parse(json) as Setting
+}
 
-    setting = (withoutDefault: boolean = false): Setting => {
-        return {
-            generalSetting: this.generalSetting(),
-            mcpServers: this.mcpServers(),
-            llmSettings: this.llmSettings(withoutDefault),
-        }
-    }
-
-    editShow = (set?: Setting): string => {
-        const f = (s: Setting) => JSON.stringify(s, null, 2)
-        if (set) {
-            return f(set)
-        }
-        return f(this.setting())
-    }
-
-    generalSetting = (): GeneralSetting => {
-        const st = this.appSetting.generalSetting
-        if (isEmpty(st)) {
-            return defaultGeneralSetting
-        }
-        return JSON.parse(st) as GeneralSetting
-    }
-
-    mcpServers = (): MCPConfig[] => {
-        const mcpServerJson = this.appSetting.mcpServer
-        if (isEmpty(mcpServerJson)) {
-            return []
-        }
-        return JSON.parse(mcpServerJson) as MCPConfig[]
-    }
-
-    llmSettings = (withoutDefault: boolean = false): LLMSetting[] => {
-        const llmSettingJosn = this.appSetting.llmSetting
-        if (isEmpty(llmSettingJosn)) {
-            return defaultLLMSettings
-        }
-        const settings = JSON.parse(llmSettingJosn!) as LLMSetting[]
-        if (withoutDefault) {
-            return settings
-        }
-        return defaultLLMSettings.reduce((arr, df) => {
-            const ex = arr.find((it) => it.name === df.name)
-            if (ex) {
-                return arr
-            }
-            arr.push(df)
-            return arr
-        }, settings)
-    }
-
-    editParse = (setting: Setting): AppSettingContent | undefined => {
-        try {
-            const { generalSetting, mcpServers, llmSettings } = setting
-            return {
-                version: APP_VERSION,
-                generalSetting: this.generalSettingParse(generalSetting),
-                mcpServer: this.mcpServerParse(mcpServers),
-                llmSetting: this.llmSettingParse(llmSettings),
-            } as AppSettingContent
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (e: unknown) {
-            throw Error(promptMessage.cfParseErr)
-        }
-    }
-
-    editSettingParse = (str: string): Setting | undefined => {
-        try {
-            return JSON.parse(str) as Setting
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (e: unknown) {
-            throw Error(promptMessage.cfParseErr)
-        }
-    }
-
-    generalSettingParse = (generalSetting: GeneralSetting): string => {
-        if (!generalSetting) {
-            return JSON.stringify(defaultGeneralSetting)
-        }
-        return JSON.stringify(generalSetting)
-    }
-
-    mcpServerParse = (mcpServers: MCPConfig[]): string => {
-        if (!mcpServers) {
-            return JSON.stringify([])
-        }
-        return JSON.stringify(mcpServers)
-    }
-
-    llmSettingParse = (llmSettings: LLMSetting[]): string => {
-        return JSON.stringify(
-            llmSettings.filter((it) => {
-                if (it.name === 'deepseek') {
-                    return !isEmpty(it.apiKey)
-                }
-                if (it.name === 'ollama') {
-                    return !isEmpty(it.models)
-                }
-                if (it.name === 'openai') {
-                    return !isEmpty(it.apiKey)
-                }
-                return true
-            })
-        )
-    }
+export async function appSettingCover(json: string): Promise<void> {
+    await Bun.file(dataPath.setting).write(json)
 }

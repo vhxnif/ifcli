@@ -19,15 +19,11 @@ program
     .description('manage application configuration')
     .option('-m, --modify', 'edit application settings')
     .option('-t, --theme', 'change color theme')
-    .option('-e, --export', 'export configuration to file')
-    .option('-i, --import <file>', 'import configuration from file')
-    .action(async ({ modify, theme, export: exp, import: imp }) => {
+    .action(async ({ modify, theme }) => {
         const cf = act.setting.config
         await matchRun([
             [modify, cf.modify],
             [theme, cf.theme],
-            [exp, cf.export],
-            [imp, async () => await cf.import(imp!)],
         ])
     })
 
