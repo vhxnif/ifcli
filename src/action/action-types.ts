@@ -41,7 +41,7 @@ export interface IChatAct {
 }
 
 export interface ISettingAct {
-    setting: () => Promise<void>
+    modify: () => Promise<void>
     theme: () => Promise<void>
 }
 

@@ -46,14 +46,14 @@ export class Act implements IAct {
     private askAct(): AskAct {
         return {
             run: async (p) => await this.chatAct.ask(p),
-            reRun: this.chatAct.reAsk,
+            reRun: async () => await this.chatAct.reAsk(),
         } as AskAct
     }
 
     private switchAct(): SwitchAct {
         return {
             chat: async (n) => await this.chatAct.changeChat(n),
-            topic: this.chatAct.changeTopic,
+            topic: async () => await this.chatAct.changeTopic(),
         } as SwitchAct
     }
 
@@ -106,16 +106,16 @@ export class Act implements IAct {
 
     private appConfigAct(): AppConfigAct {
         return {
-            modify: this.settingAct.setting,
-            theme: this.settingAct.theme,
+            modify: async () => await this.settingAct.modify(),
+            theme: async () => await this.settingAct.theme(),
         } as AppConfigAct
     }
 
     private appMCPAct(): AppMCPAct {
         return {
             tools: {
-                list: this.chatAct.tools,
-                test: this.chatAct.testTool,
+                list: async () => await this.chatAct.tools(),
+                test: async () => await this.chatAct.testTool(),
             } as AppMCPToolsAct,
         } as AppMCPAct
     }
@@ -123,7 +123,7 @@ export class Act implements IAct {
     private appPromptAct(): AppPromptAct {
         return {
             list: async (n) => await this.chatAct.listPrompt(n),
-            export: this.chatAct.exportPrompt,
+            export: async () => await this.chatAct.exportPrompt(),
             import: async (f) => await this.chatAct.importPrompt(f),
             delete: async (n) => await this.chatAct.deletePrompt(n),
         } as AppPromptAct
