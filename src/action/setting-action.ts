@@ -26,7 +26,7 @@ export class SettingAct implements ISettingAct {
         await appSettingCover(objToJson(setting))
     }
 
-    async setting(): Promise<void> {
+    async modify(): Promise<void> {
         const setting = await appSetting()
         const sourceText = objToJson(setting)
         const text = await editor(sourceText, 'json')
