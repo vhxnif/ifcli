@@ -166,7 +166,7 @@ export class ChatAct implements IChatAct {
                 )} ${color.teal(s)} `
             )
         }
-        if (name && (await this.quikeCmd(name, f))) {
+        if (name && (await this.quickCmd(name, f))) {
             return
         }
         const chats = this.store.chat.list()
@@ -192,7 +192,7 @@ export class ChatAct implements IChatAct {
         this.store.quickSwitch.saveOrUpdate(v)
     }
 
-    private async quikeCmd(
+    private async quickCmd(
         subkey: string,
         quikeRun: (s: string) => void | Promise<void>
     ): Promise<boolean> {
@@ -293,7 +293,7 @@ export class ChatAct implements IChatAct {
         choices: Choice<string>[]
         msp: Map<string, ChatMessage[]>
         df?: string
-    }) {
+    }): Promise<string> {
         const value = await select({
             message: 'View Message:',
             choices,
@@ -754,7 +754,7 @@ export class ChatAct implements IChatAct {
             ({
                 user: parseContent(c.user),
                 assistant: parseContent(c.assistant),
-            } as PresetMessageContent)
+            }) as PresetMessageContent
         const validContent = (c: TmpContent) =>
             c.type && !isEmpty(c.user) && !isEmpty(c.assistant)
         return text
