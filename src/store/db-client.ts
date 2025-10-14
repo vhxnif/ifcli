@@ -51,7 +51,7 @@ export class DBClient implements IDBClient {
         this.init()
     }
 
-    init = () => {
+    init(): void {
         const tables = this.db
             .query("SELECT name FROM sqlite_master WHERE type='table';")
             .as(SqliteTable)
@@ -64,7 +64,7 @@ export class DBClient implements IDBClient {
             })
     }
 
-    trans = (fs: RunSql): void => {
+    trans(fs: RunSql): void {
         this.db.transaction(fs)()
     }
 

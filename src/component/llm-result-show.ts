@@ -81,7 +81,7 @@ export class Display {
         }
     }
 
-    result = (): LLMResultChunk => {
+    result(): LLMResultChunk {
         return {
             tools: this.toolsCallShow.getContent(),
             assistant: this.assistantShow.getContent(),
@@ -89,7 +89,7 @@ export class Display {
         }
     }
 
-    thinkingShow = (chunk: OpenAI.Chat.Completions.ChatCompletionChunk) => {
+    thinkingShow(chunk: OpenAI.Chat.Completions.ChatCompletionChunk): void {
         const delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta & {
             reasoning_content?: string
             reasoning?: string
@@ -118,22 +118,22 @@ export class Display {
         }
     }
 
-    contentShow = (content: string) => {
+    contentShow(content: string): void {
         this.spinner?.stop()
         this.assistantShow.append(content)
     }
 
-    contentStop = () => {
+    contentStop(): Display {
         this.assistantShow.stop()
         return this
     }
 
-    toolCall = (
+    toolCall(
         mcpServer: string,
         mcpVersion: string,
         funName: string,
         args: string
-    ) => {
+    ): void {
         this.spinner?.stop()
         const argsStr = jsonformat(args)
         this.toolsCallShow.start()
@@ -152,7 +152,7 @@ export class Display {
         this.toolText(`\n\n`)
     }
 
-    toolCallReult = (content: string) => {
+    toolCallReult(content: string): void {
         const ct = this.responseParse(content)
         this.toolTitle(`Response: `)
         this.toolText(`\n\n`)
@@ -180,20 +180,20 @@ export class Display {
         this.toolsCallShow.append(str)
     }
 
-    change = (type: LLMNotifyMessageType) => {
+    change(type: LLMNotifyMessageType): void {
         this.spinner?.show(this.notice(type))
     }
 
-    error = () => {
+    error(): void {
         this.spinner?.fail(this.notice('error'))
     }
 
-    think = (reasoning: string) => {
+    think(reasoning: string): void {
         this.spinner?.stop()
         this.reasoningShow.append(reasoning)
     }
 
-    stopThink = () => {
+    stopThink(): void {
         if (!this.hasReasoningStoped) {
             this.reasoningShow.stop()
             this.spinner?.start()

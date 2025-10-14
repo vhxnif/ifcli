@@ -9,7 +9,7 @@ import type { ISettingAct } from './action-types'
 export class SettingAct implements ISettingAct {
     constructor() {}
 
-    theme = async () => {
+    async theme(): Promise<void> {
         const setting = await appSetting()
         const value = await select({
             message: 'Select Theme:',
@@ -26,14 +26,14 @@ export class SettingAct implements ISettingAct {
         await appSettingCover(objToJson(setting))
     }
 
-    setting = async () => {
+    async setting(): Promise<void> {
         const text = async (source: string) => await editor(source, 'json')
         await this.modifySetting(text)
     }
 
-    private modifySetting = async (
+    private async modifySetting(
         mdf: (source: string) => Promise<string>
-    ) => {
+    ): Promise<void> {
         const setting = await appSetting()
         const sourceText = objToJson(setting)
         const text = await mdf(sourceText)

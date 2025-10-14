@@ -54,7 +54,7 @@ export class OraShow {
         })
     }
 
-    start = (msg?: string) => {
+    start(msg?: string): void {
         if (this.isStop) {
             this.spinner.start()
             this.isStop = false
@@ -64,7 +64,7 @@ export class OraShow {
         }
     }
 
-    stop = () => {
+    stop(): void {
         this.inProgressRun(() => {
             this.spinner.stop()
             this.isStop = true
@@ -72,20 +72,20 @@ export class OraShow {
         })
     }
 
-    show = (text: string) => {
+    show(text: string): void {
         this.inProgressRun(() => {
             this.spinner.text = text
         })
     }
 
-    fail = (msg: string) => {
+    fail(msg: string): void {
         this.inProgressRun(() => {
             this.spinner.fail(msg)
             this.isStop = true
         })
     }
 
-    private inProgressRun = (f: () => void) => {
+    private inProgressRun(f: () => void): void {
         if (this.isStop) {
             return
         }

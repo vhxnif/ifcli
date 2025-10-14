@@ -80,7 +80,7 @@ export default class MCPClient {
         this.transport = new SSEClientTransport(new URL(url), opts)
     }
 
-    connect = async () => {
+    async connect(): Promise<void> {
         try {
             await this.client.connect(this.transport)
             this.connected = true
@@ -94,9 +94,11 @@ export default class MCPClient {
         return this.connected
     }
 
-    listTools = async () => await this.client.listTools()
+    async listTools() {
+        return await this.client.listTools()
+    }
 
-    tools = async () => {
+    async tools() {
         if (!this.connected) {
             return []
         }
@@ -127,13 +129,14 @@ export default class MCPClient {
         )
     }
 
-    callTool = async (name: string, args: any) =>
-        await this.client.callTool(
+    async callTool(name: string, args: any) {
+        return await this.client.callTool(
             { name, arguments: { ...args } },
             CallToolResultSchema
         )
+    }
 
-    close = async () => {
+    async close() {
         try {
             if (this.connected) {
                 await this.client.close()
