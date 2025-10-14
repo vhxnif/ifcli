@@ -1,88 +1,78 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { chatAction, color, display, settingAction } from './app-context'
+import { act, color } from './app-context'
 import { APP_VERSION } from './config/app-setting'
-import { print } from './util/common-utils'
 import { commanderHelpConfiguration } from './util/color-schema'
+import { matchRun, print } from './util/common-utils'
 
 const program = new Command().configureHelp(commanderHelpConfiguration(color))
 
 program
     .name('ifsetting')
     .alias('ist')
-    .description('setting management')
+    .description('Manage application settings and configuration')
     .version(`${APP_VERSION}`)
 
 program
     .command('config')
     .alias('cf')
-    .description('config management')
-    .option('-m, --modify', 'modify app config')
-    .option('-t, --theme', 'change theme')
-    .option('-e, --exp', 'export app config')
-    .option('-i, --imp <file>', 'import app config')
-    .action(async ({ modify, theme, exp, imp }) => {
-        if (modify) {
-            await settingAction.setting()
-            return
-        }
-        if (theme) {
-            await settingAction.theme()
-            return
-        }
-        if (exp) {
-            await settingAction.exportSetting()
-            return
-        }
-        if (imp) {
-            await settingAction.importSetting(imp)
-            return
-        }
+    .description('manage application configuration')
+    .option('-m, --modify', 'edit application settings')
+    .option('-t, --theme', 'change color theme')
+    .action(async ({ modify, theme }) => {
+        const cf = act.setting.config
+        await matchRun([
+            [modify, cf.modify],
+            [theme, cf.theme],
+        ])
     })
 
 program
     .command('mcp')
-    .description('mcp server management')
-    .option('-l, --list', 'list mcp server')
-    .option('-t, --test', 'test mcp server')
+    .description('manage MCP (Model Context Protocol) servers')
+    .option('-l, --list', 'list configured MCP servers')
+    .option('-t, --test', 'test MCP server connectivity')
     .action(async ({ list, test }) => {
-        if (list) {
-            await chatAction.tools()
-            return
-        }
-        if (test) {
-            await chatAction.testTool()
-            return
-        }
+        const tools = act.setting.mcp.tools
+        await matchRun([
+            [list, tools.list],
+            [test, tools.test],
+        ])
     })
 
 program
     .command('prompt')
     .alias('pt')
-    .description('system prompt management')
-    .option('-l, --list [name]', 'list mcp server')
-    .option('-e, --exp', 'export system prompt')
-    .option('-i, --imp <file>', 'import system prompt')
-    .action(async ({ list, exp, imp }) => {
-        if (list) {
+    .description('manage system prompts library')
+    .option('-l, --list [name]', 'list prompts (optionally filter by name)')
+    .option('-e, --export', 'export prompts to files')
+    .option('-i, --import <file>', 'import prompt from file')
+    .option('-d, --delete [name]', 'delete prompt (optionally specify name)')
+    .action(async ({ list, export: exp, import: imp, delete: del }) => {
+        const pt = act.setting.prompt
+        const listRun = async () => {
             if (typeof list === 'string') {
-                await chatAction.listPrompt(list)
+                await pt.list(list)
                 return
             }
-            await chatAction.listPrompt()
-            return
+            await pt.list()
         }
-        if (exp) {
-            await chatAction.exportPrompt()
-            return
+        const deleteRun = async () => {
+            if (typeof del === 'string') {
+                await pt.delete(del)
+                return
+            }
+            await pt.delete()
         }
-        if (imp) {
-            await chatAction.importPrompt(imp)
-            return
-        }
+        await matchRun([
+            [list, listRun],
+            [del, deleteRun],
+            [exp, pt.export],
+            [imp, async () => await pt.import(imp!)],
+        ])
     })
 
 program.parseAsync().catch((e: unknown) => {
     const { message } = e as Error
-    print(display.error(message))
+    print(color.red(message))
 })

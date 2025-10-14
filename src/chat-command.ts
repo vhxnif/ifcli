@@ -1,9 +1,15 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { chatAction, color, display } from './app-context'
+import { act, color } from './app-context'
 import { APP_VERSION } from './config/app-setting'
-import { editor, print, stdin } from './util/common-utils'
 import { commanderHelpConfiguration } from './util/color-schema'
+import {
+    editor,
+    matchRun,
+    parseIntNumber,
+    print,
+    stdin,
+} from './util/common-utils'
 
 const program = new Command()
     .configureHelp(commanderHelpConfiguration(color))
@@ -13,31 +19,31 @@ program
     .name('ifchat')
     .alias('ict')
     .version(`${APP_VERSION}`)
-    .description('chat with AI')
-    .option('-f, --force <name>', 'use the specified chat')
-    .option('-s, --sync-call', 'sync call')
-    .option('-e, --edit', 'use editor')
-    .option('-t, --new-topic', 'start new topic')
+    .description('Interactive AI chat interface')
+    .option('-f, --force <name>', 'use specified chat session')
+    .option('-s, --sync-call', 'use synchronous (non-streaming) mode')
+    .option('-e, --edit', 'open editor for input')
+    .option('-t, --new-topic', 'start a new conversation topic')
     .option('-r, --retry', 'retry the last question')
+    .option('-a, --attachment <file>', 'attach text file content to message')
     .argument('[string]')
     .action(async (content, option) => {
-        const { edit, syncCall, newTopic, force, retry } = option
-        if (retry) {
-            await chatAction.reAsk()
-            return
+        const { edit, syncCall, newTopic, force, retry, attachment } = option
+        const { run, reRun } = act.chat.ask
+        const withAttachment = async (ct: string) => {
+            if (!attachment) {
+                return ct
+            }
+            const fileContent = await Bun.file(attachment).text()
+            return `# User\n\n${ct}\n\n# Attachment \n\n${fileContent}`
         }
         const ask = async (ct: string) => {
-            await chatAction.ask({
-                content: ct,
+            await run({
+                content: await withAttachment(ct),
                 chatName: force,
                 noStream: syncCall ? true : false,
                 newTopic,
             })
-        }
-
-        if (content) {
-            await ask(content)
-            return
         }
         const getContentAndAsk = async (
             f: () => Promise<string | undefined>
@@ -47,167 +53,164 @@ program
                 await ask(text)
             }
         }
-        if (edit) {
+        const contentRun = async () => await ask(content!)
+        const editRun = async () =>
             await getContentAndAsk(async () => await editor(''))
-            return
-        }
-        await getContentAndAsk(stdin)
+        const stdinRun = async () => await getContentAndAsk(stdin)
+        await matchRun([
+            [retry, reRun],
+            [content, contentRun],
+            [edit, editRun],
+            [true, stdinRun],
+        ])
     })
 
 program
     .command('new')
-    .description('new chat')
-    .argument('<string>')
-    .action(async (content) => await chatAction.newChat(content))
+    .description('create a new chat session')
+    .argument('<name>', 'name for the new chat session')
+    .action(async (content) => await act.chat.new(content))
 
 program
     .command('history')
     .alias('hs')
-    .description('view chat topic history')
-    .option('-l, --limit <limit>', 'history message limit', '100')
+    .description('view chat conversation history')
+    .option(
+        '-l, --limit <number>',
+        'maximum number of messages to display',
+        '100'
+    )
     .action(async ({ limit }, cmd) => {
         const force = cmd.parent?.opts()?.force as string
-        chatAction.printChatHistory(Number(limit), force)
+        await act.chat.msgHistory(parseIntNumber(limit, 100), force)
     })
 
 program
     .command('remove')
     .alias('rm')
-    .description('remove chat')
-    .action(async () => await chatAction.removeChat())
+    .description('delete a chat session')
+    .action(async () => await act.chat.remove())
 
 program
     .command('switch')
     .alias('st')
-    .description('switch to another chat or topic')
-    .option('-t, --topic', 'switch to anther topic')
-    .argument('[name]')
+    .description('switch between chat sessions or topics')
+    .option('-t, --topic', 'switch to a different topic')
+    .argument('[name]', 'target chat session name')
     .action(async (name, { topic }) => {
+        const { chat, topic: cgTopic } = act.chat.switch
         if (topic) {
-            await chatAction.changeTopic()
+            await cgTopic()
             return
         }
-        await chatAction.changeChat(name)
+        await chat(name)
     })
 
 program
     .command('prompt')
     .alias('pt')
-    .description('prompt manager')
-    .option('-q, --query <name>', 'query and set prompt for current chat')
-    .option('-m, --modify', "modify the current chat's prompt")
-    .option('-c, --cover [prompt]', "override the current chat's prompt")
-    .option('-p, --publish', 'publish  prompt')
+    .description('manage system prompts')
+    .option('-q, --query <name>', 'search and set prompt for current chat')
+    .option('-m, --modify', 'edit the current chat prompt')
+    .option('-c, --cover [prompt]', 'replace the current chat prompt')
+    .option('-p, --publish', 'publish prompt to shared library')
     .action(async ({ query, modify, cover, publish }, cmd) => {
         const name = cmd.parent?.opts().force as string
-        if (query) {
-            await chatAction.selectPrompt(query, name)
-            return
-        }
-        if (modify) {
-            await editor(chatAction.prompt(name)).then((text) => {
+        const { list, get, set, show, publish: ps } = act.chat.prompt
+        const modifyRun = async () => {
+            await editor(get(name)).then((text) => {
                 if (text) {
-                    chatAction.modifySystemPrompt(text, name)
+                    set(text, name)
                 }
             })
-            return
         }
-        if (typeof cover === 'boolean') {
+        const coverStdinRun = async () => {
             const str = await stdin()
             if (typeof str === 'string') {
-                chatAction.modifySystemPrompt(str.trim(), name)
+                set(str.trim(), name)
             }
-            return
         }
-        if (typeof cover === 'string') {
-            chatAction.modifySystemPrompt(cover, name)
-            return
-        }
-        if (publish) {
-            await chatAction.publishPrompt(name)
-            return
-        }
-        chatAction.printPrompt(name)
+        const coverRun = () => set((cover as string)!, name)
+        await matchRun(
+            [
+                [query, async () => await list(query!, name)],
+                [modify, modifyRun],
+                [typeof cover === 'boolean', coverStdinRun],
+                [typeof cover === 'string', coverRun],
+                [publish, async () => await ps(name)],
+            ],
+            () => show(name)
+        )
     })
 
 program
     .command('preset')
     .alias('ps')
-    .description('preset message manager')
-    .option('-e, --edit', 'edit preset message')
-    .option('-c, --clear', 'clear preset message')
+    .description('manage preset message templates')
+    .option('-e, --edit', 'edit preset messages')
+    .option('-c, --clear', 'clear all preset messages')
     .action(async (options, cmd) => {
         const { edit, clear } = options
         const name = cmd.parent?.opts().force as string
-        if (clear) {
-            chatAction.clearPresetMessage(name)
-            return
-        }
-        if (edit) {
-            await chatAction.editPresetMessage(name)
-        }
-        chatAction.printPresetMessage(name)
+        const pt = act.chat.preset
+        await matchRun(
+            [
+                [edit, async () => await pt.edit(name)],
+                [clear, () => pt.clear(name)],
+            ],
+            () => pt.show(name)
+        )
     })
 
 program
     .command('config')
     .alias('cf')
-    .description('manage chat config')
-    .option('-c, --context-size <contextSize>', 'update context size')
-    .option('-m, --model', `switch model`)
-    .option('-o, --with-context', 'change with-context', false)
-    .option('-p, --with-mcp', 'change with-mcp', false)
-    .option('-u, --use-scenario', 'use scenario')
-    .action(
-        async (
-            { contextSize, model, withContext, withMcp, useScenario },
-            cmd
-        ) => {
-            const name = cmd.parent?.opts().force as string
-            if (contextSize) {
-                chatAction.modifyContextSize(Number(contextSize), name)
-            }
-            if (model) {
-                await chatAction.modifyModel(name)
-            }
-            if (withContext) {
-                chatAction.modifyWithContext(name)
-            }
-            if (withMcp) {
-                await chatAction.modifyWithMCP(name)
-            }
-            if (useScenario) {
-                await chatAction.modifyScenario(name)
-            }
-            chatAction.printChatConfig(name)
-        }
-    )
+    .description('configure chat settings')
+    .option('-m, --model', 'switch AI model')
+    .option('-c, --context', 'enable/disable context memory', false)
+    .option('-z, --context-size <number>', 'set context window size')
+    .option('-p, --mcp', 'enable/disable MCP tools', false)
+    .option('-s, --scenario', 'select conversation scenario')
+    .action(async ({ contextSize, model, context, mcp, scenario }, cmd) => {
+        const name = cmd.parent?.opts().force as string
+        const cf = act.chat.config
+        await matchRun(
+            [
+                [
+                    contextSize,
+                    () => cf.contextSize(parseIntNumber(contextSize, 10), name),
+                ],
+                [model, () => cf.model(name)],
+                [context, () => cf.context(name)],
+                [mcp, () => cf.mcp(name)],
+                [scenario, () => cf.scenario(name)],
+            ],
+            () => cf.show(name)
+        )
+    })
 
 program
     .command('export')
     .alias('exp')
-    .argument('[path]', 'default: $HOME')
-    .description('export chat message')
-    .option('-a, --all', 'export all chat messages')
-    .option('-c, --chat', 'select chat and export all topic messages')
-    .option('-t, --topic', 'select chat and topic then export topic messages')
+    .argument('[path]', 'export directory (default: $HOME)')
+    .description('export chat conversations')
+    .option('-a, --all', 'export all chat sessions')
+    .option('-c, --chat', 'export all topics from selected chat')
+    .option('-t, --topic', 'export specific topic from selected chat')
     .action(async (path, { all, chat, topic }) => {
-        if (all) {
-            await chatAction.exportAllChatMessage(path)
-            return
+        const exp = act.chat.export
+        const f = (pf: (p?: string) => Promise<void>) => {
+            return async () => await pf(path)
         }
-        if (chat) {
-            await chatAction.exportChatMessage(path)
-            return
-        }
-        if (topic) {
-            await chatAction.exportChatTopicMessage(path)
-            return
-        }
-        await chatAction.exportTopicMessage(path)
+        await matchRun([
+            [all, f(exp.all)],
+            [chat, f(exp.chat)],
+            [topic, f(exp.chatTopic)],
+            [true, f(exp.topic)],
+        ])
     })
 
 program.parseAsync().catch((e: unknown) => {
     const { message } = e as Error
-    print(display.error(message))
+    print(color.red(message))
 })

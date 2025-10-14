@@ -1,6 +1,6 @@
 import type { ChalkInstance } from 'chalk'
-import { isEmpty, print, println, stringWidth } from './common-utils'
-import { terminal } from './platform-utils'
+import { isEmpty, print, println, stringWidth } from '../util/common-utils'
+import { terminal } from '../util/platform-utils'
 
 export type TextShowTheme = {
     titleColor: ChalkInstance

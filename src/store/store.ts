@@ -1,724 +1,236 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { Database } from 'bun:sqlite'
-import { temperature } from '../types/constant'
-import {
-    AppSetting,
-    Cache,
-    Chat,
-    ChatConfig,
-    ChatConfigExt,
-    ChatMessage,
-    ChatPresetMessage,
-    ChatPrompt,
-    ChatTopic,
-    CmdHistory,
-    ExportMessage,
-    SqliteTable,
-    type AppSettingContent,
-    type CmdHistoryType,
-    type IStore,
-    type MessageContent,
-    type PresetMessageContent,
-} from '../types/store-types'
-import { isEmpty, unixnow, uuid } from '../util/common-utils'
-import { table_def } from './table-def'
-import { defaultSetting } from '../config/app-setting'
+import type Database from 'bun:sqlite'
 import { promptMessage } from '../config/prompt-message'
+import { uuid } from '../util/common-utils'
+import { DBClient } from './db-client'
+import type {
+    CacheAct,
+    ChatAct,
+    ChatInfo,
+    ConfigAct,
+    ConfigExt,
+    ConfigExtAct,
+    ExportAct,
+    IDBClient,
+    IStore,
+    MessageContent,
+    Model,
+    PresetAct,
+    PromptAct,
+    QucikSwitchAct,
+    TopicAct,
+    TopicMessageAct,
+} from './store-types'
 
 export class Store implements IStore {
-    private db: Database
+    private readonly client: IDBClient
     constructor(db: Database) {
-        this.db = db
-        this.init()
+        this.client = new DBClient(db)
     }
 
-    init = () => {
-        const tables = this.db
-            .query("SELECT name FROM sqlite_master WHERE type='table';")
-            .as(SqliteTable)
-            .all()
-            .map((it) => it.name)
-        Object.entries(table_def)
-            .filter(([k, _]) => !tables.includes(k))
-            .forEach(([_, v]) => {
-                this.db.run(v)
-            })
-        if (!this.appSetting()) {
-            this.addAppSetting(defaultSetting)
+    get chat(): ChatAct {
+        return {
+            get: (n) => this.getChat(n),
+            list: () => this.client.chats(),
+            new: async (n, m) => this.newChat(n, m),
+        } as ChatAct
+    }
+
+    private getChat(name?: string): ChatInfo {
+        const chat = name
+            ? this.client.queryChat(name)
+            : this.client.currentChat()
+        if (!chat) {
+            throw new Error(promptMessage.chatMissing)
         }
+        const { id, name: sourceName } = chat
+        return {
+            value: chat,
+            config: this.config(id),
+            configExt: this.configExt(id),
+            preset: this.preset(id),
+            topic: this.topic(id),
+            remove: () => this.removeChat(id),
+            switch: (targetName) => this.switchChat(sourceName, targetName),
+        } as ChatInfo
     }
 
-    private appSettingColumn =
-        'id, version, general_setting as generalSetting, mcp_server as mcpServer, llm_setting as llmSetting, create_time as createTime'
-    private chatColumn =
-        'id, name, "select", action_time as actionTime, select_time as selectTime'
-    private chatMessageColumn =
-        'id, topic_id as topicId, "role", content, pair_key as pairKey, action_time as actionTime'
-    private chatConfigColumn =
-        'id, chat_id as chatId , sys_prompt as sysPrompt, with_context as withContext, with_mcp as withMCP, context_limit as contextLimit, llm_type as llmType, model, scenario_name as scenarioName, scenario, update_time as updateTime'
-    private chatPromptColumn =
-        'name, version, role, content, modify_time as modifyTime'
-    private chatPresetMessageColumn =
-        'id, chat_id, user, assistant, create_time as createTime'
-    private chatTopicColumn =
-        'id, chat_id as chatId, content, "select", select_time as selectTime, create_time as createTime'
-
-    private cmdHistoryColumn =
-        'id, type, key, last_switch_time as lastSwitchTime, frequency'
-    private mcpToolsColumn =
-        'id, name, version, tools, create_time as createTime, update_time as updateTime'
-
-    private chatConfigExtColumn =
-        'id, chat_id as chatId, ext, create_time as createTime, update_time as updateTime'
-
-    chats = () =>
-        this.db.query(`SELECT ${this.chatColumn} FROM chat`).as(Chat).all()
-
-    queryChat = (name: string) =>
-        this.db
-            .query(`SELECT ${this.chatColumn} FROM chat WHERE name = ?`)
-            .as(Chat)
-            .get(name)
-
-    newChat = (name: string, prompt: string, llmType: string, model: string) =>
-        this.chatNotExistsRun(name, () => {
-            const now = unixnow()
-            const chatId = uuid()
-            const statement = this.db.prepare(
-                `INSERT INTO chat (id, name, "select", action_time, select_time) VALUES (?, ?, ?, ?, ?)`
-            )
-            const configStatement = this.db.prepare(
-                `INSERT INTO chat_config (id, chat_id, sys_prompt, with_context, context_limit, with_mcp, llm_type, model, scenario_name, scenario, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-            )
-            const [scenarioName, scenario] = temperature.general
-            this.db.transaction(() => {
-                const c = this.currentChat()
-                if (c) {
-                    this.modifySelect(c.name, false)
-                }
-                statement.run(chatId, name, true, now, now)
-                configStatement.run(
-                    uuid(),
-                    chatId,
-                    prompt,
-                    true,
-                    10,
-                    false,
-                    llmType,
-                    model,
-                    scenarioName,
-                    scenario,
-                    now
-                )
-            })()
-            return chatId
-        })
-
-    removeChat = (name: string) =>
-        this.chatExistsRun(name, (c) => {
-            const chatId = c.id
-            this.db.transaction(() => {
-                this.db.prepare(`DELETE FROM chat WHERE id = ?`).run(chatId)
-                this.db
-                    .query(
-                        `select ${this.chatTopicColumn} FROM chat_topic WHERE chat_id = ?`
-                    )
-                    .as(ChatTopic)
-                    .all(chatId)
-                    .forEach((it) => {
-                        this.db
-                            .prepare(
-                                `DELETE FROM chat_message WHERE topic_id = ?`
-                            )
-                            .run(it.id)
-                    })
-                this.db
-                    .prepare(`DELETE FROM chat_topic WHERE chat_id = ?`)
-                    .run(chatId)
-                this.db
-                    .prepare(`DELETE FROM chat_config WHERE chat_id = ?`)
-                    .run(chatId)
-            })()
-        })
-
-    changeChat = (name: string) =>
-        this.chatExistsRun(name, (c) => {
-            if (c.select) {
-                return
-            }
-            this.currentChatRun((s) => {
-                this.db.transaction(() => {
-                    this.modifySelect(s.name, false)
-                    this.modifySelect(c.name, true)
-                })()
-            })
-        })
-
-    currentChat = () => {
-        return this.db
-            .query(`SELECT ${this.chatColumn} FROM chat WHERE "select" = ?`)
-            .as(Chat)
-            .get(true)
-    }
-
-    existCurrentChat = () => {
-        const chat = this.currentChat()
-        if (chat) {
-            return chat
+    private config(chatId: string): ConfigAct {
+        let config = this.client.queryConfig(chatId)
+        if (!config) {
+            throw new Error(promptMessage.chatConfigMissing)
         }
-        throw Error(promptMessage.chatMissing)
-    }
-
-    selectedTopic = (chatId: string) => {
-        return this.db
-            .query(
-                `SELECT ${this.chatTopicColumn} FROM chat_topic WHERE "select" = ? and chat_id = ? limit 1`
-            )
-            .as(ChatTopic)
-            .get(true, chatId)
-    }
-
-    createTopic = (chatId: string, content: string) => {
-        const id = uuid()
-        const now = unixnow()
-        this.db.transaction(() => {
-            this.unselectTopic(chatId)
-            this.db
-                .prepare(
-                    `INSERT INTO chat_topic (id, chat_id, content, "select", select_time, create_time) VALUES (?, ?, ?, ?, ?, ?)`
-                )
-                .run(id, chatId, content, true, now, now)
-        })()
-        return id
-    }
-
-    currentChatTopics = () => {
-        return this.currentChatRun((it) => {
-            return this.queryTopic(it.id)
-        })
-    }
-
-    queryTopic = (chatId: string) => {
-        return this.db
-            .query(
-                `SELECT ${this.chatTopicColumn} FROM chat_topic WHERE chat_id = ? order by create_time desc`
-            )
-            .as(ChatTopic)
-            .all(chatId)
-    }
-
-    changeTopic = (topicId: string, chatId: string) => {
-        this.db.transaction(() => {
-            this.unselectTopic(chatId)
-            this.db
-                .prepare(`UPDATE chat_topic SET "select" = ? where id = ?`)
-                .run(true, topicId)
-        })()
-    }
-
-    private unselectTopic = (chatId: string) => {
-        this.db
-            .prepare(
-                `UPDATE chat_topic SET "select" = ? where "select" = ? and chat_id = ?`
-            )
-            .run(false, true, chatId)
-    }
-
-    saveMessage = (messages: MessageContent[]) => {
-        const statement = this.db.prepare(
-            `INSERT INTO chat_message (id, topic_id, "role", content, pair_key, action_time) VALUES (?, ?, ?, ?, ?, ?)`
-        )
-        this.db.transaction(() => {
-            messages
-                .filter((it) => !isEmpty(it.role) && !isEmpty(it.content))
-                .map((it) => [
-                    uuid(),
-                    it.topicId,
-                    it.role,
-                    it.content,
-                    it.pairKey,
-                    unixnow(),
-                ])
-                .forEach((it) => statement.run(...it))
-        })()
-    }
-
-    contextMessage = (topicId: string, limit: number) =>
-        this.queryMessage(topicId, limit)
-
-    historyMessage = (count: number) => {
-        return this.currentChatRun((c) => this.chatHistoryMessage(c, count))
-    }
-
-    chatHistoryMessage = (chat: Chat, count: number) => {
-        const stp = this.selectedTopic(chat.id)
-        if (stp) {
-            return this.queryMessage(stp.id, count, true)
-        }
-        return []
-    }
-
-    selectMessage = (messageId: string) =>
-        this.db
-            .query(
-                `SELECT ${this.chatMessageColumn} FROM chat_message WHERE id= ?`
-            )
-            .as(ChatMessage)
-            .get(messageId)!
-
-    queryAllExportMessage = () => {
-        return this.db.query(this.exportMessageSql({})).as(ExportMessage).all()
-    }
-
-    queryChatExportMessage = (chatId: string) => {
-        return this.db
-            .query(this.exportMessageSql({ chatId: true }))
-            .as(ExportMessage)
-            .all(chatId)
-    }
-
-    queryChatTopicExportMessage = (chatId: string, topicId: string) => {
-        return this.db
-            .query(this.exportMessageSql({ chatId: true, topicId: true }))
-            .as(ExportMessage)
-            .all(chatId, topicId)
-    }
-
-    private exportMessageSql = (p: { chatId?: boolean; topicId?: boolean }) => {
-        const { chatId, topicId } = p
-        const arr: string[] = []
-        if (chatId) {
-            arr.push('c.id = ?')
-        }
-        if (topicId) {
-            arr.push('t.id = ?')
-        }
-        let where = ''
-        if (arr.length > 0) {
-            where = `where ${arr.join(' and ')}`
-        }
-        return `
-            select 
-            	c.name as chatName,
-            	case when f.with_context = 1 then t.content else null end as topicName,
-            	max(case when m."role" = 'user' then m.content end) as "user",
-            	max(case when m."role" = 'reasoning' then m.content end) as reasoning,
-            	max(case when m."role" = 'assistant' then m.content end) as assistant,
-            	DATETIME(m.action_time / 1000, 'unixepoch')  as actionTime
-            from chat c 
-            inner join chat_topic t on c.id = t.chat_id 
-            inner join chat_message m on m.topic_id = t.id
-            inner join chat_config f on f.chat_id = c.id 
-            ${where}
-            GROUP by m.pair_key
-            order by c.name, t.create_time, m.action_time;
-        `
-    }
-
-    currentChatConfig = () => {
-        return this.queryChatConfig(this.existCurrentChat().id)
-    }
-
-    modifySystemPrompt = (prompt: string) =>
-        this.currentChatConfigRun((_, cf) =>
-            this.updateSystemPrompt(cf.id, prompt)
-        )
-
-    modifyChatSystemPrompt = (chat: Chat, prompt: string) => {
-        const { id } = this.queryChatConfig(chat.id)
-        this.updateSystemPrompt(id, prompt)
-    }
-
-    private updateSystemPrompt = (configId: string, prompt: string) => {
-        this.db
-            .prepare(
-                `UPDATE chat_config SET sys_prompt = ?, update_time = ? where id = ?`
-            )
-            .run(prompt, unixnow(), configId)
-    }
-
-    modifyContextLimit = (contextLimit: number) => {
-        this.currentChatRun((c) => this.modifyChatContextLimit(c, contextLimit))
-    }
-
-    modifyChatContextLimit = (chat: Chat, contextLimit: number) => {
-        const { id } = this.queryChatConfig(chat.id)
-        this.db
-            .prepare(
-                `UPDATE chat_config SET context_limit = ?, update_time = ? where id = ?`
-            )
-            .run(contextLimit, unixnow(), id)
-    }
-
-    modifyModel = (llm: string, model: string) => {
-        this.currentChatRun((c) => this.modifyChatModel(c, llm, model))
-    }
-
-    modifyChatModel = (chat: Chat, llm: string, model: string) => {
-        const { id } = this.queryChatConfig(chat.id)
-        this.db
-            .prepare(
-                `UPDATE chat_config SET llm_type = ?, model = ?, update_time = ? where id = ?`
-            )
-            .run(llm, model, unixnow(), id)
-    }
-
-    modifyWithContext = () =>
-        this.changeConfigBooleanType('with_context', (c) => !c.withContext)
-
-    modifyChatWithContext = (chat: Chat) =>
-        this.changeConfigBooleanType(
-            'with_context',
-            (c) => !c.withContext,
-            chat
-        )
-
-    modifyWithMCP = (withMCP: boolean) =>
-        this.changeConfigBooleanType('with_mcp', () => withMCP)
-
-    modifyChatWithMCP = (chat: Chat, withMCP: boolean) =>
-        this.changeConfigBooleanType('with_mcp', () => withMCP, chat)
-
-    private changeConfigBooleanType = (
-        columnName: string,
-        f: (f: ChatConfig) => boolean,
-        chat?: Chat
-    ) => {
-        const run = (c: Chat) => {
-            const cf = this.queryChatConfig(c.id)
-            this.db
-                .prepare(
-                    `UPDATE chat_config SET ${columnName} = ?, update_time = ? where id = ?`
-                )
-                .run(f(cf), unixnow(), cf.id)
-        }
-        if (chat) {
-            run(chat)
-            return
-        }
-        this.currentChatRun(run)
-    }
-
-    modifyScenario = (sc: [string, number]) => {
-        this.currentChatRun((c) => this.modifyChatScenario(c, sc))
-    }
-
-    modifyChatScenario = (chat: Chat, sc: [string, number]) => {
-        const cf = this.queryChatConfig(chat.id)
-        this.db
-            .prepare(
-                `UPDATE chat_config SET scenario_name = ?, scenario = ?, update_time = ? where id = ?`
-            )
-            .run(sc[0], sc[1], unixnow(), cf.id)
-    }
-
-    publishPrompt = (name: string, version: string, content: string) => {
-        const prompt = this.db
-            .query(
-                `SELECT ${this.chatPromptColumn} FROM chat_prompt WHERE name = ? AND version = ?`
-            )
-            .as(ChatPrompt)
-            .get(name, version)
-        if (prompt) {
-            this.db
-                .prepare(
-                    `UPDATE chat_prompt SET content = ?, modify_time = ${unixnow()} WHERE name = ? AND version = ?`
-                )
-                .run(content, name, version)
-            return
-        }
-        this.db
-            .prepare(
-                `INSERT INTO chat_prompt (name, version, role, content, modify_time) VALUES (?, ?, ?, ?, ?)`
-            )
-            .run(name, version, 'system', content, unixnow())
-    }
-
-    searchPrompt = (name: string, version?: string) => {
-        const sql = `SELECT ${this.chatPromptColumn} FROM chat_prompt`
-        if (version) {
-            return this.db
-                .query(`${sql} WHERE name = ? and version = ?`)
-                .as(ChatPrompt)
-                .all(name, version)
-        }
-        return this.db
-            .query(`${sql} WHERE name LIKE ?`)
-            .as(ChatPrompt)
-            .all(`%${name}%`)
-    }
-
-    listPrompt = () => {
-        return this.db
-            .query(`SELECT ${this.chatPromptColumn} FROM chat_prompt`)
-            .as(ChatPrompt)
-            .all()
-    }
-
-    createPresetMessage = (params: PresetMessageContent[]) => {
-        this.createChatPresetMessage(this.existCurrentChat(), params)
-    }
-
-    createChatPresetMessage = (chat: Chat, params: PresetMessageContent[]) => {
-        const { id } = chat
-        this.db.transaction(() => {
-            this.deletePresetMessage(id)
-            this.addPresetMessage(id, params)
-        })()
-    }
-
-    selectPresetMessage = () => {
-        return this.currentChatRun((c) => this.queryPresetMessage(c.id))
-    }
-
-    selectChatPresetMessage = (chat: Chat) => {
-        return this.queryPresetMessage(chat.id)
-    }
-
-    clearPresetMessage = () => {
-        this.currentChatRun((c) => this.deletePresetMessage(c.id))
-    }
-
-    clearChatPresetMessage = (chat: Chat) => {
-        this.deletePresetMessage(chat.id)
-    }
-
-    appSetting = () => {
-        return this.db
-            .query(
-                `SELECT ${this.appSettingColumn} FROM app_setting order by create_time desc limit 1`
-            )
-            .as(AppSetting)
-            .get()
-    }
-
-    addAppSetting = (setting: AppSettingContent) => {
-        const { version, generalSetting, mcpServer, llmSetting } = setting
-        this.db
-            .prepare(
-                `INSERT INTO app_setting (id, version, general_setting, mcp_server, llm_setting, create_time) VALUES (?, ?, ?, ?, ?, ?)`
-            )
-            .run(
-                uuid(),
-                version,
-                generalSetting,
-                mcpServer,
-                llmSetting,
-                unixnow()
-            )
-    }
-
-    private addPresetMessage = (
-        chatId: string,
-        params: PresetMessageContent[]
-    ) => {
-        const statement = this.db.prepare(
-            `INSERT INTO chat_preset_message (id, chat_id, user, assistant, create_time) VALUES (?, ?, ?, ?, ?)`
-        )
-        params.forEach((it) => {
-            statement.run(uuid(), chatId, it.user, it.assistant, unixnow())
-        })
-    }
-
-    private queryPresetMessage = (chatId: string) => {
-        return this.db
-            .query(
-                `SELECT ${this.chatPresetMessageColumn} FROM chat_preset_message WHERE chat_id = ?`
-            )
-            .as(ChatPresetMessage)
-            .all(chatId)
-    }
-
-    private deletePresetMessage = (chatId: string) => {
-        this.db
-            .prepare(`DELETE FROM chat_preset_message WHERE chat_id = ?`)
-            .run(chatId)
-    }
-
-    private chatNotExistsRun = <T,>(name: string, f: () => T): T => {
-        const c = this.queryChat(name)
-        if (c) {
-            throw Error(`chat: ${name} exists.`)
-        }
-        return f()
-    }
-
-    private modifySelect = (name: string, select: boolean): void => {
-        this.chatExistsRun(name, (c) => {
-            this.db
-                .prepare('UPDATE chat SET "select" = ? WHERE id = ?')
-                .run(select, c.id)
-        })
-    }
-
-    private chatExistsRun = <T,>(name: string, f: (chat: Chat) => T): T => {
-        const c = this.queryChat(name)
-        if (c) {
-            return f(c)
-        }
-        throw Error(`chat: ${name} not exists.`)
-    }
-
-    private currentChatRun = <T,>(f: (chat: Chat) => T): T => {
-        return f(this.existCurrentChat())
-    }
-
-    private currentChatConfigRun = <T,>(
-        f: (ct: Chat, cf: ChatConfig) => T
-    ): T => this.currentChatRun((c) => f(c, this.queryChatConfig(c.id)))
-
-    private queryMessage = (
-        topicId: string,
-        count: number,
-        withReasoning: boolean = false
-    ) =>
-        this.db
-            .query(
-                `
-                select ${
-                    this.chatMessageColumn
-                } from chat_message where topic_id = ? ${
-                    withReasoning ? '' : "and role != 'reasoning'"
-                } and pair_key in (
-                    select pair_key from chat_message group by pair_key order by max(action_time) desc limit ?
-                ) order by action_time desc
-                `
-            )
-            .as(ChatMessage)
-            .all(topicId, count)
-
-    queryChatConfig = (id: string): ChatConfig =>
-        this.db
-            .query(
-                `SELECT ${this.chatConfigColumn} FROM chat_config WHERE chat_id = ?`
-            )
-            .as(ChatConfig)
-            .get(id)!
-
-    private deleteChatMessage = (chatId: string): void => {
-        this.db
-            .prepare(`DELETE FROM chat_message WHERE chat_id = ?`)
-            .run(chatId)
-    }
-
-    queryCmdHis = (type: CmdHistoryType, key: string) => {
-        return this.db
-            .query(
-                `SELECT ${this.cmdHistoryColumn} FROM cmd_history WHERE type = ? and key like ?`
-            )
-            .as(CmdHistory)
-            .all(type, `%${key}%`)
-    }
-
-    getCmdHis = (type: CmdHistoryType, key: string) => {
-        return this.db
-            .query(
-                `SELECT ${this.cmdHistoryColumn} FROM cmd_history WHERE type = ? and key = ?`
-            )
-            .as(CmdHistory)
-            .get(type, key)
-    }
-
-    addCmdHis = (type: CmdHistoryType, key: string) => {
-        this.db
-            .prepare(
-                `INSERT INTO cmd_history (id, type, key, last_switch_time, frequency) VALUES (?, ?, ?, ?, ?)`
-            )
-            .run(uuid(), type, key, unixnow(), 1)
-    }
-
-    delCmdHis = (type: CmdHistoryType, key: string) => {
-        this.db
-            .prepare(`DELETE FROM cmd_history WHERE type = ? and key = ?`)
-            .run(type, key)
-    }
-
-    updateCmdHis = (type: CmdHistoryType, key: string, frequency: number) => {
-        this.db
-            .prepare(
-                `UPDATE cmd_history SET last_switch_time = ?, frequency = ? WHERE type = ? and key = ?`
-            )
-            .run(unixnow(), frequency + 1, type, key)
-    }
-
-    addOrUpdateCmdHis = (type: CmdHistoryType, key: string) => {
-        const h = this.getCmdHis(type, key)
-        if (h) {
-            this.updateCmdHis(type, key, h.frequency)
-            return
-        }
-        this.addCmdHis(type, key)
-    }
-
-    saveChatCofnigExt = (chatId: string, ext: string): void => {
-        const now = unixnow()
-        this.db
-            .prepare(
-                `INSERT INTO chat_config_ext (id, chat_id, ext, create_time, update_time) VALUES (?, ?, ?, ?, ?)`
-            )
-            .run(uuid(), chatId, ext, now, now)
-    }
-    updateChatConfigExt = (chatId: string, ext: string): void => {
-        this.db
-            .prepare(
-                `UPDATE chat_config_ext SET ext = ?, update_time = ? WHERE chat_id = ?`
-            )
-            .run(ext, unixnow(), chatId)
-    }
-    queryChatConfigExt = (chatId: string): ChatConfigExt | null => {
-        return this.db
-            .prepare(
-                `SELECT ${this.chatConfigExtColumn} FROM chat_config_ext WHERE chat_id = ?`
-            )
-            .as(ChatConfigExt)
-            .get(chatId)
-    }
-
-    queryCache = (keys: string[]) => {
-        const ins = keys.map(() => '?').join(',')
-        return this.db
-            .prepare(`SELECT key, value FROM cache WHERE key in (${ins})`)
-            .as(Cache)
-            .all(...keys)
-    }
-
-    saveOrUpdateCache = (caches: Cache[]) => {
-        const exists = this.queryCache(caches.map((it) => it.key))
-        const [ins, upt] = caches.reduce(
-            (arr, it) => {
-                const [ins, upt] = arr
-                if (exists.find((i) => i.key === it.key)) {
-                    upt.push(it)
-                } else {
-                    ins.push(it)
-                }
-                return arr
+        const { id, withContext } = config
+        return {
+            get value() {
+                return config!
             },
-            [[], []] as Cache[][]
-        )
-        const uptStatement = this.db.prepare(
-            `UPDATE cache SET value = ? WHERE key = ?`
-        )
-        const insStatement = this.db.prepare(
-            `INSERT INTO cache (key, value) VALUES (?, ?)`
-        )
-        this.db.transaction(() => {
-            if (!isEmpty(ins)) {
-                ins.forEach((it) => insStatement.run(it.key, it.value))
-            }
-            if (!isEmpty(upt)) {
-                upt.forEach((it) => uptStatement.run(it.value, it.key))
-            }
-        })()
+            modifySystemPrompt: (prompt) => {
+                this.client.modifySystemPrompt(id, prompt)
+                config = this.client.queryConfig(chatId)!
+            },
+            modifyContextLimit: (limit) => {
+                this.client.modifyContextLimit(id, limit)
+                config = this.client.queryConfig(chatId)!
+            },
+            moidfyContext: () => {
+                this.client.modifyContext(id, withContext === 0)
+                config = this.client.queryConfig(chatId)!
+            },
+            modifyMcp: (active) => {
+                this.client.modifyMcp(id, active)
+                config = this.client.queryConfig(chatId)!
+            },
+            modifyScenario: (scenario) => {
+                this.client.modifyScenario(id, scenario)
+                config = this.client.queryConfig(chatId)!
+            },
+            moidfyModel: (model) => {
+                this.client.modifyModel(id, model)
+                config = this.client.queryConfig(chatId)!
+            },
+        } as ConfigAct
     }
 
-    deleteCache = (keys: string[]) => {
-        if (isEmpty(keys)) {
+    private configExt(chatId: string): ConfigExtAct {
+        const extBo = this.client.queryConfigExt(chatId)
+        if (!extBo) {
+            throw new Error(promptMessage.configExtMissing)
+        }
+        const { ext } = extBo
+        return {
+            value: JSON.parse(ext) as ConfigExt,
+            update: (ext) =>
+                this.client.updateConfigExt(chatId, JSON.stringify(ext)),
+        } as ConfigExtAct
+    }
+
+    private preset(chatId: string): PresetAct {
+        return {
+            get: () => this.client.queryPreset(chatId),
+            set: (contents) => {
+                this.client.trans(() => {
+                    this.client.delPreset(chatId)
+                    this.client.addPreset(chatId, contents)
+                })
+            },
+            clear: () => this.client.delPreset(chatId),
+        } as PresetAct
+    }
+
+    private topic(chatId: string): TopicAct {
+        return {
+            get: () => this.client.currentTopic(chatId),
+            list: () => this.client.queryTopic(chatId),
+            new: (topicName: string) => {
+                const topicId = uuid()
+                this.client.trans(() => {
+                    this.client.unselectTopic(chatId)
+                    this.client.addTopic(chatId, topicId, topicName)
+                })
+                return topicId
+            },
+            switch: (targetTopicId: string) => {
+                this.client.trans(() => {
+                    this.client.unselectTopic(chatId)
+                    this.client.selectTopic(targetTopicId, true)
+                })
+            },
+            message: this.topicMessage(),
+        } as TopicAct
+    }
+
+    private topicMessage(): TopicMessageAct {
+        return {
+            list: (topicId: string, limit: number, withReasoning?: boolean) =>
+                this.client.queryMessage(topicId, limit, withReasoning),
+            save: (messages: MessageContent[]) =>
+                this.client.saveMessage(messages),
+        } as TopicMessageAct
+    }
+
+    private removeChat(chatId: string) {
+        this.client.trans(() => {
+            this.client.delChat(chatId)
+            this.client.delConfig(chatId)
+            this.client.delConfigExt(chatId)
+            this.client.delPreset(chatId)
+            this.client
+                .queryTopic(chatId)
+                .forEach((it) => this.client.delMessage(it.id))
+            this.client.delChatTopic(chatId)
+        })
+    }
+
+    private switchChat(sourceName: string, targetName: string) {
+        this.client.trans(() => {
+            this.client.selectChat(sourceName, false)
+            this.client.selectChat(targetName, true)
+        })
+    }
+
+    private async newChat(
+        name: string,
+        model: () => Promise<Model>
+    ): Promise<void> {
+        const chat = this.client.queryChat(name)
+        const f = () => {
+            const selected = this.client.currentChat()
+            if (selected) {
+                this.client.selectChat(selected.name, false)
+            }
+            this.client.selectChat(name, true)
+        }
+        if (chat) {
+            this.client.trans(f)
             return
         }
-        const statement = this.db.prepare(`DELETE FROM cache WHERE key = ?`)
-        this.db.transaction(() => {
-            keys.forEach((it) => statement.run(it))
-        })()
+        const md = await model()
+        this.client.trans(() => {
+            const chatId = this.client.addChat(name)
+            this.client.addConfig(chatId, md)
+            this.client.addConfigExt(
+                chatId,
+                JSON.stringify({ mcpServers: [] } as ConfigExt)
+            )
+            f()
+        })
+    }
+
+    get quickSwitch() {
+        return {
+            list: (k) => this.client.queryCmdHis('chat_switch', k),
+            add: (k) => this.client.addCmdHis('chat_switch', k),
+            get: (k) => this.client.getCmdHis('chat_switch', k),
+            delete: (k) => this.client.delCmdHis('chat_switch', k),
+            update: (k, v) => this.client.updateCmdHis('chat_switch', k, v),
+            saveOrUpdate: (k) =>
+                this.client.addOrUpdateCmdHis('chat_switch', k),
+        } as QucikSwitchAct
+    }
+
+    get exprot(): ExportAct {
+        return {
+            all: () => this.client.queryAllExportMessage(),
+            chat: (chatId) => this.client.queryChatExportMessage(chatId),
+            topic: (chatId, topicId) =>
+                this.client.queryChatTopicExportMessage(chatId, topicId),
+        } as ExportAct
+    }
+
+    get cache(): CacheAct {
+        return {
+            get: (k) => this.client.queryCache(k),
+            delete: (k) => this.client.deleteCache(k),
+            set: (c) => this.client.saveOrUpdateCache(c),
+        } as CacheAct
+    }
+
+    get prompt(): PromptAct {
+        return {
+            list: () => this.client.listPrompt(),
+            search: (n, v) => this.client.searchPrompt(n, v),
+            publish: (n, v, c) => this.client.publishPrompt(n, v, c),
+            delete: (n, v) => this.client.deletePrompt(n, v),
+        } as PromptAct
     }
 }

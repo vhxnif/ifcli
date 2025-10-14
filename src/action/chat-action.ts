@@ -1,29 +1,32 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { stringWidth } from 'bun'
-import { color, display } from '../app-context'
-import type { GeneralSetting } from '../config/app-setting'
+import path from 'path'
+import writeXlsxFile, { type Schema } from 'write-excel-file/node'
+import { color } from '../app-context'
+import { Display } from '../component/llm-result-show'
+import { simpleShow } from '../component/simple-show'
+import { TextShow } from '../component/text-show'
+import { type GeneralSetting, type Setting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { askFlow } from '../llm/ask-flow'
-import { Display } from '../llm/display'
-import type { AskContent, IChatAction } from '../types/action-types'
-import { temperature } from '../types/constant'
-import type { ILLMClient } from '../types/llm-types'
-import MCPClient from '../types/mcp-client'
-import path from 'path'
+import { temperature } from '../llm/llm-constant'
+import type { ILLMClient } from '../llm/llm-types'
+import MCPClient from '../llm/mcp-client'
+import { OpenAiClient } from '../llm/open-ai-client'
 import {
     Chat,
     ChatMessage,
+    ChatPresetMessage,
     ChatPrompt,
     ChatTopic,
     CmdHistory,
     ExportMessage,
-    type Cache,
-    type ChatConfig,
     type ConfigExt,
     type IStore,
     type MCPServerKey,
+    type Model,
     type PresetMessageContent,
-} from '../types/store-types'
+} from '../store/store-types'
 import {
     catppuccinColorSchema,
     hex,
@@ -39,58 +42,43 @@ import {
     unixnow,
 } from '../util/common-utils'
 import {
+    checkbox,
     input,
     select,
-    checkbox,
     selectRun,
     themeStyle,
     type Choice,
 } from '../util/inquirer-utils'
 import { env, terminal } from '../util/platform-utils'
-import { printTable, tableConfig, tableConfigWithExt } from '../util/table-util'
-import { TextShow } from '../util/text-show'
 import { themes } from '../util/theme'
-import writeXlsxFile, { type Schema } from 'write-excel-file/node'
+import type { AskContent, IChatAct } from './action-types'
 
-export class ChatAction implements IChatAction {
-    private clientMap: Map<string, ILLMClient> = new Map()
-    private store: IStore
-    private mcps: MCPClient[]
+export class ChatAct implements IChatAct {
     private generalSetting: GeneralSetting
+    private clientMap: Map<string, ILLMClient> = new Map()
+    private mcps: MCPClient[]
+    private store: IStore
 
-    constructor({
-        generalSetting,
-        llmClients,
-        mcpClients,
-        store,
-    }: {
-        generalSetting: GeneralSetting
-        llmClients: ILLMClient[]
-        mcpClients: MCPClient[]
-        store: IStore
-    }) {
+    constructor(chatStore: IStore, setting: Setting) {
+        this.store = chatStore
+        const { generalSetting, mcpServers, llmSettings } = setting
         this.generalSetting = generalSetting
-        this.store = store
-        llmClients.forEach((it) => this.clientMap.set(it.type, it))
-        this.mcps = mcpClients
-    }
-    private text = color.mauve
-    private client = async (llmType?: string) => {
-        const getClient = () => {
-            if (llmType) {
-                return this.clientMap.get(llmType)
-            }
-            const config = this.store.currentChatConfig()
-            return this.clientMap.get(config.llmType)
-        }
-        const ct = getClient()
-        if (!ct) {
-            await this.modifyLLMAndModel()
-        }
-        return getClient()!
+        this.mcps = mcpServers
+            .filter((it) => it.enable)
+            .map((it) => {
+                try {
+                    return new MCPClient(it)
+                } catch (e: unknown) {
+                    return null
+                }
+            })
+            .filter((it) => it != null)
+        llmSettings
+            .map((it) => new OpenAiClient(it))
+            .forEach((it) => this.clientMap.set(it.type, it))
     }
 
-    private selectLLmAndModel = async (): Promise<[string, string]> => {
+    private async selectLLmAndModel(): Promise<Model> {
         const choices = Array.from(this.clientMap.keys()).map((it) => ({
             name: it as string,
             value: it as string,
@@ -98,14 +86,14 @@ export class ChatAction implements IChatAction {
         if (isEmpty(choices)) {
             throw Error(promptMessage.settingMissing)
         }
-        const llm = await select({
+        const llmType = await select({
             message: 'Provider:',
             choices,
         })
-        if (!llm) {
+        if (!llmType) {
             throw Error(promptMessage.providerMissing)
         }
-        const llmSelect = this.clientMap.get(llm)!
+        const llmSelect = this.clientMap.get(llmType)!
         const model = await select({
             message: 'Model',
             choices: llmSelect.models.map((it) => ({ name: it, value: it })),
@@ -113,90 +101,75 @@ export class ChatAction implements IChatAction {
         if (!model) {
             throw Error(promptMessage.modelMissing)
         }
-        return [llm, model]
-    }
-
-    newChat = async (name: string) => {
-        if (this.store.queryChat(name)) {
-            this.store.changeChat(name)
-            return
+        return {
+            llmType,
+            model,
         }
-        const [llm, model] = await this.selectLLmAndModel()
-        this.store.newChat(name, '', llm, model)
     }
 
-    removeChat = async () => {
-        const cts = this.store.chats()
+    async newChat(name: string): Promise<void> {
+        this.store.chat.new(name, this.selectLLmAndModel)
+    }
+
+    async removeChat(): Promise<void> {
+        const cts = this.store.chat.list()
         if (cts.length == 1) {
             throw Error(promptMessage.oneChatRemain)
         }
         await this.selectChatRun(
-            'Delete Chat:',
+            'Remove Chat:',
             cts.filter((it) => !it.select),
-            (answer) => this.store.removeChat(answer)
+            (answer) => this.store.chat.get(answer).remove()
         )
     }
 
-    reAsk = async () => {
-        const prevOptions = this.queryCaches(['prev_options'])
-        if (isEmpty(prevOptions)) {
+    async reAsk(): Promise<void> {
+        const prevOptions = this.store.cache.get('prev_options')
+        if (!prevOptions) {
             throw Error(promptMessage.retryOptionsMisssing)
         }
-        const [it] = prevOptions
-        await this.ask(JSON.parse(it.value) as AskContent)
+        const { value } = prevOptions
+        await this.ask(JSON.parse(value) as AskContent)
     }
 
-    ask = async (params: AskContent) => {
-        this.saveOrUpdateCaches([
-            {
-                key: 'prev_options',
-                value: JSON.stringify(params),
-            },
-        ])
+    async ask(params: AskContent): Promise<void> {
+        this.store.cache.set({
+            key: 'prev_options',
+            value: JSON.stringify(params),
+        })
         const { content, chatName, noStream = false, newTopic } = params
-        const f = async (cf: ChatConfig) => {
-            const client = await this.client(cf.llmType)
-            await askFlow({
-                generalSetting: this.generalSetting,
-                client: client.openai,
-                store: this.store,
-                config: cf,
-                configExt: this.configExt(cf.chatId),
-                userContent: content,
-                mcps: this.mcps,
-                noStream,
-                newTopic,
-            })
+        const chat = this.store.chat.get(chatName)
+        const { llmType, model } = chat.config.value
+        let client = this.clientMap.get(llmType)
+        if (client === void 0 || !client.models.includes(model)) {
+            await this.modifyModel(chatName)
+            client = this.clientMap.get(chat.config.value.llmType)!
         }
-        if (chatName) {
-            const chat = this.getChat(chatName)
-            await f(this.store.queryChatConfig(chat.id))
-            return
-        }
-        await f(this.store.currentChatConfig())
+        await askFlow({
+            chat,
+            generalSetting: this.generalSetting,
+            client: client.openai,
+            mcps: this.mcps,
+            userContent: content,
+            noStream,
+            newTopic,
+        })
     }
 
-    private getChat = (chatName: string) => {
-        const chat = this.store.queryChat(chatName)
-        if (!chat) {
-            throw Error(`The ${chatName} not found.`)
-        }
-        return chat
-    }
-
-    changeChat = async (name?: string) => {
+    async changeChat(name?: string): Promise<void> {
+        const chat = this.store.chat.get()
         const f = (s: string) => {
-            this.store.changeChat(s)
+            chat.switch(s)
             print(
                 `${color.green('✔')} ${color.subtext0.bold(
                     'Select Chat:'
                 )} ${color.teal(s)} `
             )
         }
-        if (name && (await this.quikeCmd(name, f))) {
+        if (name && (await this.quickCmd(name, f))) {
             return
         }
-        const chats = this.store.chats()
+        const chats = this.store.chat.list()
         if (isEmpty(chats)) {
             throw Error(promptMessage.chatMissing)
         }
@@ -215,16 +188,17 @@ export class ChatAction implements IChatAction {
             default: df.name,
             theme: themeStyle(color),
         })
-        this.store.changeChat(v)
-        this.store.addOrUpdateCmdHis('chat_switch', v)
+        chat.switch(v)
+        this.store.quickSwitch.saveOrUpdate(v)
     }
 
-    private quikeCmd = async (
+    private async quickCmd(
         subkey: string,
         quikeRun: (s: string) => void | Promise<void>
-    ) => {
-        const cmd = this.store
-            .queryCmdHis('chat_switch', subkey)
+    ): Promise<boolean> {
+        const qk = this.store.quickSwitch
+        const cmd = qk
+            .list(subkey)
             .sort((a, b) => this.frequencyRule(b) - this.frequencyRule(a))[0]
         if (!cmd) {
             return false
@@ -235,10 +209,10 @@ export class ChatAction implements IChatAction {
             if (res instanceof Promise) {
                 await res
             }
-            this.store.updateCmdHis('chat_switch', key, frequency)
+            qk.update(key, frequency)
             return true
         } catch (e: unknown) {
-            this.store.delCmdHis('chat_switch', key)
+            qk.delete(key)
             return false
         }
     }
@@ -261,8 +235,9 @@ export class ChatAction implements IChatAction {
         return frequency / 4
     }
 
-    changeTopic = async () => {
-        const topics = this.store.currentChatTopics()
+    async changeTopic(): Promise<void> {
+        const tpfun = this.store.chat.get().topic
+        const topics = tpfun.list()
         const choices: Choice<ChatTopic>[] = topics.map((it) => ({
             name: this.subStr(it.content),
             value: it,
@@ -272,115 +247,28 @@ export class ChatAction implements IChatAction {
         if (isEmpty(choices.filter((it) => !it.disabled))) {
             throw Error(promptMessage.onlyOneTopic)
         }
-        const { id, chatId } = await select({
+        const { id } = await select({
             message: 'Select Topic:',
             choices,
             theme: themeStyle(color),
         })
-        this.store.changeTopic(id, chatId)
+        tpfun.switch(id)
     }
 
-    printTopics = async () => {
-        await this.sortedTopics().then((it) =>
-            this.listItems(
-                it,
-                (s) => s.select,
-                (s) => this.subStr(s.content)
-            )
-        )
+    printChatConfig(chatName?: string): void {
+        const chat = this.store.chat.get(chatName)
+        const cf = chat.config.value
+        const ext = chat.configExt.value
+        simpleShow.chatConfigShow(chat.value.name, cf, ext, color)
     }
 
-    printChats = async () => {
-        await this.sortedChats().then((it) =>
-            this.listItems(
-                it,
-                (s) => s.select,
-                (s) => s.name
-            )
-        )
-    }
-
-    private listItems = <T,>(
-        ts: T[],
-        s: (s: T) => boolean,
-        n: (n: T) => string
-    ) => {
-        ts.forEach((it, idx) => {
-            println(
-                `[${idx === 0 ? color.green('*') : color.pink(idx)}] ${
-                    s(it) ? color.yellow(n(it)) : this.text(n(it))
-                }`
-            )
-        })
-    }
-
-    printChatConfig = (chatName?: string) => {
-        const mcps = (chatId: string) => {
-            const { mcpServers } = this.configExt(chatId)
-            if (isEmpty(mcpServers)) {
-                return ''
-            }
-            const enableFilter = (s: MCPServerKey) => {
-                const one = this.mcps.find(
-                    (it) => it.name === s.name && it.version === s.version
-                )
-                return one !== void 0
-            }
-            return mcpServers
-                .filter(enableFilter)
-                .map((it) => `${it.name}/${it.version}`)
-                .join('\n')
+    async printChatHistory(limit: number, chatName?: string): Promise<void> {
+        const { get, message } = this.store.chat.get(chatName).topic
+        const tp = get()
+        if (!tp) {
+            throw Error(promptMessage.hisMsgMissing)
         }
-
-        const f = (cf: ChatConfig) => {
-            const [_, config] = tableConfigWithExt({
-                cols: [1, 1, 1, 1],
-                alignment: 'left',
-            })
-            const booleanPrettyFormat = (v: boolean) => (v ? 'true' : 'false')
-            const data = [
-                [
-                    display.caution('Context:'),
-                    display.important(booleanPrettyFormat(cf.withContext)),
-                    display.caution('ContextSize:'),
-                    display.warning(cf.contextLimit),
-                ],
-                [
-                    display.caution('Scenario:'),
-                    display.tip(cf.scenarioName),
-                    display.caution('MCP:'),
-                    display.important(
-                        cf.withMCP
-                            ? display.tip(mcps(cf.chatId))
-                            : booleanPrettyFormat(cf.withMCP)
-                    ),
-                ],
-                [
-                    display.caution('LLMType:'),
-                    display.tip(cf.llmType),
-                    display.caution('Model:'),
-                    display.tip(cf.model),
-                ],
-            ]
-            printTable(data, config)
-        }
-        if (!chatName) {
-            f(this.store.currentChatConfig())
-            return
-        }
-        const { id } = this.getChat(chatName)
-        f(this.store.queryChatConfig(id))
-    }
-
-    printChatHistory = async (limit: number, chatName?: string) => {
-        const getMsgs = () => {
-            if (!chatName) {
-                return this.store.historyMessage(limit)
-            }
-            const chat = this.getChat(chatName)
-            return this.store.chatHistoryMessage(chat, limit)
-        }
-        const messages = getMsgs()
+        const messages = message.list(tp.id, limit, true)
         if (isEmpty(messages)) {
             throw Error(promptMessage.hisMsgMissing)
         }
@@ -397,7 +285,7 @@ export class ChatAction implements IChatAction {
         await loopShow()
     }
 
-    private historyShow = async ({
+    private async historyShow({
         choices,
         msp,
         df,
@@ -405,7 +293,7 @@ export class ChatAction implements IChatAction {
         choices: Choice<string>[]
         msp: Map<string, ChatMessage[]>
         df?: string
-    }) => {
+    }): Promise<string> {
         const value = await select({
             message: 'View Message:',
             choices,
@@ -434,21 +322,21 @@ export class ChatAction implements IChatAction {
         return value
     }
 
-    private historyAssistantPrint = (
+    private historyAssistantPrint(
         assistant: string,
         display: Display,
         f: (role: string, content: string) => void
-    ) => {
+    ): void {
         display.contentShow(assistant)
         display.contentStop()
         f('assistant', assistant)
     }
 
-    private historyReasoningPrint = (
+    private historyReasoningPrint(
         reasoning: string,
         display: Display,
         f: (role: string, content: string) => void
-    ) => {
+    ): void {
         if (!reasoning) {
             return
         }
@@ -457,11 +345,11 @@ export class ChatAction implements IChatAction {
         f('reasoning', reasoning)
     }
 
-    private historyToolsCallPrint = (
+    private historyToolsCallPrint(
         toolsCall: string,
         display: Display,
         f: (role: string, content: string) => void
-    ) => {
+    ): void {
         if (!toolsCall) {
             return
         }
@@ -479,7 +367,7 @@ export class ChatAction implements IChatAction {
         })
     }
 
-    private historyChoice = (msp: Map<string, ChatMessage[]>) => {
+    private historyChoice(msp: Map<string, ChatMessage[]>): Choice<string>[] {
         return msp.entries().reduce((arr, it) => {
             const userContent = this.findRoleMessage('user')(it[1])
             if (!userContent) {
@@ -490,13 +378,11 @@ export class ChatAction implements IChatAction {
         }, [] as Choice<string>[])
     }
 
-    private partMessageByRole = (
-        msgs: ChatMessage[] | undefined
-    ): {
+    private partMessageByRole(msgs: ChatMessage[] | undefined): {
         assistant: string
         reasoning: string
         toolsCall: string
-    } => {
+    } {
         if (!msgs) {
             return {
                 assistant: '',
@@ -515,7 +401,7 @@ export class ChatAction implements IChatAction {
         return arr.find((it) => it.role === role)?.content
     }
 
-    private parseToolsCall = (toolsCall: string) => {
+    private parseToolsCall(toolsCall: string) {
         try {
             const itemStr: string[] = JSON.parse(toolsCall)
             return itemStr.map((it) => {
@@ -533,62 +419,39 @@ export class ChatAction implements IChatAction {
         }
     }
 
-    modifyContextSize = (size: number, chatName?: string) => {
-        if (!chatName) {
-            this.store.modifyContextLimit(size)
-            return
-        }
-        this.store.modifyChatContextLimit(this.getChat(chatName), size)
+    modifyContextSize(size: number, chatName?: string): void {
+        this.store.chat.get(chatName).config.modifyContextLimit(size)
     }
 
-    modifyModel = async (chatName?: string) => {
-        await this.modifyLLMAndModel(chatName)
+    async modifyModel(chatName?: string): Promise<void> {
+        const model = await this.selectLLmAndModel()
+        this.store.chat.get(chatName).config.moidfyModel(model)
     }
 
-    private modifyLLMAndModel = async (chatName?: string) => {
-        const [llm, model] = await this.selectLLmAndModel()
-        if (!chatName) {
-            this.store.modifyModel(llm, model)
-            return
-        }
-        this.store.modifyChatModel(this.getChat(chatName), llm, model)
+    modifySystemPrompt(prompt: string, chatName?: string): void {
+        this.store.chat.get(chatName).config.modifySystemPrompt(prompt)
     }
 
-    modifySystemPrompt = (prompt: string, chatName?: string) => {
-        if (!chatName) {
-            this.store.modifySystemPrompt(prompt)
-            return
-        }
-        this.store.modifyChatSystemPrompt(this.getChat(chatName), prompt)
+    modifyWithContext(chatName?: string): void {
+        this.store.chat.get(chatName).config.moidfyContext()
     }
 
-    modifyWithContext = (chatName?: string) => {
-        if (!chatName) {
-            this.store.modifyWithContext()
-            return
-        }
-        this.store.modifyChatWithContext(this.getChat(chatName))
+    async modifyWithMCP(chatName?: string): Promise<void> {
+        const chat = this.store.chat.get(chatName)
+        const config = chat.config
+        const configExt = chat.configExt
+        const { value: ext } = configExt
+        const items = await checkbox({
+            message: 'Select MCP Server:',
+            choices: this.mcpChoices(ext),
+        })
+        ext.mcpServers = items
+        configExt.update(ext)
+        config.modifyMcp(!isEmpty(items))
     }
 
-    modifyWithMCP = async (chatName?: string) => {
-        // select mcp
-        const f = () => {
-            if (!chatName) {
-                return {
-                    chat: this.store.existCurrentChat(),
-                    mcp: (v: boolean) => this.store.modifyWithMCP(v),
-                }
-            }
-            const chat = this.getChat(chatName)
-            return {
-                chat,
-                mcp: (v: boolean) => this.store.modifyChatWithMCP(chat, v),
-            }
-        }
-        const { chat, mcp } = f()
-        const { id } = chat
-        const ext = this.configExt(id)
-        const key = (n: string, v: string) => `${n}/${v}`
+    private mcpChoices(ext: ConfigExt) {
+        const key = (n: string, v: string) => `${n}@${v}`
         const isChecked = (m: MCPClient) => {
             const { mcpServers } = ext
             if (isEmpty(mcpServers)) {
@@ -610,28 +473,10 @@ export class ChatAction implements IChatAction {
         if (isEmpty(choices)) {
             throw Error(promptMessage.mcpMissing)
         }
-        const items = await checkbox({ message: 'Select MCP Server:', choices })
-        if (isEmpty(items)) {
-            ext.mcpServers = []
-            mcp(false)
-        } else {
-            ext.mcpServers = items
-            mcp(true)
-        }
-        this.store.updateChatConfigExt(id, JSON.stringify(ext))
+        return choices
     }
 
-    private configExt = (chatId: string) => {
-        const ext = this.store.queryChatConfigExt(chatId)
-        if (ext) {
-            return JSON.parse(ext.ext) as ConfigExt
-        }
-        const def = { mcpServers: [] } as ConfigExt
-        this.store.saveChatCofnigExt(chatId, JSON.stringify(def))
-        return def
-    }
-
-    modifyScenario = async (chatName?: string) => {
+    async modifyScenario(chatName?: string): Promise<void> {
         await selectRun(
             'Select Scenario:',
             Object.keys(temperature).map((k) => ({
@@ -639,35 +484,25 @@ export class ChatAction implements IChatAction {
                 value: k,
             })),
             (answer) => {
-                if (!chatName) {
-                    this.store.modifyScenario(temperature[answer])
-                    return
-                }
-                this.store.modifyChatScenario(
-                    this.getChat(chatName),
-                    temperature[answer]
-                )
+                const [name, value] = temperature[answer]
+                this.store.chat
+                    .get(chatName)
+                    .config.modifyScenario({ name, value })
             }
         )
     }
 
-    publishPrompt = async (chatName?: string) => {
-        const getPrompt = () => {
-            if (!chatName) {
-                return this.store.currentChatConfig().sysPrompt
-            }
-            const { id } = this.getChat(chatName)
-            return this.store.queryChatConfig(id).sysPrompt
-        }
-        const prompt = getPrompt()
-        if (!prompt) {
+    async publishPrompt(chatName?: string): Promise<void> {
+        const cffun = this.store.chat.get(chatName).config
+        const { sysPrompt } = cffun.value
+        if (!sysPrompt) {
             throw Error(promptMessage.systemPromptMissing)
         }
-        await this.getPublishPromptInput(prompt)
+        await this.getPublishPromptInput(sysPrompt)
     }
 
-    selectPrompt = async (name: string, chatName?: string) => {
-        const prompts = this.store.searchPrompt(name)
+    async selectPrompt(name: string, chatName?: string): Promise<void> {
+        const prompts = this.store.prompt.search(name)
         if (isEmpty(prompts)) {
             throw Error(promptMessage.systemPromptNoMatching)
         }
@@ -684,21 +519,8 @@ export class ChatAction implements IChatAction {
         this.modifySystemPrompt(v.content, chatName)
     }
 
-    listPrompt = async (name?: string) => {
-        let prompts
-        if (name) {
-            prompts = this.store.searchPrompt(name)
-        } else {
-            prompts = this.store.listPrompt()
-        }
-        if (isEmpty(prompts)) {
-            throw Error(promptMessage.systemPromptNoMatching)
-        }
-        const choices: Choice<ChatPrompt>[] = prompts.map((it) => ({
-            name: it.name,
-            value: it,
-            description: this.promptChoiceDesc(it),
-        }))
+    async listPrompt(name?: string): Promise<void> {
+        const choices = this.promptChoice(name)
         const ptShow = async (df?: string) => {
             const value = await select({
                 message: 'System Prompt:',
@@ -716,11 +538,43 @@ export class ChatAction implements IChatAction {
         await ptShow()
     }
 
-    private promptChoiceDesc = (pt: ChatPrompt) => {
+    async deletePrompt(name?: string): Promise<void> {
+        const choices = this.promptChoice(name)
+        const value = await select({
+            message: 'Delete Prompt:',
+            choices,
+            theme: themeStyle(color),
+        })
+        if (!value) {
+            throw Error(promptMessage.systemPromptNoMatching)
+        }
+        const { name: ptName, version } = value
+        this.store.prompt.delete(ptName, version)
+    }
+
+    private promptChoice(name?: string): Choice<ChatPrompt>[] {
+        const { search, list } = this.store.prompt
+        let prompts
+        if (name) {
+            prompts = search(name)
+        } else {
+            prompts = list()
+        }
+        if (isEmpty(prompts)) {
+            throw Error(promptMessage.systemPromptNoMatching)
+        }
+        return prompts.map((it) => ({
+            name: it.name,
+            value: it,
+            description: this.promptChoiceDesc(it),
+        }))
+    }
+
+    private promptChoiceDesc(pt: ChatPrompt): string {
         return `${pt.name}@${pt.version}`
     }
 
-    private showPrompt = (pt: string) => {
+    private showPrompt(pt: string): void {
         const { palette, assistant } = themes[this.generalSetting.theme]
         const colorSchema = catppuccinColorSchema[palette]
         const c = (color: CatppuccinColorName) => hex(colorSchema[color])
@@ -736,34 +590,35 @@ export class ChatAction implements IChatAction {
         textShow.stop()
     }
 
-    tools = async () => {
+    async tools(): Promise<void> {
         if (isEmpty(this.mcps)) {
             throw Error(promptMessage.mcpMissing)
         }
-        const tools = await Promise.all(
+        const data = await Promise.all(
             this.mcps.map(async (it) => {
-                let health = display.tip(`[✓]`)
+                let health = true
                 try {
                     await it.connect()
+                    if (!it.isConnected) {
+                        health = false
+                    }
                 } catch (e: unknown) {
-                    health = display.warning(`[✗]`)
+                    health = false
                 } finally {
                     await it.close()
                 }
-                return [display.tip(it.name), display.tip(it.version), health]
+                return {
+                    name: it.name,
+                    version: it.version,
+                    health,
+                }
             })
         )
-        printTable(
-            [
-                ['Name', 'Version', 'Health'].map((it) => display.caution(it)),
-                ...tools,
-            ],
-            tableConfig({ cols: [1, 1, 1] })
-        )
+        simpleShow.mcpHealthCheckShow(data, color)
     }
 
-    testTool = async () => {
-        const f = (m: MCPClient) => `${m.name}/${m.version}`
+    async testTool(): Promise<void> {
+        const f = (m: MCPClient) => `${m.name}@${m.version}`
         const choices = this.mcps.map((it) => ({ name: f(it), value: f(it) }))
         if (isEmpty(choices)) {
             throw Error(promptMessage.mcpMissing)
@@ -773,18 +628,12 @@ export class ChatAction implements IChatAction {
             try {
                 await m.connect()
                 const res = await m.listTools()
-                const tools = res.tools.map((it) => [
-                    display.tip(it.name),
-                    it.description,
-                ])
-                printTable(
-                    [
-                        ['Name', 'Description'].map((it) =>
-                            display.caution(it)
-                        ),
-                        ...tools,
-                    ],
-                    tableConfig({ cols: [1, 3], alignment: 'left' })
+                simpleShow.mcpTestShow(
+                    res.tools.map((it) => ({
+                        name: it.name,
+                        description: it.description ?? '',
+                    })),
+                    this.generalSetting
                 )
             } finally {
                 await m.close()
@@ -792,48 +641,43 @@ export class ChatAction implements IChatAction {
         })
     }
 
-    prompt = (chatName?: string) => {
-        if (!chatName) {
-            return this.store.currentChatConfig().sysPrompt
-        }
-        return this.store.queryChatConfig(this.getChat(chatName).id).sysPrompt
+    queryPrompt(chatName?: string): string {
+        const { sysPrompt } = this.store.chat.get(chatName).config.value
+        return sysPrompt
     }
 
-    printPrompt = (chatName?: string) => {
-        const pt = this.prompt(chatName)
+    printPrompt(chatName?: string): void {
+        const pt = this.queryPrompt(chatName)
         if (!pt) {
             throw Error(promptMessage.systemPromptMissing)
         }
         this.showPrompt(pt)
     }
 
-    exportPrompt = async () => {
-        const pts = this.store.listPrompt()
+    async exportPrompt(): Promise<void> {
+        const pts = this.store.prompt.list()
         const fileName = (pt: ChatPrompt) => `${pt.name}_${pt.version}.md`
         await Promise.all(pts.map((it) => Bun.write(fileName(it), it.content)))
     }
 
-    importPrompt = async (file: string) => {
+    async importPrompt(file: string): Promise<void> {
         const fileName = file.substring(0, file.lastIndexOf('.'))
         const idx = fileName.lastIndexOf('_')
         const promptName = fileName.substring(0, idx)
         const version = fileName.substring(idx + 1, fileName.length)
         const content = await Bun.file(file).text()
-        this.store.publishPrompt(promptName, version, content)
+        this.store.prompt.publish(promptName, version, content)
     }
 
-    clearPresetMessage = (chatName?: string) => {
-        if (!chatName) {
-            this.store.clearPresetMessage()
-            return
-        }
-        this.store.clearChatPresetMessage(this.getChat(chatName))
+    clearPresetMessage(chatName?: string): void {
+        this.store.chat.get(chatName).preset.clear()
     }
 
-    printPresetMessage = (chatName?: string) => {
+    printPresetMessage(chatName?: string): void {
+        const presetMessages = this.store.chat.get(chatName).preset.get()
         const presetMessageText = this.presetMessageText({
+            presetMessages,
             colorful: true,
-            chatName,
         })
         if (presetMessageText.isDefault) {
             throw Error(promptMessage.presetMsgMissing)
@@ -841,8 +685,11 @@ export class ChatAction implements IChatAction {
         println(presetMessageText.content)
     }
 
-    editPresetMessage = async (chatName?: string) => {
-        const sourceText = this.presetMessageText({ chatName }).content
+    async editPresetMessage(chatName?: string): Promise<void> {
+        const presetfun = this.store.chat.get(chatName).preset
+        const sourceText = this.presetMessageText({
+            presetMessages: presetfun.get(),
+        }).content
         const text = await editor(sourceText)
         if (!text) {
             return
@@ -861,35 +708,24 @@ export class ChatAction implements IChatAction {
                 throw Error(promptMessage.noEdit)
             }
         }
-        if (!chatName) {
-            this.store.createPresetMessage(contents)
-            return
-        }
-        this.store.createChatPresetMessage(this.getChat(chatName), contents)
+        presetfun.set(contents)
     }
 
-    private presetMessageText = ({
+    private presetMessageText({
+        presetMessages,
         colorful = false,
-        chatName,
     }: {
+        presetMessages: ChatPresetMessage[]
         colorful?: boolean
-        chatName?: string
     }): {
         isDefault: boolean
         content: string
-    } => {
+    } {
         const userType = () => `${colorful ? color.mauve.bold('user') : 'user'}`
         const assistantType = () =>
             `${colorful ? color.yellow.bold('assistant') : 'assistant'}`
         const pairMessage = (user: string, assistant: string) =>
             `[${userType()}]\n${user}\n\n[${assistantType()}]\n${assistant}\n`
-        const getPresetMessages = () => {
-            if (!chatName) {
-                return this.store.selectPresetMessage()
-            }
-            return this.store.selectChatPresetMessage(this.getChat(chatName))
-        }
-        const presetMessages = getPresetMessages()
         if (isEmpty(presetMessages)) {
             const { userPreset, assistantPreset } = promptMessage
             const dfText = pairMessage(userPreset, assistantPreset)
@@ -907,7 +743,7 @@ export class ChatAction implements IChatAction {
         }
     }
 
-    private parsePresetMessageText = (text: string) => {
+    private parsePresetMessageText(text: string): PresetMessageContent[] {
         type TmpContent = {
             user: string[]
             assistant: string[]
@@ -961,7 +797,7 @@ export class ChatAction implements IChatAction {
             .map(toPresetMessageContent)
     }
 
-    private getPublishPromptInput = async (prompt: string) => {
+    private async getPublishPromptInput(prompt: string): Promise<void> {
         const name = await input({ message: 'Prompt Name: ' })
         if (isEmpty(name)) {
             await this.getPublishPromptInput(prompt)
@@ -972,19 +808,21 @@ export class ChatAction implements IChatAction {
             await this.getPublishPromptInput(prompt)
             return
         }
-        const existsPrompt = this.store.searchPrompt(name, version)
+
+        const { search, publish } = this.store.prompt
+        const existsPrompt = search(name, version)
         if (isEmpty(existsPrompt)) {
-            this.store.publishPrompt(name, version, prompt)
+            publish(name, version, prompt)
             return
         }
         await this.getPublishPromptInput(prompt)
     }
 
-    private selectChatRun = async (
+    private async selectChatRun(
         message: string,
         chats: Chat[],
         f: (str: string) => void
-    ) => {
+    ): Promise<void> {
         if (isEmpty(chats)) {
             throw Error(promptMessage.chatMissing)
         }
@@ -995,51 +833,13 @@ export class ChatAction implements IChatAction {
         )
     }
 
-    private sortedChats = async (): Promise<Chat[]> => {
-        const cts = this.store.chats()
-        if (isEmpty(cts)) {
-            throw Error(promptMessage.chatMissing)
-        }
-        return this.sortedItem(
-            cts,
-            (s) => s.select,
-            (s) => s.actionTime
-        )
-    }
-
-    private sortedTopics = async (): Promise<ChatTopic[]> => {
-        const tps = this.store.currentChatTopics()
-        if (isEmpty(tps)) {
-            throw Error(promptMessage.topicMissing)
-        }
-        return this.sortedItem(
-            tps,
-            (s) => s.select,
-            (s) => s.createTime
-        )
-    }
-
-    private sortedItem = async <T,>(
-        arr: T[],
-        selected: (s: T) => boolean,
-        time: (s: T) => bigint
-    ): Promise<T[]> => {
-        const [st, oths] = await Promise.all([
-            arr.find((it) => selected(it)),
-            arr
-                .filter((it) => !selected(it))
-                .sort((a, b) => Number(time(b) - time(a))),
-        ])
-        return [st!, ...oths]
-    }
-
-    private subStr = (str: string) => {
+    private subStr(str: string): string {
         const wd = Math.floor(terminal.column * 0.7)
         const s = JSON.stringify(str)
         return this.loopSubStr(s.substring(1, s.length - 1), wd)
     }
 
-    private loopSubStr = (str: string, targetWd: number): string => {
+    private loopSubStr(str: string, targetWd: number): string {
         if (stringWidth(str) <= targetWd) {
             return str
         }
@@ -1060,42 +860,42 @@ export class ChatAction implements IChatAction {
         return result
     }
 
-    exportAllChatMessage = async (path?: string) => {
-        const msgs = this.store.queryAllExportMessage()
+    async exportAllChatMessage(path?: string): Promise<void> {
+        const msgs = this.store.exprot.all()
         await this.exportXlsx(msgs, `ifcli_all_chat_message_${unixnow()}`, path)
     }
 
-    exportChatMessage = async (path?: string) => {
+    async exportChatMessage(path?: string): Promise<void> {
         const { id: chatId } = await this.allChatToSelect()
         await this.exportXlsx(
-            this.store.queryChatExportMessage(chatId),
+            this.store.exprot.chat(chatId),
             `ifcli_chat_message_${unixnow()}`,
             path
         )
     }
 
-    exportChatTopicMessage = async (path?: string) => {
-        const { id: chatId } = await this.allChatToSelect()
-        const topics = this.store.queryTopic(chatId)
+    async exportChatTopicMessage(path?: string): Promise<void> {
+        const { id: chatId, name } = await this.allChatToSelect()
+        const topics = this.store.chat.get(name).topic.list()
         const { id: topicId } = await this.topicToSelect(topics)
         await this.exportXlsx(
-            this.store.queryChatTopicExportMessage(chatId, topicId),
+            this.store.exprot.topic(chatId, topicId),
             `ifcli_chat_topic_message_${unixnow()}`,
             path
         )
     }
 
-    exportTopicMessage = async (path?: string) => {
-        const topics = this.store.currentChatTopics()
-        const { id, chatId } = await this.topicToSelect(topics)
+    async exportTopicMessage(path?: string): Promise<void> {
+        const topics = this.store.chat.get().topic.list()
+        const { id: topicId, chatId } = await this.topicToSelect(topics)
         await this.exportXlsx(
-            this.store.queryChatTopicExportMessage(chatId, id),
+            this.store.exprot.topic(chatId, topicId),
             `ifcli_chat_topic_message_${unixnow()}`,
             path
         )
     }
 
-    private topicToSelect = async (topics: ChatTopic[]) => {
+    private async topicToSelect(topics: ChatTopic[]): Promise<ChatTopic> {
         const choices: Choice<ChatTopic>[] = topics.map((it) => ({
             name: this.subStr(it.content),
             value: it,
@@ -1111,7 +911,7 @@ export class ChatAction implements IChatAction {
         })
     }
 
-    private descriptionTrim = (str: string) => {
+    private descriptionTrim(str: string): string {
         const lines = str.split('\n')
         if (lines.length <= 15) {
             return str
@@ -1119,8 +919,8 @@ export class ChatAction implements IChatAction {
         return [...lines.slice(0, 10), '...', ...lines.slice(-5)].join('\n')
     }
 
-    private allChatToSelect = async () => {
-        const chats = this.store.chats()
+    private async allChatToSelect(): Promise<Chat> {
+        const chats = this.store.chat.list()
         const choices: Choice<Chat>[] = chats.map((it) => ({
             name: it.name,
             value: it,
@@ -1135,11 +935,11 @@ export class ChatAction implements IChatAction {
         })
     }
 
-    private exportXlsx = async (
+    private async exportXlsx(
         objs: ExportMessage[],
         fileName: string,
         exportPath?: string
-    ) => {
+    ): Promise<void> {
         const schema: Schema<ExportMessage> = [
             {
                 column: 'ChatName',
@@ -1175,19 +975,9 @@ export class ChatAction implements IChatAction {
 
         await writeXlsxFile(objs, {
             schema,
-            filePath: `${exportPath ? exportPath : env('HOME')}${path.sep}${fileName}.xlsx`,
+            filePath: `${exportPath ? exportPath : env('HOME')}${
+                path.sep
+            }${fileName}.xlsx`,
         })
-    }
-
-    queryCaches = (keys: string[]) => {
-        return this.store.queryCache(keys)
-    }
-
-    saveOrUpdateCaches = (caches: Cache[]) => {
-        this.store.saveOrUpdateCache(caches)
-    }
-
-    deleteCaches = (keys: string[]) => {
-        this.store.deleteCache(keys)
     }
 }

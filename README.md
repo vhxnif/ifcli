@@ -1,18 +1,18 @@
 # ifcli
 
-Chat with AI via CLI.
+Chat with AI via Command Line Interface.
 
 **Features:**
 
--   System prompt settings and management.
--   Support preset message settings.
--   History chat record management and viewing.
--   MCP(tools) Supported.
--   Supports diverse gameplay with `alias`.
+-   System prompt configuration and management
+-   Preset message support
+-   Chat history management and viewing
+-   MCP (Model Context Protocol) tools support
+-   Flexible usage patterns with `alias` commands
 
-## Install
+## Installation
 
-`ifcli` is built by [bunjs](https://bun.sh/) and requires a bun environment.
+`ifcli` is built using [Bun.js](https://bun.sh/) and requires a Bun environment.
 
 ### From NPM
 
@@ -20,77 +20,77 @@ Chat with AI via CLI.
 npm install -g @vhxnif/ifcli
 ```
 
-### From Source Code
+### From Source
 
 ```bash
 bun install && bun run build && bun link
 ```
 
-## Config
+## Configuration
 
-To configure various application settings using the `ist cf -m` command.**Please configure the large model settings before use.**
+Configure application settings using the `ist cf -m` command. **Please configure your LLM settings before first use.**
 
-To use MCP Server, you must first configure the relevant information and enable MCP functionality for the current chat session `ict cf -p`.
+To use MCP Servers, configure the relevant settings and enable MCP functionality for your chat session with `ict cf -p`.
 
-The `EDITOR` environment variable must be configured to enable configuration editing and related system functions.If not configured, `vim` will be used as the default editor.
+The `EDITOR` environment variable must be set to enable configuration editing and system functions. If not configured, `vim` is used as the default editor.
 
-### Data Path
+### Data Directory
 
-**Windows:** Data and MCP configurations are stored in %APPDATA%\ifcli.
+**Windows:** Data and MCP configurations are stored in `%APPDATA%\ifcli`
 
-**macOS/Linux:** They are located in $HOME/.config/ifcli.
+**macOS/Linux:** Data is located in `$HOME/.config/ifcli`
 
-Every release includes a version-specific data file (ifcli\_\<version\>.sqlite). You will need to handle data migration separately.
+Each release includes a version-specific SQLite database file (`ifcli_<version>.sqlite`). Data migration between versions must be handled manually.
 
-## Command
+## Commands
 
-`setting` command
+### Setting Commands
 
 ```bash
 Usage: ifsetting|ist [options] [command]
 
-setting management
+Manage application settings and configuration
 
 Options:
   -V, --version        output the version number
   -h, --help           display help for command
 
 Commands:
-  config|cf [options]  config management
-  mcp [options]        mcp server management
-  prompt|pt [options]  system prompt management
+  config|cf [options]  manage application configuration
+  mcp [options]        manage MCP (Model Context Protocol) servers
+  prompt|pt [options]  manage system prompts library
   help [command]       display help for command
 ```
 
-`chat` command
+### Chat Commands
 
 ```bash
-
 Usage: ifchat|ict [options] [command] [string]
 
-chat with AI
+Interactive AI chat interface
 
 Options:
   -V, --version                output the version number
-  -f, --force <name>           use the specified chat
-  -s, --sync-call              sync call
-  -e, --edit                   use editor
-  -t, --new-topic              start new topic
-  -r, --retry                  retry the last question.
+  -f, --force <name>           use specified chat session
+  -s, --sync-call              use synchronous (non-streaming) mode
+  -e, --edit                   open editor for input
+  -t, --new-topic              start a new conversation topic
+  -r, --retry                  retry the last question
+  -a, --attachment <file>      attach text file content to message
   -h, --help                   display help for command
 
 Commands:
-  new <string>                 new chat
-  history|hs [options]         view chat topic history
-  remove|rm                    remove chat
-  switch|st [options] [name]   switch to another chat or topic
-  prompt|pt [options]          prompt manager
-  preset|ps [options]          preset message manager
-  config|cf [options]          manage chat config
-  export|exp [options] [path]  export chat message.
+  new <string>                 create a new chat session
+  history|hs [options]         view chat conversation history
+  remove|rm                    delete a chat session
+  switch|st [options] [name]   switch between chat sessions or topics
+  prompt|pt [options]          manage system prompts
+  preset|ps [options]          manage preset message templates
+  config|cf [options]          configure chat settings
+  export|exp [options] [path]  export chat conversations
 ```
 
-### AppSetting
+## Application Settings
 
 ```json
 {
@@ -106,23 +106,26 @@ Commands:
             "url": "http://localhost:3000/sse"
         },
         {
-            "name": "weather",
-            "version": "v2",
-            "enable": true,
-            "type": "steamable",
-            "url": "http://localhost:3000/mcp"
-        },
-        {
-            "name": "weather",
-            "version": "v3",
+            "name": "sequential-thingking",
+            "version": "v1",
             "enable": true,
             "type": "stdio",
             "params": {
-                "command": "bun",
+                "command": "npx",
                 "args": [
-                    "run",
-                    "/Users/chen/workspace/weather-mcp/src/mcp/stdio-server.ts"
+                    "-y",
+                    "@modelcontextprotocol/server-sequential-thinking"
                 ]
+            }
+        },
+        {
+            "name": "context7",
+            "version": "v1",
+            "enable": true,
+            "type": "http",
+            "url": "https://mcp.context7.com/mcp",
+            "headers": {
+                "CONTEXT7_API_KEY": "<your api key>"
             }
         }
     ],
@@ -146,90 +149,97 @@ Commands:
             "models": ["gpt-4o"]
         },
         {
-          "name": "openrouter",
-          "baseUrl": "https://openrouter.ai/api/v1",
-          "apiKey": "<your openrouter key>",
-          "models": [
-            "deepseek/deepseek-chat-v3-0324:free",
-            "deepseek/deepseek-r1-0528:free",
-            "deepseek/deepseek-r1:free",
-            "qwen/qwen3-coder:free"
-          ]
+            "name": "openrouter",
+            "baseUrl": "https://openrouter.ai/api/v1",
+            "apiKey": "<your openrouter key>",
+            "models": [
+                "deepseek/deepseek-chat-v3-0324:free",
+                "deepseek/deepseek-r1-0528:free",
+                "deepseek/deepseek-r1:free",
+                "qwen/qwen3-coder:free"
+            ]
         }
     ]
 }
 ```
 
-**General Setting**
-| column name | type | required |
-| :-----------| :-------| :--------|
-| interactive | boolean | true |
+### General Settings
 
-**LLM Setting**
-| column name | type | required |
-|:------------|:---------|:---------|
-| name | string | true |
-| baseUrl | string | true |
-| apiKey | string | false |
-| models | string[] | true |
+| Field | Type   | Required |
+| :---- | :----- | :------- |
+| theme | string | true     |
 
-**MCP Server(Streamable)**
-| column name | type | required |
-|:------------|:-------------------------------------|:---------|
-| name | string | true |  
-| version | string | true |  
-| enable | boolean | true |
-| type | 'streamable' | true |  
-| url | string | true |
-| opts | StreamableHTTPClientTransportOptions | false |
+### LLM Settings
 
-**MCP Server(SSE)**
-| column name | type | required |
-|:------------|:--------------------------|:---------|
-| name | string | true |  
-| version | string | true |
-| enable | boolean | true |
-| type | 'sse' | true |  
-| url | string | true |
-| opts | SSEClientTransportOptions | false |
+| Field   | Type     | Required |
+| :------ | :------- | :------- |
+| name    | string   | true     |
+| baseUrl | string   | true     |
+| apiKey  | string   | false    |
+| models  | string[] | true     |
 
-**MCP Server(Stdio)**
-| column name | type | required |
-|:------------|:----------------------|:---------|
-| name | string | true |  
-| version | string | true |
-| enable | boolean | true |
-| type | 'stdio' | true |
-| params | StdioServerParameters | true |
+### MCP Server (http)
 
-## Tips
+| Field   | Type                                 | Required |
+| :------ | :----------------------------------- | :------- |
+| name    | string                               | true     |
+| version | string                               | true     |
+| enable  | boolean                              | true     |
+| type    | 'http'                               | true     |
+| url     | string                               | true     |
+| opts    | StreamableHTTPClientTransportOptions | false    |
 
-### Chat without `ict st`
+### MCP Server (SSE)
+
+| Field   | Type                      | Required |
+| :------ | :------------------------ | :------- |
+| name    | string                    | true     |
+| version | string                    | true     |
+| enable  | boolean                   | true     |
+| type    | 'sse'                     | true     |
+| url     | string                    | true     |
+| opts    | SSEClientTransportOptions | false    |
+
+### MCP Server (Stdio)
+
+| Field   | Type                  | Required |
+| :------ | :-------------------- | :------- |
+| name    | string                | true     |
+| version | string                | true     |
+| enable  | boolean               | true     |
+| type    | 'stdio'               | true     |
+| params  | StdioServerParameters | true     |
+
+## Usage Tips
+
+### Chat Session Management
 
 ```bash
-# `ts` is the name of another chat used for translation. You can simply use `ict -f ts` to specify using the `ts` chat, without switching the current chat to ts.You can also use `alias` to simplify `ict -f ts`.
-alias ts = ict -f ts 
+# Use specific chat sessions without switching context
+# 'ts' is a chat session for translation purposes
+alias ts='ict -f ts'
 ```
 
-### Close Stream Output
+### Disable Streaming Output
 
 ```bash
-# Specifying synchronous output so that it can be used in pipelines.
+# Use synchronous output for pipeline operations
 ict -sf ts
-# create your own command
-alias sts = ict -sf ts
-cat system_prompt.md | sts | save system_prompt.txt
+
+# Create custom commands for pipelines
+alias sts='ict -sf ts'
+cat system_prompt.md | sts | tee system_prompt.txt
 ```
 
-### Edit System Prompt
+### Edit System Prompts
 
-Pipe symbols are supported
+Using pipes:
 
 ```bash
 cat system_prompt.md | ict pt -c
 ```
 
-Use the editor
+Using editor:
 
 ```bash
 ict pt -m
@@ -237,4 +247,8 @@ ict pt -m
 
 ### Retry Last Question
 
-If you fail to respond after asking a question for any other reason, once you have resolved the issue you can use `-r, --retry` to retry the most recent question, thereby avoiding loss of prior progress.
+If a response fails for any reason, use the `-r` or `--retry` flag to retry the most recent question without losing context:
+
+```bash
+ict -r
+```

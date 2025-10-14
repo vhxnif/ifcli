@@ -1,6 +1,7 @@
 import type { HelpConfiguration } from '@commander-js/extra-typings'
 import type { ChalkInstance } from 'chalk'
 import chalk from 'chalk'
+import { themes } from './theme'
 
 export type CatppuccinColorTheme = 'latte' | 'frappe' | 'macchiato' | 'mocha'
 
@@ -148,19 +149,6 @@ const mocha: Record<CatppuccinColorName, string> = {
     crust: '#11111B',
 }
 
-const chalkColor = (
-    schema: Record<CatppuccinColorName, string>
-): Record<CatppuccinColorName, ChalkInstance> => {
-    return Object.keys(schema).reduce(
-        (obj, it) => {
-            const k = it as CatppuccinColorName
-            obj[k] = chalk.hex(schema[k])
-            return obj
-        },
-        {} as Record<CatppuccinColorName, ChalkInstance>
-    )
-}
-
 const catppuccinColorSchema: Record<
     CatppuccinColorTheme,
     Record<CatppuccinColorName, string>
@@ -180,25 +168,41 @@ const displayDef: Record<string, CatppuccinColorName> = {
     error: 'red',
 }
 
-const displaySchema = (
-    cl: Record<CatppuccinColorName, ChalkInstance>
-): Record<string, ChalkInstance> => {
-    return Object.keys(displayDef).reduce(
-        (obj, it) => {
-            const k = displayDef[it]
-            obj[it] = cl[k]
-            return obj
-        },
-        {} as Record<string, ChalkInstance>
-    )
+function chalkColor(
+    schema: Record<CatppuccinColorName, string>
+): Record<CatppuccinColorName, ChalkInstance> {
+    return Object.keys(schema).reduce((obj, it) => {
+        const k = it as CatppuccinColorName
+        obj[k] = chalk.hex(schema[k])
+        return obj
+    }, {} as Record<CatppuccinColorName, ChalkInstance>)
 }
 
-const hex = (color: string): ChalkInstance => chalk.hex(color)
+function chalkThemeColor(
+    theme: string
+): Record<CatppuccinColorName, ChalkInstance> {
+    const { palette } = themes[theme]
+    return chalkColor(catppuccinColorSchema[palette])
+}
 
-const commanderHelpConfiguration = (
+function displaySchema(
+    cl: Record<CatppuccinColorName, ChalkInstance>
+): Record<string, ChalkInstance> {
+    return Object.keys(displayDef).reduce((obj, it) => {
+        const k = displayDef[it]
+        obj[it] = cl[k]
+        return obj
+    }, {} as Record<string, ChalkInstance>)
+}
+
+function hex(color: string): ChalkInstance {
+    return chalk.hex(color)
+}
+
+function commanderHelpConfiguration(
     color: Record<CatppuccinColorName, ChalkInstance>
-): HelpConfiguration =>
-    ({
+): HelpConfiguration {
+    return {
         styleTitle: (str) => color.peach.bold(str),
         styleCommandText: (str) => color.sky(str),
         styleCommandDescription: (str) => color.green.bold.italic(str),
@@ -207,12 +211,14 @@ const commanderHelpConfiguration = (
         styleArgumentText: (str) => color.pink(str),
         styleSubcommandText: (str) => color.sapphire.italic(str),
         styleOptionTerm: (str) => color.mauve.italic(str),
-    }) as HelpConfiguration
+    } as HelpConfiguration
+}
 
 export {
     catppuccinColorSchema,
     displaySchema,
     chalkColor,
+    chalkThemeColor,
     hex,
     commanderHelpConfiguration,
 }

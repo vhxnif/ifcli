@@ -75,19 +75,6 @@ const chat_preset_message = `
     );
     CREATE INDEX IF NOT EXISTS chat_preset_message_IDX ON chat_preset_message (chat_id);
 `
-const app_setting = `
-    CREATE TABLE IF NOT EXISTS app_setting (
-        id TEXT,
-        version TEXT,
-        general_setting TEXT,
-        mcp_server TEXT,
-        llm_setting TEXT,
-        create_time INTEGER,
-        CONSTRAINT app_setting_PK PRIMARY KEY (id)
-    );
-    CREATE INDEX IF NOT EXISTS app_setting_IDX ON app_setting (create_time);
-`
-
 const cmd_history = `
     CREATE TABLE IF NOT EXISTS cmd_history (
         id TEXT,
@@ -100,7 +87,7 @@ const cmd_history = `
     CREATE UNIQUE INDEX IF NOT EXISTS cmd_his_uk_IDX ON cmd_history (type, key);
 `
 
-const chat_confi_ext = `
+const chat_config_ext = `
     CREATE TABLE IF NOT EXISTS "chat_config_ext" (
       "id" text NOT NULL,
       "chat_id" text NOT NULL,
@@ -128,9 +115,8 @@ const table_def: Record<string, string> = {
     chat_config: chat_config,
     chat_prompt: chat_prompt,
     chat_preset_message: chat_preset_message,
-    app_setting: app_setting,
     cmd_history: cmd_history,
-    chat_config_ext: chat_confi_ext,
+    chat_config_ext: chat_config_ext,
     cache: cache,
 }
 

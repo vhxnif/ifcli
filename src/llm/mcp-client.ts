@@ -17,7 +17,7 @@ import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js'
 import type { RunnableToolFunction } from 'openai/lib/RunnableFunction.mjs'
 import { println, uuid } from '../util/common-utils'
 
-export type MCPConnectType = 'streamable' | 'sse' | 'stdio'
+export type MCPConnectType = 'http' | 'sse' | 'stdio'
 
 export interface MCPConfig {
     name: string
@@ -37,8 +37,8 @@ export interface StdioConfig extends MCPConfig {
     params: StdioServerParameters
 }
 
-export interface StreamableConfig extends MCPConfig {
-    type: 'streamable'
+export interface HttpConfig extends MCPConfig {
+    type: 'http'
     url: string
     opts?: StreamableHTTPClientTransportOptions
 }
@@ -70,7 +70,7 @@ export default class MCPClient {
             return
         }
         const { url, opts } = config as SSEConfig
-        if (config.type === 'streamable') {
+        if (config.type === 'http') {
             this.transport = new StreamableHTTPClientTransport(
                 new URL(url),
                 opts
@@ -80,7 +80,7 @@ export default class MCPClient {
         this.transport = new SSEClientTransport(new URL(url), opts)
     }
 
-    connect = async () => {
+    async connect(): Promise<void> {
         try {
             await this.client.connect(this.transport)
             this.connected = true
@@ -90,9 +90,15 @@ export default class MCPClient {
         }
     }
 
-    listTools = async () => await this.client.listTools()
+    get isConnected() {
+        return this.connected
+    }
 
-    tools = async () => {
+    async listTools() {
+        return await this.client.listTools()
+    }
+
+    async tools() {
         if (!this.connected) {
             return []
         }
@@ -123,13 +129,14 @@ export default class MCPClient {
         )
     }
 
-    callTool = async (name: string, args: any) =>
-        await this.client.callTool(
+    async callTool(name: string, args: any) {
+        return await this.client.callTool(
             { name, arguments: { ...args } },
             CallToolResultSchema
         )
+    }
 
-    close = async () => {
+    async close() {
         try {
             if (this.connected) {
                 await this.client.close()
