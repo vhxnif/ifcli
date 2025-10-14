@@ -3,27 +3,41 @@ import path from 'path'
 import { env, tmpPath } from './platform-utils'
 
 const debug = false
+const println = console.log
 
-const print = (str: string) => process.stdout.write(str)
-const log = (str: string) => {
+function print(str: string): boolean {
+    return process.stdout.write(str)
+}
+function log(str: string): void {
     if (debug) {
         console.log(str)
     }
 }
-const println = console.log
-const uuid = () => Bun.randomUUIDv7().replaceAll('-', '')
-const unixnow = (): number => Date.now()
-const containsChinese = (str: string): boolean => /[\u4e00-\u9fa5]/.test(str)
+function uuid(): string {
+    return Bun.randomUUIDv7().replaceAll('-', '')
+}
 
-const stdin = async () => {
+function unixnow(): number {
+    return Date.now()
+}
+function containsChinese(str: string): boolean {
+    return /[\u4e00-\u9fa5]/.test(str)
+}
+
+async function stdin(): Promise<string | undefined> {
     for await (const chunk of Bun.stdin.stream()) {
         return Buffer.from(chunk).toString()
     }
 }
 
-const stringWidth = (str: string) => Bun.stringWidth(str)
+function stringWidth(str: string): number {
+    return Bun.stringWidth(str)
+}
 
-const editor = async (content: string, fileType: string = 'md') => {
+async function editor(
+    content: string,
+    fileType: string = 'md'
+): Promise<string> {
     const editor = env('EDITOR') ?? 'vim'
     const tmpFile = path.join(tmpPath(), `tmp-${uuid()}.${fileType}`)
     await Bun.write(tmpFile, content, { createPath: false })
@@ -36,7 +50,7 @@ const editor = async (content: string, fileType: string = 'md') => {
     return editorText
 }
 
-const isTextSame = (sourceText: string, text: string) => {
+function isTextSame(sourceText: string, text: string): boolean {
     const hasher = new Bun.CryptoHasher('sha256')
     const digest = (str: string) => {
         hasher.update(str)
@@ -45,17 +59,11 @@ const isTextSame = (sourceText: string, text: string) => {
     return digest(sourceText) === digest(text)
 }
 
-const exit = () => process.exit()
-
-type IsEmpty = {
-    (str: undefined): boolean
-    (str: null): boolean
-    (str: string): boolean
-    (str: string | undefined): boolean
-    <T>(arr: T[]): boolean
+function exit(): never {
+    process.exit()
 }
 
-const isEmpty: IsEmpty = <T>(param: string | T[] | undefined | null) => {
+function isEmpty<T>(param: string | T[] | undefined | null): boolean {
     if (!param) {
         return true
     }
@@ -66,7 +74,7 @@ const isEmpty: IsEmpty = <T>(param: string | T[] | undefined | null) => {
     return arr.length <= 0
 }
 
-const groupBy = <T, R>(arr: T[], key: (i: T) => R) => {
+function groupBy<T, R>(arr: T[], key: (i: T) => R): Map<R, T[]> {
     return arr.reduce((df, it) => {
         const v = df.get(key(it))
         if (v) {
@@ -78,7 +86,7 @@ const groupBy = <T, R>(arr: T[], key: (i: T) => R) => {
     }, new Map<R, T[]>())
 }
 
-const jsonformat = (jsonString: string) => {
+function jsonformat(jsonString: string): string {
     try {
         return JSON.stringify(JSON.parse(jsonString), null, 4)
     } catch (err: unknown) {
@@ -86,25 +94,25 @@ const jsonformat = (jsonString: string) => {
     }
 }
 
-const objToJson = (obj: unknown) => {
+function objToJson(obj: unknown): string {
     return JSON.stringify(obj, null, 4)
 }
 
-export type VoidResult = Promise<void> | void
-export type OptionType = string | boolean | undefined
-export type OptionAction = () => VoidResult
+type VoidResult = Promise<void> | void
+type OptionType = string | boolean | undefined
+type OptionAction = () => VoidResult
 
-const matchRun = async (
+async function matchRun(
     orderedMatchItems: [OptionType, OptionAction][],
     defaultAction?: () => VoidResult
-): Promise<void> => {
+): Promise<void> {
     await orderedMatchItems.find((it) => it[0])?.[1]()
     if (defaultAction) {
         await defaultAction()
     }
 }
 
-const parseIntNumber = (str: string | undefined, def: number) => {
+function parseIntNumber(str: string | undefined, def: number): number {
     if (!str) {
         return def
     }
@@ -113,6 +121,9 @@ const parseIntNumber = (str: string | undefined, def: number) => {
 }
 
 export {
+    type VoidResult,
+    type OptionType,
+    type OptionAction,
     containsChinese,
     editor,
     exit,
