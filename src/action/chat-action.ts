@@ -108,7 +108,7 @@ export class ChatAct implements IChatAct {
     }
 
     async newChat(name: string): Promise<void> {
-        this.store.chat.new(name, this.selectLLmAndModel)
+        this.store.chat.new(name, async () => await this.selectLLmAndModel())
     }
 
     async removeChat(): Promise<void> {
