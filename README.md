@@ -66,9 +66,12 @@ Commands:
 ### Chat Commands
 
 ```bash
-Usage: ifchat|ict [options] [command] [string]
+Usage: ifchat|ict [options] [command] [string...]
 
 Interactive AI chat interface
+
+Arguments:
+  string                       chat message content (multiple arguments will be joined into a single string)
 
 Options:
   -V, --version                output the version number
