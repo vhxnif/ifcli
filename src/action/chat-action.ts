@@ -754,7 +754,7 @@ export class ChatAct implements IChatAct {
             ({
                 user: parseContent(c.user),
                 assistant: parseContent(c.assistant),
-            }) as PresetMessageContent
+            } as PresetMessageContent)
         const validContent = (c: TmpContent) =>
             c.type && !isEmpty(c.user) && !isEmpty(c.assistant)
         return text

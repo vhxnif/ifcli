@@ -11,11 +11,11 @@ export type Choice<V> = {
     disabled?: boolean | string
 }
 
-async function selectRun<V>(
+const selectRun = async <V>(
     message: string,
     choices: Choice<V>[],
     f: (str: V) => void
-): Promise<void> {
+): Promise<void> => {
     const v = await select({ message, choices })
     f(v)
 }
@@ -27,9 +27,9 @@ type ThemeStyle = {
     }
 }
 
-function themeStyle(
+const themeStyle = (
     ds: Record<CatppuccinColorName, ChalkInstance>
-): ThemeStyle {
+): ThemeStyle => {
     return {
         style: {
             disabled: (text: string) => `- ${ds.yellow(text)}`,
@@ -38,10 +38,10 @@ function themeStyle(
     }
 }
 
-async function inputRun(
+const inputRun = async (
     message: string,
     f: (str: string) => void
-): Promise<void> {
+): Promise<void> => {
     f(await input({ message }))
 }
 

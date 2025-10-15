@@ -28,21 +28,21 @@ const llmNotifyMessageColor: Record<LLMNotifyMessageType, CatppuccinColorName> =
         completed: 'green',
     }
 
-function message(role: LLMRole, content: string): LLMMessage {
+const message = (role: LLMRole, content: string): LLMMessage => {
     return {
         role,
         content,
     }
 }
-function user(content: string): LLMMessage {
+const user = (content: string): LLMMessage => {
     return message('user', content)
 }
 
-function system(content: string): LLMMessage {
+const system = (content: string): LLMMessage => {
     return message('system', content)
 }
 
-function assistant(content: string): LLMMessage {
+const assistant = (content: string): LLMMessage => {
     return message('assistant', content)
 }
 

@@ -13,22 +13,22 @@ const terminal: Record<string, number> = {
 
 const envKeyPrefix = '$env.'
 
-function env(key: string): string | undefined {
+const env = (key: string): string | undefined => {
     return process.env[`${key}`]
 }
 
-function isEnvKey(str: string): boolean {
+const isEnvKey = (str: string): boolean => {
     if (!str) {
         return false
     }
     return str.startsWith(envKeyPrefix)
 }
 
-function arrEach(
+const arrEach = (
     arr: any[],
     objEach: (obj: any, f: (str: string) => string) => void,
     f: (str: string) => string
-): any[] {
+): any[] => {
     return arr.map((a) => {
         if (typeof a === 'string') {
             return f(a)
@@ -43,11 +43,11 @@ function arrEach(
     })
 }
 
-function objEach(
+const objEach = (
     obj: any,
     f: (str: string) => string,
     visited = new WeakSet()
-): void {
+): void => {
     if (visited.has(obj)) {
         return
     }
@@ -69,10 +69,10 @@ function objEach(
     }
 }
 
-function objEnvKeyProcess(
+const objEnvKeyProcess = (
     str: string,
     f: (key: string, envValue: string | undefined) => string
-): string {
+): string => {
     if (!isEnvKey(str)) {
         return str
     }
@@ -81,7 +81,7 @@ function objEnvKeyProcess(
     return f(str, value)
 }
 
-function objEnvCheck(obj: any): void {
+const objEnvCheck = (obj: any): void => {
     const missingKeys: string[] = []
     objEach(obj, (str) => {
         return objEnvKeyProcess(str, (k, v) => {
@@ -98,7 +98,7 @@ function objEnvCheck(obj: any): void {
     }
 }
 
-function objEnvFill(obj: any): void {
+const objEnvFill = (obj: any): void => {
     objEach(obj, (str) => {
         return objEnvKeyProcess(str, (k, v) => {
             if (v) {

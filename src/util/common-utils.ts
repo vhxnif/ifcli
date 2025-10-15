@@ -5,39 +5,39 @@ import { env, tmpPath } from './platform-utils'
 const debug = false
 const println = console.log
 
-function print(str: string): boolean {
+const print = (str: string): boolean => {
     return process.stdout.write(str)
 }
-function log(str: string): void {
+const log = (str: string): void => {
     if (debug) {
         console.log(str)
     }
 }
-function uuid(): string {
+const uuid = (): string => {
     return Bun.randomUUIDv7().replaceAll('-', '')
 }
 
-function unixnow(): number {
+const unixnow = (): number => {
     return Date.now()
 }
-function containsChinese(str: string): boolean {
+const containsChinese = (str: string): boolean => {
     return /[\u4e00-\u9fa5]/.test(str)
 }
 
-async function stdin(): Promise<string | undefined> {
+const stdin = async (): Promise<string | undefined> => {
     for await (const chunk of Bun.stdin.stream()) {
         return Buffer.from(chunk).toString()
     }
 }
 
-function stringWidth(str: string): number {
+const stringWidth = (str: string): number => {
     return Bun.stringWidth(str)
 }
 
-async function editor(
+const editor = async (
     content: string,
     fileType: string = 'md'
-): Promise<string> {
+): Promise<string> => {
     const editor = env('EDITOR') ?? 'vim'
     const tmpFile = path.join(tmpPath(), `tmp-${uuid()}.${fileType}`)
     await Bun.write(tmpFile, content, { createPath: false })
@@ -50,7 +50,7 @@ async function editor(
     return editorText
 }
 
-function isTextSame(sourceText: string, text: string): boolean {
+const isTextSame = (sourceText: string, text: string): boolean => {
     const hasher = new Bun.CryptoHasher('sha256')
     const digest = (str: string) => {
         hasher.update(str)
@@ -59,11 +59,11 @@ function isTextSame(sourceText: string, text: string): boolean {
     return digest(sourceText) === digest(text)
 }
 
-function exit(): never {
+const exit = (): never => {
     process.exit()
 }
 
-function isEmpty<T>(param: string | T[] | undefined | null): boolean {
+const isEmpty = <T>(param: string | T[] | undefined | null): boolean => {
     if (!param) {
         return true
     }
@@ -74,7 +74,7 @@ function isEmpty<T>(param: string | T[] | undefined | null): boolean {
     return arr.length <= 0
 }
 
-function groupBy<T, R>(arr: T[], key: (i: T) => R): Map<R, T[]> {
+const groupBy = <T, R>(arr: T[], key: (i: T) => R): Map<R, T[]> => {
     return arr.reduce((df, it) => {
         const v = df.get(key(it))
         if (v) {
@@ -86,7 +86,7 @@ function groupBy<T, R>(arr: T[], key: (i: T) => R): Map<R, T[]> {
     }, new Map<R, T[]>())
 }
 
-function jsonformat(jsonString: string): string {
+const jsonformat = (jsonString: string): string => {
     try {
         return JSON.stringify(JSON.parse(jsonString), null, 4)
     } catch (err: unknown) {
@@ -94,7 +94,7 @@ function jsonformat(jsonString: string): string {
     }
 }
 
-function objToJson(obj: unknown): string {
+const objToJson = (obj: unknown): string => {
     return JSON.stringify(obj, null, 4)
 }
 
@@ -102,17 +102,17 @@ type VoidResult = Promise<void> | void
 type OptionType = string | boolean | undefined
 type OptionAction = () => VoidResult
 
-async function matchRun(
+const matchRun = async (
     orderedMatchItems: [OptionType, OptionAction][],
     defaultAction?: () => VoidResult
-): Promise<void> {
+): Promise<void> => {
     await orderedMatchItems.find((it) => it[0])?.[1]()
     if (defaultAction) {
         await defaultAction()
     }
 }
 
-function parseIntNumber(str: string | undefined, def: number): number {
+const parseIntNumber = (str: string | undefined, def: number): number => {
     if (!str) {
         return def
     }
