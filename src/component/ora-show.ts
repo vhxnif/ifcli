@@ -51,6 +51,8 @@ export class OraShow {
                     '⋆',
                 ],
             },
+            color: 'magenta',
+            indent: 1,
         })
     }
 

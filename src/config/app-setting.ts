@@ -46,7 +46,7 @@ export const defaultLLMSettings: LLMSetting[] = [
     },
 ]
 
-export async function initAppSetting(): Promise<void> {
+export const initAppSetting = async (): Promise<void> => {
     const f = Bun.file(dataPath.setting)
     const ext = await f.exists()
     if (ext) {
@@ -60,11 +60,11 @@ export async function initAppSetting(): Promise<void> {
     f.write(JSON.stringify(defSetting, null, 2))
 }
 
-export async function appSetting(): Promise<Setting> {
+export const appSetting = async (): Promise<Setting> => {
     const json = await Bun.file(dataPath.setting).text()
     return JSON.parse(json) as Setting
 }
 
-export async function appSettingCover(json: string): Promise<void> {
+export const appSettingCover = async (json: string): Promise<void> => {
     await Bun.file(dataPath.setting).write(json)
 }

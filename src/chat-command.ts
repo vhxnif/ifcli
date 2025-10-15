@@ -5,6 +5,7 @@ import { APP_VERSION } from './config/app-setting'
 import { commanderHelpConfiguration } from './util/color-schema'
 import {
     editor,
+    isEmpty,
     matchRun,
     parseIntNumber,
     print,
@@ -26,7 +27,10 @@ program
     .option('-t, --new-topic', 'start a new conversation topic')
     .option('-r, --retry', 'retry the last question')
     .option('-a, --attachment <file>', 'attach text file content to message')
-    .argument('[string]')
+    .argument(
+        '[string...]',
+        'chat message content (multiple arguments will be joined into a single string)'
+    )
     .action(async (content, option) => {
         const { edit, syncCall, newTopic, force, retry, attachment } = option
         const { run, reRun } = act.chat.ask
@@ -53,13 +57,13 @@ program
                 await ask(text)
             }
         }
-        const contentRun = async () => await ask(content!)
+        const contentRun = async () => await ask(content.join(' ')!)
         const editRun = async () =>
             await getContentAndAsk(async () => await editor(''))
         const stdinRun = async () => await getContentAndAsk(stdin)
         await matchRun([
             [retry, reRun],
-            [content, contentRun],
+            [!isEmpty(content), contentRun],
             [edit, editRun],
             [true, stdinRun],
         ])

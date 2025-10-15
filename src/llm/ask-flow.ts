@@ -343,7 +343,7 @@ class StoreNode extends Node<AskShare> {
 }
 
 // system prompt -> preset message -> context message -> user content -> tools -> router -> streamCall / toolsCall -> store
-async function askFlow({
+const askFlow = async ({
     chat,
     client,
     userContent,
@@ -359,7 +359,7 @@ async function askFlow({
     generalSetting: GeneralSetting
     noStream?: boolean
     newTopic?: boolean
-}) {
+}) => {
     const { model, scenario, sysPrompt, withContext, contextLimit, withMCP } =
         chat.config.value
     const share: AskShare = {

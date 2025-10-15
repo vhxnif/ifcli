@@ -168,9 +168,9 @@ const displayDef: Record<string, CatppuccinColorName> = {
     error: 'red',
 }
 
-function chalkColor(
+const chalkColor = (
     schema: Record<CatppuccinColorName, string>
-): Record<CatppuccinColorName, ChalkInstance> {
+): Record<CatppuccinColorName, ChalkInstance> => {
     return Object.keys(schema).reduce((obj, it) => {
         const k = it as CatppuccinColorName
         obj[k] = chalk.hex(schema[k])
@@ -178,16 +178,16 @@ function chalkColor(
     }, {} as Record<CatppuccinColorName, ChalkInstance>)
 }
 
-function chalkThemeColor(
+const chalkThemeColor = (
     theme: string
-): Record<CatppuccinColorName, ChalkInstance> {
+): Record<CatppuccinColorName, ChalkInstance> => {
     const { palette } = themes[theme]
     return chalkColor(catppuccinColorSchema[palette])
 }
 
-function displaySchema(
+const displaySchema = (
     cl: Record<CatppuccinColorName, ChalkInstance>
-): Record<string, ChalkInstance> {
+): Record<string, ChalkInstance> => {
     return Object.keys(displayDef).reduce((obj, it) => {
         const k = displayDef[it]
         obj[it] = cl[k]
@@ -195,13 +195,13 @@ function displaySchema(
     }, {} as Record<string, ChalkInstance>)
 }
 
-function hex(color: string): ChalkInstance {
+const hex = (color: string): ChalkInstance => {
     return chalk.hex(color)
 }
 
-function commanderHelpConfiguration(
+const commanderHelpConfiguration = (
     color: Record<CatppuccinColorName, ChalkInstance>
-): HelpConfiguration {
+): HelpConfiguration => {
     return {
         styleTitle: (str) => color.peach.bold(str),
         styleCommandText: (str) => color.sky(str),

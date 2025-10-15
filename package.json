@@ -36,6 +36,7 @@
     },
     "scripts": {
         "build": "bun build ./src/*-command.ts --outdir ./build --target bun --minify",
+        "build-dev": "bun build ./src/*-command.ts --outdir ./build --target bun --minify --sourcemap=linked",
         "test": "bun test",
         "test:watch": "bun test --watch"
     },

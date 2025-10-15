@@ -33,8 +33,9 @@ export class Act implements IAct {
         return {
             ask: this.askAct(),
             new: async (n) => await this.chatAct.newChat(n),
-            msgHistory: (l, n) => this.chatAct.printChatHistory(l, n),
-            remove: this.chatAct.removeChat,
+            msgHistory: async (l, n) =>
+                await this.chatAct.printChatHistory(l, n),
+            remove: async () => await this.chatAct.removeChat(),
             switch: this.switchAct(),
             prompt: this.promptAct(),
             preset: this.presetAct(),

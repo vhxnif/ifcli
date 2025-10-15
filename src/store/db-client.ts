@@ -379,7 +379,7 @@ export class DBClient implements IDBClient {
         this.addCmdHis(type, key)
     }
 
-    publishPrompt = (name: string, version: string, content: string) => {
+    publishPrompt(name: string, version: string, content: string) {
         const prompt = this.db
             .query(
                 `SELECT ${this.chatPromptColumn} FROM chat_prompt WHERE name = ? AND version = ?`
