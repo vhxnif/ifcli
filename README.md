@@ -9,6 +9,7 @@ Chat with AI via Command Line Interface.
 -   Chat history management and viewing
 -   MCP (Model Context Protocol) tools support
 -   Flexible usage patterns with `alias` commands
+-   Environment variable support for secure configuration (backward compatible with direct configuration)
 
 ## Installation
 
@@ -92,6 +93,8 @@ Commands:
 
 ## Application Settings
 
+### Example
+
 ```json
 {
     "generalSetting": {
@@ -160,6 +163,20 @@ Commands:
             ]
         }
     ]
+}
+```
+
+Application settings support both direct configuration and environment variable placeholders using the `$env.` prefix.
+This allows you to securely store sensitive information like API keys in environment variables while maintaining backward compatibility.
+
+#### Usage Example
+
+```json
+{
+    "name": "deepseek",
+    "baseUrl": "$env.DEEPSEEK_BASE_URL",
+    "apiKey": "$env.DEEPSEEK_API_KEY",
+    "models": ["deepseek-chat", "deepseek-reasoner"]
 }
 ```
 
