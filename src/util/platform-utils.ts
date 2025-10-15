@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import os from 'node:os'
+import { isEmpty } from './common-utils'
 
 const platform = os.platform()
 
@@ -42,7 +43,15 @@ function arrEach(
     })
 }
 
-function objEach(obj: any, f: (str: string) => string): void {
+function objEach(
+    obj: any,
+    f: (str: string) => string,
+    visited = new WeakSet()
+): void {
+    if (visited.has(obj)) {
+        return
+    }
+    visited.add(obj)
     for (const it of Object.entries(obj)) {
         const [key, value] = it
         if (typeof value === 'string') {
@@ -73,14 +82,20 @@ function objEnvKeyProcess(
 }
 
 function objEnvCheck(obj: any): void {
+    const missingKeys: string[] = []
     objEach(obj, (str) => {
         return objEnvKeyProcess(str, (k, v) => {
             if (!v) {
-                console.error(`Missing Env Key: ${k}`)
+                missingKeys.push(k.replace(envKeyPrefix, ''))
             }
             return k
         })
     })
+    if (!isEmpty(missingKeys)) {
+        console.error(
+            `Missing required environment variables: ${missingKeys.join(', ')}`
+        )
+    }
 }
 
 function objEnvFill(obj: any): void {
