@@ -157,9 +157,8 @@ export class Display {
     }
 
     private toolTitle(str: string) {
-        const { title } = this.theme.tools
         this.toolsCallShow.append(str, {
-            textColor: title.bold,
+            textColor: (s) => this.theme.tools.title.bold(s),
         })
     }
 
@@ -168,7 +167,7 @@ export class Display {
             key,
             textColor: withoutColor
                 ? undefined
-                : this.theme.assisant.title.italic.dim,
+                : (s) => this.theme.assisant.title.italic.dim(s),
         })
     }
 
