@@ -71,7 +71,7 @@ class SimpleShow {
         const { mcpServers } = ext
         const { yellow, cyan } = color
         const arr = [
-            { key: 'Chat Name', value: cyan(chatName) },
+            { key: 'Name', value: cyan(chatName) },
             { key: 'Provider', value: cyan(llmType) },
             { key: 'Model', value: cyan(model) },
             {
