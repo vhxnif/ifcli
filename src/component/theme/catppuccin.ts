@@ -1,4 +1,4 @@
-import type { ChatBoxTheme, ColorSchema, TerminalColorName } from './theme-type'
+import type { ChatBoxTheme, ColorScheme, TerminalColorName } from './theme-type'
 
 type CatppuccinType =
     | 'Catppuccin Latte'
@@ -36,7 +36,7 @@ type ColorName =
 
 type Color = Record<ColorName, string>
 
-const schema: Record<CatppuccinType, Color> = {
+const scheme: Record<CatppuccinType, Color> = {
     'Catppuccin Latte': {
         rosewater: '#DC8A78',
         flamingo: '#DD7878',
@@ -193,12 +193,12 @@ const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
         whiteBright: text,
     }
 }
-const latte = schema['Catppuccin Latte']
-const frappe = schema['Catppuccin Frappe']
-const macchiato = schema['Catppuccin Macchiato']
-const mocha = schema['Catppuccin Mocha']
+const latte = scheme['Catppuccin Latte']
+const frappe = scheme['Catppuccin Frappe']
+const macchiato = scheme['Catppuccin Macchiato']
+const mocha = scheme['Catppuccin Mocha']
 
-const colorSchema: ColorSchema[] = [
+const colorScheme: ColorScheme[] = [
     {
         name: 'Catppuccin Latte',
         color: {
@@ -228,4 +228,4 @@ const colorSchema: ColorSchema[] = [
     },
 ]
 
-export { colorSchema }
+export { colorScheme }

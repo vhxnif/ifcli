@@ -32,7 +32,7 @@ export type ChatBoxContentType = 'reasoner' | 'tools' | 'assisant'
 export type ChatBoxTheme = Record<ChatBoxContentType, ChatBoxColor>
 export type ChalkChatBoxTheme = Record<ChatBoxContentType, ChalkChatBoxColor>
 
-export type ColorSchema = {
+export type ColorScheme = {
     name: string
     color: Record<TerminalColorName, string>
     theme: ChatBoxTheme
@@ -40,5 +40,5 @@ export type ColorSchema = {
 
 export type ChalkColor = [
     terminalColor: ChalkTerminalColor,
-    chatBoxTheme: ChalkChatBoxTheme
+    chatBoxTheme: ChalkChatBoxTheme,
 ]

@@ -1,4 +1,4 @@
-import type { ChatBoxTheme, ColorSchema, TerminalColorName } from './theme-type'
+import type { ChatBoxTheme, ColorScheme, TerminalColorName } from './theme-type'
 
 type RosePineType = 'Rose Pine' | 'Rose Pine Moon' | 'Rose Pine Dawn'
 type ColorName =
@@ -19,7 +19,7 @@ type ColorName =
     | 'highlightHigh'
 type Color = Record<ColorName, string>
 
-const schema: Record<RosePineType, Color> = {
+const scheme: Record<RosePineType, Color> = {
     'Rose Pine': {
         base: '#191724',
         surface: '#1f1d2e',
@@ -116,11 +116,11 @@ const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
     }
 }
 
-const rosePine = schema['Rose Pine']
-const rosePineMoon = schema['Rose Pine Moon']
-const rosePineDawn = schema['Rose Pine Dawn']
+const rosePine = scheme['Rose Pine']
+const rosePineMoon = scheme['Rose Pine Moon']
+const rosePineDawn = scheme['Rose Pine Dawn']
 
-const colorSchema: ColorSchema[] = [
+const colorScheme: ColorScheme[] = [
     {
         name: 'Rose Pine',
         color: generateTerminalColor(rosePine),
@@ -144,4 +144,4 @@ const colorSchema: ColorSchema[] = [
     },
 ]
 
-export { colorSchema }
+export { colorScheme }

@@ -3,7 +3,7 @@ import { Command } from '@commander-js/extra-typings'
 import { act, terminalColor } from './app-context'
 import { APP_VERSION } from './config/app-setting'
 import { matchRun, print } from './util/common-utils'
-import { commanderHelpConfiguration } from './component/theme/color-schema'
+import { commanderHelpConfiguration } from './component/theme/color-scheme'
 
 const program = new Command().configureHelp(
     commanderHelpConfiguration(terminalColor)

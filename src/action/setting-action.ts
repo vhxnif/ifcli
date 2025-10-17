@@ -1,5 +1,5 @@
 import { terminalColor } from '../app-context'
-import { schemas } from '../component/theme/color-schema'
+import { schemes } from '../component/theme/color-scheme'
 import { appSetting, appSettingCover } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { editor, isTextSame, jsonformat, objToJson } from '../util/common-utils'
@@ -14,7 +14,7 @@ export class SettingAct implements ISettingAct {
         const setting = await appSetting()
         const value = await select({
             message: 'Select Theme:',
-            choices: schemas.map((it) => ({
+            choices: schemes.map((it) => ({
                 name: it.name,
                 value: it.name,
             })),

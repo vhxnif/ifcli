@@ -1,6 +1,6 @@
 import type { ChalkInstance } from 'chalk'
-import { colorSchema as rosePine } from './rose-pine'
-import { colorSchema as catppuccin } from './catppuccin'
+import { colorScheme as rosePine } from './rose-pine'
+import { colorScheme as catppuccin } from './catppuccin'
 import chalk from 'chalk'
 import type {
     ChalkChatBoxColor,
@@ -11,21 +11,21 @@ import type {
     ChatBoxContentType,
     ChatBoxPart,
     ChatBoxTheme,
-    ColorSchema,
+    ColorScheme,
     TerminalColorName,
 } from './theme-type'
 import type { HelpConfiguration } from '@commander-js/extra-typings'
 
-const schemas = [...rosePine, ...catppuccin]
+const schemes = [...rosePine, ...catppuccin]
 
 const hex = (color: string): ChalkInstance => {
     return chalk.hex(color)
 }
 
-const defaultColor: ColorSchema = rosePine[0]
+const defaultColor: ColorScheme = rosePine[0]
 
-const colorSchema = (schema: string): ColorSchema => {
-    const c = schemas.find((it) => it.name === schema)
+const colorScheme = (schema: string): ColorScheme => {
+    const c = schemes.find((it) => it.name === schema)
     if (c) {
         return c
     }
@@ -58,7 +58,7 @@ const chalkChatBoxTheme = (theme: ChatBoxTheme): ChalkChatBoxTheme => {
 }
 
 const chalkColor = (schema: string): ChalkColor => {
-    const { color, theme } = colorSchema(schema)
+    const { color, theme } = colorScheme(schema)
     return [chalkTerminalColor(color), chalkChatBoxTheme(theme)]
 }
 
@@ -78,4 +78,4 @@ const commanderHelpConfiguration = (
     } as HelpConfiguration
 }
 
-export { schemas, chalkColor, hex, commanderHelpConfiguration }
+export { schemes, chalkColor, hex, commanderHelpConfiguration }
