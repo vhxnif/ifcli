@@ -1,23 +1,16 @@
-import type { ChalkInstance } from 'chalk'
-import type { GeneralSetting } from '../config/app-setting'
 import type { ChatConfig, ConfigExt } from '../store/store-types'
-import {
-    catppuccinColorSchema,
-    hex,
-    type CatppuccinColorName,
-} from '../util/color-schema'
 import { isEmpty, println } from '../util/common-utils'
-import { themes } from '../util/theme'
 import { TextShow } from './text-show'
+import type { ChalkChatBoxTheme, ChalkTerminalColor } from './theme/theme-type'
 
 class SimpleShow {
     constructor() {}
 
-    yes(color: Record<CatppuccinColorName, ChalkInstance>) {
+    yes(color: ChalkTerminalColor) {
         return color.green.bold('✓')
     }
 
-    no(color: Record<CatppuccinColorName, ChalkInstance>) {
+    no(color: ChalkTerminalColor) {
         return color.red.bold('✗')
     }
 
@@ -27,7 +20,7 @@ class SimpleShow {
             version: string
             health: boolean
         }[],
-        color: Record<CatppuccinColorName, ChalkInstance>
+        color: ChalkTerminalColor
     ) {
         data.forEach((it) => {
             println(
@@ -43,14 +36,17 @@ class SimpleShow {
             name: string
             description: string
         }[],
-        generalSetting: GeneralSetting
+        theme: ChalkChatBoxTheme
     ) {
-        const cl = this.textShowColor(generalSetting)
+        const { title: titleColor, bolder, content } = theme.assisant
+
         data.forEach((it) => {
             const { name, description } = it
             const ts = new TextShow({
                 title: name,
-                ...cl,
+                titleColor: titleColor,
+                bolderColor: bolder,
+                textColor: content,
             })
             ts.start()
             ts.append(description)
@@ -62,7 +58,7 @@ class SimpleShow {
         chatName: string,
         config: ChatConfig,
         ext: ConfigExt,
-        color: Record<CatppuccinColorName, ChalkInstance>
+        color: ChalkTerminalColor
     ) {
         const {
             llmType,
@@ -73,13 +69,14 @@ class SimpleShow {
             contextLimit,
         } = config
         const { mcpServers } = ext
+        const { yellow, cyan } = color
         const arr = [
-            { key: 'Chat Name', value: color.sky(chatName) },
-            { key: 'Provider', value: color.sky(llmType) },
-            { key: 'Model', value: color.sky(model) },
+            { key: 'Chat Name', value: cyan(chatName) },
+            { key: 'Provider', value: cyan(llmType) },
+            { key: 'Model', value: cyan(model) },
             {
                 key: 'Scenario',
-                value: `${color.sky(scenarioName)}(${color.yellow(scenario)})`,
+                value: `${cyan(scenarioName)}(${yellow(scenario)})`,
             },
             {
                 key: 'Context Size',
@@ -93,7 +90,7 @@ class SimpleShow {
                 key: 'MCP',
                 value: isEmpty(mcpServers)
                     ? this.no(color)
-                    : color.sky(
+                    : cyan(
                           `\n${mcpServers.map(
                               (it) => `  ${it.name}@${it.version}`
                           )}`
@@ -101,17 +98,6 @@ class SimpleShow {
             },
         ]
         arr.forEach((it) => println(`${it.key}: ${it.value}`))
-    }
-
-    private textShowColor(generalSetting: GeneralSetting) {
-        const { palette, assistant } = themes[generalSetting.theme]
-        const colorSchema = catppuccinColorSchema[palette]
-        const c = (color: CatppuccinColorName) => hex(colorSchema[color])
-        return {
-            titleColor: c(assistant.titleColor),
-            bolderColor: c(assistant.bolderColor),
-            textColor: c(assistant.textColor),
-        }
     }
 }
 

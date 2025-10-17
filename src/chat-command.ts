@@ -1,8 +1,7 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { act, color } from './app-context'
+import { act, terminalColor } from './app-context'
 import { APP_VERSION } from './config/app-setting'
-import { commanderHelpConfiguration } from './util/color-schema'
 import {
     editor,
     isEmpty,
@@ -11,9 +10,9 @@ import {
     print,
     stdin,
 } from './util/common-utils'
-
+import { commanderHelpConfiguration, hex } from './component/theme/color-schema'
 const program = new Command()
-    .configureHelp(commanderHelpConfiguration(color))
+    .configureHelp(commanderHelpConfiguration(terminalColor))
     .enablePositionalOptions()
 
 program
@@ -216,5 +215,5 @@ program
 
 program.parseAsync().catch((e: unknown) => {
     const { message } = e as Error
-    print(color.red(message))
+    print(terminalColor.red(message))
 })

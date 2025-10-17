@@ -1,11 +1,13 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
-import { act, color } from './app-context'
+import { act, terminalColor } from './app-context'
 import { APP_VERSION } from './config/app-setting'
-import { commanderHelpConfiguration } from './util/color-schema'
 import { matchRun, print } from './util/common-utils'
+import { commanderHelpConfiguration } from './component/theme/color-schema'
 
-const program = new Command().configureHelp(commanderHelpConfiguration(color))
+const program = new Command().configureHelp(
+    commanderHelpConfiguration(terminalColor)
+)
 
 program
     .name('ifsetting')
@@ -74,5 +76,5 @@ program
 
 program.parseAsync().catch((e: unknown) => {
     const { message } = e as Error
-    print(color.red(message))
+    print(terminalColor.red(message))
 })

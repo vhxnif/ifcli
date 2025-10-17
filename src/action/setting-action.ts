@@ -1,10 +1,10 @@
-import { color } from '../app-context'
+import { terminalColor } from '../app-context'
+import { schemas } from '../component/theme/color-schema'
 import { appSetting, appSettingCover } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { editor, isTextSame, jsonformat, objToJson } from '../util/common-utils'
 import { select, themeStyle } from '../util/inquirer-utils'
 import { objEnvCheck } from '../util/platform-utils'
-import { themes } from '../util/theme'
 import type { ISettingAct } from './action-types'
 
 export class SettingAct implements ISettingAct {
@@ -14,13 +14,12 @@ export class SettingAct implements ISettingAct {
         const setting = await appSetting()
         const value = await select({
             message: 'Select Theme:',
-            choices: Object.keys(themes).map((it) => ({
-                name: it,
-                value: it,
-                description: themes[it].palette,
+            choices: schemas.map((it) => ({
+                name: it.name,
+                value: it.name,
             })),
             default: setting.generalSetting.theme,
-            theme: themeStyle(color),
+            theme: themeStyle(terminalColor),
         })
 
         setting.generalSetting.theme = value
