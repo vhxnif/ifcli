@@ -1,4 +1,4 @@
-import type { ColorSchema } from './theme-type'
+import type { ChatBoxTheme, ColorSchema, TerminalColorName } from './theme-type'
 
 type ColorName =
     | 'base'
@@ -73,46 +73,74 @@ const schema: Record<RosePineType, Color> = {
     },
 }
 
+const generateTheme = (s: Color): ChatBoxTheme => {
+    const { pine, gold, love, highlightMed, subtle, muted, text } = s
+    return {
+        reasoner: {
+            title: pine,
+            bolder: highlightMed,
+            content: subtle,
+        },
+        tools: {
+            title: gold,
+            bolder: highlightMed,
+            content: muted,
+        },
+        assisant: {
+            title: love,
+            bolder: love,
+            content: text,
+        },
+    }
+}
+
+const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
+    const { base, text, love, pine, foam, iris, rose, gold, muted } = s
+    return {
+        black: base,
+        red: love,
+        green: pine,
+        yellow: gold,
+        blue: foam,
+        magenta: iris,
+        cyan: rose,
+        white: text,
+        blackBright: muted,
+        redBright: love,
+        greenBright: pine,
+        yellowBright: gold,
+        blueBright: foam,
+        magentaBright: iris,
+        cyanBright: rose,
+        whiteBright: base,
+    }
+}
+
 const rosePine = schema['Rose Pine']
+const rosePineMoon = schema['Rose Pine Moon']
+const rosePineDawn = schema['Rose Pine Dawn']
 
 const colorSchema: ColorSchema[] = [
     {
         name: 'Rose Pine',
+        color: generateTerminalColor(rosePine),
+        theme: generateTheme(rosePine),
+    },
+    {
+        name: 'Rose Pine Moon',
         color: {
-            black: rosePine.base,
-            red: rosePine.love,
-            green: rosePine.pine,
-            yellow: rosePine.gold,
-            blue: rosePine.foam,
-            magenta: rosePine.iris,
-            cyan: rosePine.rose,
-            white: rosePine.text,
-            blackBright: rosePine.muted,
-            redBright: rosePine.love,
-            greenBright: rosePine.pine,
-            yellowBright: rosePine.gold,
-            blueBright: rosePine.foam,
-            magentaBright: rosePine.iris,
-            cyanBright: rosePine.rose,
-            whiteBright: rosePine.base,
+            ...generateTerminalColor(rosePineMoon),
         },
-        theme: {
-            reasoner: {
-                title: rosePine.foam,
-                bolder: rosePine.pine,
-                content: rosePine.muted,
-            },
-            tools: {
-                title: rosePine.rose,
-                bolder: rosePine.rose,
-                content: rosePine.pine,
-            },
-            assisant: {
-                title: rosePine.love,
-                bolder: rosePine.love,
-                content: rosePine.iris,
-            },
+        theme: generateTheme(rosePineMoon),
+    },
+    {
+        name: 'Rose Pine Dawn',
+        color: {
+            ...generateTerminalColor(rosePineDawn),
+            black: rosePineDawn.text,
+            white: rosePineDawn.base,
         },
+        theme: generateTheme(rosePineDawn),
     },
 ]
 

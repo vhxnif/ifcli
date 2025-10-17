@@ -48,7 +48,7 @@ export class Display {
         })
         this.assistantShow = new TextShow({
             title: 'Assistant',
-            ...this.toTextShowTheme(assisant),
+            ...this.toTextShowTheme(assisant, false),
             render: textShowRender,
         })
         this.toolsCallShow = new TextShow({
@@ -67,12 +67,15 @@ export class Display {
         return this.color[llmNotifyMessageColor[type]](llmNotifyMessage[type])
     }
 
-    private toTextShowTheme(themeColor: ChalkChatBoxColor) {
+    private toTextShowTheme(
+        themeColor: ChalkChatBoxColor,
+        subTitle: boolean = true
+    ) {
         const { title, bolder, content } = themeColor
         return {
-            titleColor: title.bold,
+            titleColor: subTitle ? title.bold.italic : title.bold,
             bolderColor: bolder,
-            textColor: content,
+            textColor: content.italic,
         }
     }
 
@@ -132,14 +135,11 @@ export class Display {
         this.spinner?.stop()
         const argsStr = jsonformat(args)
         this.toolsCallShow.start()
-        this.toolTitle(`McpServer: `)
-        this.toolProperty(mcpServer, 'mcpServer')
+        this.toolTitle(`MCP: `)
+        this.toolProperty(`${mcpServer}@${mcpVersion}`, 'mcp')
         this.toolText(`  `)
-        this.toolTitle(`McpVersion: `)
-        this.toolProperty(mcpVersion, 'mcpVersion')
-        this.toolText(`  `)
-        this.toolTitle(`ToolName: `)
-        this.toolProperty(funName, 'toolName')
+        this.toolTitle(`Tool: `)
+        this.toolProperty(funName, 'tool')
         this.toolText(`\n\n`)
         this.toolTitle(`Arguments: `)
         this.toolText(`\n\n`)
@@ -157,15 +157,18 @@ export class Display {
     }
 
     private toolTitle(str: string) {
+        const { title } = this.theme.tools
         this.toolsCallShow.append(str, {
-            textColor: this.theme.assisant.title.bold,
+            textColor: title.bold,
         })
     }
 
     private toolProperty(str: string, key: string, withoutColor?: boolean) {
         this.toolsCallShow.append(str, {
             key,
-            textColor: withoutColor ? undefined : this.theme.assisant.content,
+            textColor: withoutColor
+                ? undefined
+                : this.theme.assisant.title.italic.dim,
         })
     }
 
