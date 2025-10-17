@@ -40,6 +40,7 @@ import {
     checkbox,
     checkboxThemeStyle,
     input,
+    inputThemeStyle,
     select,
     selectThemeStyle,
     type Choice,
@@ -748,7 +749,7 @@ export class ChatAct implements IChatAct {
             ({
                 user: parseContent(c.user),
                 assistant: parseContent(c.assistant),
-            } as PresetMessageContent)
+            }) as PresetMessageContent
         const validContent = (c: TmpContent) =>
             c.type && !isEmpty(c.user) && !isEmpty(c.assistant)
         return text
@@ -792,12 +793,16 @@ export class ChatAct implements IChatAct {
     }
 
     private async getPublishPromptInput(prompt: string): Promise<void> {
-        const name = await input({ message: 'Prompt Name: ' })
+        const theme = inputThemeStyle(terminalColor)
+        const name = await input({ message: 'Prompt Name: ', theme })
         if (isEmpty(name)) {
             await this.getPublishPromptInput(prompt)
             return
         }
-        const version = await input({ message: 'Prompt Version: ' })
+        const version = await input({
+            message: 'Prompt Version: ',
+            theme,
+        })
         if (isEmpty(version)) {
             await this.getPublishPromptInput(prompt)
             return
