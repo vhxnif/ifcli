@@ -9,13 +9,12 @@ import {
 } from '../llm/llm-utils'
 import { OraShow } from './ora-show'
 import { TextShow } from './text-show'
-import { themes, type Theme, type ThemeColor } from '../util/theme'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
-import {
-    catppuccinColorSchema,
-    hex,
-    type CatppuccinColorName,
-} from '../util/color-schema'
+import type {
+    ChalkChatBoxColor,
+    ChalkChatBoxTheme,
+    ChalkTerminalColor,
+} from './theme/theme-type'
 
 export class Display {
     private hasReasoningContent: boolean = false
@@ -24,36 +23,38 @@ export class Display {
     private reasoningShow: TextShow
     private assistantShow: TextShow
     private toolsCallShow: TextShow
-    private theme: Theme
+    private theme: ChalkChatBoxTheme
+    private color: ChalkTerminalColor
     private spinner?: OraShow
-    private colorSchema: Record<CatppuccinColorName, string>
 
     constructor({
+        color,
         theme,
         enableSpinner = true,
         textShowRender = true,
     }: {
-        theme?: string
+        color: ChalkTerminalColor
+        theme: ChalkChatBoxTheme
         enableSpinner?: boolean
         textShowRender?: boolean
     }) {
-        this.theme = theme ? themes[theme] : themes.violet_tides
-        this.colorSchema = catppuccinColorSchema[this.theme.palette]
-        const { reasoning, assistant, toolsCall } = this.theme
+        this.theme = theme
+        this.color = color
+        const { reasoner, tools, assisant } = this.theme
         this.reasoningShow = new TextShow({
             title: 'Reasoning',
-            ...this.toTextShowTheme(reasoning),
+            ...this.toTextShowTheme(reasoner),
             render: textShowRender,
         })
         this.assistantShow = new TextShow({
             title: 'Assistant',
-            ...this.toTextShowTheme(assistant),
+            ...this.toTextShowTheme(assisant, false),
             render: textShowRender,
         })
         this.toolsCallShow = new TextShow({
             structured: true,
             title: 'ToolsCall',
-            ...this.toTextShowTheme(toolsCall),
+            ...this.toTextShowTheme(tools),
             render: textShowRender,
         })
         if (enableSpinner) {
@@ -63,21 +64,18 @@ export class Display {
     }
 
     private notice(type: LLMNotifyMessageType) {
-        return this.hexColor(llmNotifyMessageColor[type])(
-            llmNotifyMessage[type]
-        )
+        return this.color[llmNotifyMessageColor[type]](llmNotifyMessage[type])
     }
 
-    private hexColor(name: CatppuccinColorName) {
-        return hex(this.colorSchema[name])
-    }
-
-    private toTextShowTheme(themeColor: ThemeColor) {
-        const { titleColor, bolderColor, textColor } = themeColor
+    private toTextShowTheme(
+        themeColor: ChalkChatBoxColor,
+        subTitle: boolean = true
+    ) {
+        const { title, bolder, content } = themeColor
         return {
-            titleColor: this.hexColor(titleColor).bold,
-            bolderColor: this.hexColor(bolderColor),
-            textColor: this.hexColor(textColor),
+            titleColor: subTitle ? title.bold.italic : title.bold,
+            bolderColor: bolder,
+            textColor: content.italic,
         }
     }
 
@@ -137,13 +135,12 @@ export class Display {
         this.spinner?.stop()
         const argsStr = jsonformat(args)
         this.toolsCallShow.start()
-        this.toolTitle(`McpServer: `)
+        this.toolTitle(`MCP: `)
         this.toolProperty(mcpServer, 'mcpServer')
-        this.toolText(`  `)
-        this.toolTitle(`McpVersion: `)
+        this.toolText('@')
         this.toolProperty(mcpVersion, 'mcpVersion')
         this.toolText(`  `)
-        this.toolTitle(`ToolName: `)
+        this.toolTitle(`Tool: `)
         this.toolProperty(funName, 'toolName')
         this.toolText(`\n\n`)
         this.toolTitle(`Arguments: `)
@@ -163,7 +160,7 @@ export class Display {
 
     private toolTitle(str: string) {
         this.toolsCallShow.append(str, {
-            textColor: this.hexColor(this.theme.assistant.titleColor).bold,
+            textColor: (s) => this.theme.tools.title.bold(s),
         })
     }
 
@@ -172,7 +169,7 @@ export class Display {
             key,
             textColor: withoutColor
                 ? undefined
-                : this.hexColor(this.theme.assistant.textColor),
+                : (s) => this.theme.assisant.title.italic.dim(s),
         })
     }
 

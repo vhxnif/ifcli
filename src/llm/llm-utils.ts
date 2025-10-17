@@ -1,5 +1,5 @@
 import type { LLMMessage, LLMRole } from './llm-types'
-import type { CatppuccinColorName } from '../util/color-schema'
+import type { TerminalColorName } from '../component/theme/theme-type'
 
 export type LLMNotifyMessageType =
     | 'waiting'
@@ -18,15 +18,14 @@ const llmNotifyMessage: Record<LLMNotifyMessageType, string> = {
     completed: 'Cognitive cycle complete',
 }
 
-const llmNotifyMessageColor: Record<LLMNotifyMessageType, CatppuccinColorName> =
-    {
-        waiting: 'teal',
-        analyzing: 'yellow',
-        thinking: 'mauve',
-        rendering: 'pink',
-        error: 'red',
-        completed: 'green',
-    }
+const llmNotifyMessageColor: Record<LLMNotifyMessageType, TerminalColorName> = {
+    waiting: 'cyan',
+    analyzing: 'yellow',
+    thinking: 'magenta',
+    rendering: 'blue',
+    error: 'red',
+    completed: 'green',
+}
 
 const message = (role: LLMRole, content: string): LLMMessage => {
     return {

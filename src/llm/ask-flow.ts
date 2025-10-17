@@ -14,6 +14,7 @@ import type { ChatInfo, MessageContent } from '../store/store-types'
 import { isEmpty, println, uuid } from '../util/common-utils'
 import { Display } from '../component/llm-result-show'
 import { assistant, system, user } from './llm-utils'
+import { chalkTheme, terminalColor } from '../app-context'
 
 export type AskShare = LLMParam & {
     chat: ChatInfo
@@ -183,7 +184,8 @@ class ToolsCallNode extends Node<AskShare> {
         const { model, temperature, tools, messages, theme, noStream } = prepRes
         const render = !noStream
         const display = new Display({
-            theme,
+            color: terminalColor,
+            theme: chalkTheme,
             textShowRender: render,
             enableSpinner: render,
         })
@@ -263,10 +265,11 @@ class StreamCallNode extends Node<AskShare> {
     }
 
     override async exec(prepRes: LLMParam): Promise<LLMResultChunk> {
-        const { messages, model, temperature, theme, noStream } = prepRes
+        const { messages, model, temperature, noStream } = prepRes
         const render = !noStream
         const display = new Display({
-            theme,
+            color: terminalColor,
+            theme: chalkTheme,
             textShowRender: render,
             enableSpinner: render,
         })

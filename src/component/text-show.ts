@@ -85,7 +85,7 @@ export class TextShow {
     append(
         text: string,
         options?: {
-            textColor?: ChalkInstance
+            textColor?: (str: string) => string
             key?: string
         }
     ) {
