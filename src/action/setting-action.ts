@@ -3,7 +3,7 @@ import { schemas } from '../component/theme/color-schema'
 import { appSetting, appSettingCover } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { editor, isTextSame, jsonformat, objToJson } from '../util/common-utils'
-import { select, themeStyle } from '../util/inquirer-utils'
+import { select, selectThemeStyle } from '../util/inquirer-utils'
 import { objEnvCheck } from '../util/platform-utils'
 import type { ISettingAct } from './action-types'
 
@@ -19,7 +19,7 @@ export class SettingAct implements ISettingAct {
                 value: it.name,
             })),
             default: setting.generalSetting.theme,
-            theme: themeStyle(terminalColor),
+            theme: selectThemeStyle(terminalColor),
         })
 
         setting.generalSetting.theme = value

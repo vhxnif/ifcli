@@ -10,7 +10,7 @@ import {
     print,
     stdin,
 } from './util/common-utils'
-import { commanderHelpConfiguration, hex } from './component/theme/color-schema'
+import { commanderHelpConfiguration } from './component/theme/color-schema'
 const program = new Command()
     .configureHelp(commanderHelpConfiguration(terminalColor))
     .enablePositionalOptions()

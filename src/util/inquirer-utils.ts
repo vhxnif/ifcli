@@ -10,28 +10,90 @@ export type Choice<V> = {
     disabled?: boolean | string
 }
 
-const selectRun = async <V,>(
-    message: string,
-    choices: Choice<V>[],
-    f: (str: V) => void
-): Promise<void> => {
-    const v = await select({ message, choices })
-    f(v)
-}
-
-type ThemeStyle = {
-    style: {
-        disabled: (str: string) => string
-        description: (str: string) => string
+const prefix = (color: ChalkTerminalColor) => {
+    const { yellow, green } = color
+    return {
+        idle: yellow('?'),
+        done: green('✓'),
     }
 }
 
-const themeStyle = (color: ChalkTerminalColor): ThemeStyle => {
-    const { yellow, magenta } = color
+const style = (color: ChalkTerminalColor) => {
+    const { magenta, green, cyan, red, blue } = color
     return {
+        answer: (text: string) => green.italic(text),
+        message: (text: string) => cyan.bold(text),
+        error: (text: string) => red(text),
+        help: (text: string) => blue.italic.dim(text),
+        highlight: (text: string) => cyan.italic(text),
+        description: (text: string) => magenta(text),
+    }
+}
+
+const cursor = (color: ChalkTerminalColor) => {
+    return color.green('➜')
+}
+
+type SelectThemeStyle = {
+    prefix: { idle: string; done: string }
+    style: {
+        answer: (str: string) => string
+        message: (str: string) => string
+        error: (str: string) => string
+        help: (str: string) => string
+        highlight: (str: string) => string
+        disabled: (str: string) => string
+        description: (str: string) => string
+    }
+    icon: {
+        cursor: string
+    }
+}
+
+const selectThemeStyle = (color: ChalkTerminalColor): SelectThemeStyle => {
+    const { yellow } = color
+    return {
+        prefix: prefix(color),
         style: {
+            ...style(color),
             disabled: (text: string) => `- ${yellow(text)}`,
-            description: (text: string) => magenta(text),
+        },
+        icon: {
+            cursor: cursor(color),
+        },
+    }
+}
+
+type CheckBoxThemeStyle = {
+    prefix: { idle: string; done: string }
+    style: {
+        answer: (str: string) => string
+        message: (str: string) => string
+        error: (str: string) => string
+        help: (str: string) => string
+        highlight: (str: string) => string
+        key: (text: string) => string
+        description: (str: string) => string
+    }
+    icon: {
+        checked: string
+        unchecked: string
+        cursor: string
+    }
+}
+
+const checkboxThemeStyle = (color: ChalkTerminalColor): CheckBoxThemeStyle => {
+    const { yellow, green } = color
+    return {
+        prefix: prefix(color),
+        style: {
+            ...style(color),
+            key: (text: string) => `<${yellow.italic(text)}>`,
+        },
+        icon: {
+            cursor: ' ',
+            unchecked: '◯',
+            checked: green('◉'),
         },
     }
 }
@@ -44,9 +106,8 @@ const inputRun = async (
 }
 
 export {
-    type ThemeStyle,
-    themeStyle,
-    selectRun,
+    selectThemeStyle,
+    checkboxThemeStyle,
     inputRun,
     select,
     input,

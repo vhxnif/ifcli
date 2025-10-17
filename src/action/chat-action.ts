@@ -38,10 +38,10 @@ import {
 } from '../util/common-utils'
 import {
     checkbox,
+    checkboxThemeStyle,
     input,
     select,
-    selectRun,
-    themeStyle,
+    selectThemeStyle,
     type Choice,
 } from '../util/inquirer-utils'
 import { env, terminal } from '../util/platform-utils'
@@ -177,7 +177,7 @@ export class ChatAct implements IChatAct {
             message: 'Select Chat:',
             choices,
             default: df.name,
-            theme: themeStyle(terminalColor),
+            theme: selectThemeStyle(terminalColor),
         })
         chat.switch(v)
         this.store.quickSwitch.saveOrUpdate(v)
@@ -241,7 +241,7 @@ export class ChatAct implements IChatAct {
         const { id } = await select({
             message: 'Select Topic:',
             choices,
-            theme: themeStyle(terminalColor),
+            theme: selectThemeStyle(terminalColor),
         })
         tpfun.switch(id)
     }
@@ -289,6 +289,7 @@ export class ChatAct implements IChatAct {
             message: 'View Message:',
             choices,
             default: df,
+            theme: selectThemeStyle(terminalColor),
         })
         const msgs = msp.get(value)
         if (!msgs) {
@@ -436,6 +437,7 @@ export class ChatAct implements IChatAct {
         const items = await checkbox({
             message: 'Select MCP Server:',
             choices: this.mcpChoices(ext),
+            theme: checkboxThemeStyle(terminalColor),
         })
         ext.mcpServers = items
         configExt.update(ext)
@@ -469,19 +471,16 @@ export class ChatAct implements IChatAct {
     }
 
     async modifyScenario(chatName?: string): Promise<void> {
-        await selectRun(
-            'Select Scenario:',
-            Object.keys(temperature).map((k) => ({
+        const answer = await select({
+            message: 'Select Scenario:',
+            choices: Object.keys(temperature).map((k) => ({
                 name: temperature[k][0],
                 value: k,
             })),
-            (answer) => {
-                const [name, value] = temperature[answer]
-                this.store.chat
-                    .get(chatName)
-                    .config.modifyScenario({ name, value })
-            }
-        )
+            theme: selectThemeStyle(terminalColor),
+        })
+        const [name, value] = temperature[answer]
+        this.store.chat.get(chatName).config.modifyScenario({ name, value })
     }
 
     async publishPrompt(chatName?: string): Promise<void> {
@@ -506,7 +505,7 @@ export class ChatAct implements IChatAct {
         const v = await select({
             message: 'System Prompt:',
             choices,
-            theme: themeStyle(terminalColor),
+            theme: selectThemeStyle(terminalColor),
         })
         this.modifySystemPrompt(v.content, chatName)
     }
@@ -518,7 +517,7 @@ export class ChatAct implements IChatAct {
                 message: 'System Prompt:',
                 choices,
                 default: df,
-                theme: themeStyle(terminalColor),
+                theme: selectThemeStyle(terminalColor),
             })
             if (!value) {
                 throw Error(promptMessage.systemPromptNoMatching)
@@ -535,7 +534,7 @@ export class ChatAct implements IChatAct {
         const value = await select({
             message: 'Delete Prompt:',
             choices,
-            theme: themeStyle(terminalColor),
+            theme: selectThemeStyle(terminalColor),
         })
         if (!value) {
             throw Error(promptMessage.systemPromptNoMatching)
@@ -614,22 +613,25 @@ export class ChatAct implements IChatAct {
         if (isEmpty(choices)) {
             throw Error(promptMessage.mcpMissing)
         }
-        await selectRun('Select Server', choices, async (v) => {
-            const m = this.mcps.find((it) => v === f(it))!
-            try {
-                await m.connect()
-                const res = await m.listTools()
-                simpleShow.mcpTestShow(
-                    res.tools.map((it) => ({
-                        name: it.name,
-                        description: it.description ?? '',
-                    })),
-                    chalkTheme
-                )
-            } finally {
-                await m.close()
-            }
+        const v = await select({
+            message: 'Select Server',
+            choices,
+            theme: selectThemeStyle(terminalColor),
         })
+        const m = this.mcps.find((it) => v === f(it))!
+        try {
+            await m.connect()
+            const res = await m.listTools()
+            simpleShow.mcpTestShow(
+                res.tools.map((it) => ({
+                    name: it.name,
+                    description: it.description ?? '',
+                })),
+                chalkTheme
+            )
+        } finally {
+            await m.close()
+        }
     }
 
     queryPrompt(chatName?: string): string {
@@ -746,7 +748,7 @@ export class ChatAct implements IChatAct {
             ({
                 user: parseContent(c.user),
                 assistant: parseContent(c.assistant),
-            }) as PresetMessageContent
+            } as PresetMessageContent)
         const validContent = (c: TmpContent) =>
             c.type && !isEmpty(c.user) && !isEmpty(c.assistant)
         return text
@@ -818,11 +820,12 @@ export class ChatAct implements IChatAct {
         if (isEmpty(chats)) {
             throw Error(promptMessage.chatMissing)
         }
-        await selectRun(
+        const answer = await select({
             message,
-            chats.map((it) => ({ name: it.name, value: it.name })),
-            f
-        )
+            choices: chats.map((it) => ({ name: it.name, value: it.name })),
+            theme: selectThemeStyle(terminalColor),
+        })
+        f(answer)
     }
 
     private subStr(str: string): string {
@@ -899,7 +902,7 @@ export class ChatAct implements IChatAct {
         return await select({
             message: 'Select Topic:',
             choices,
-            theme: themeStyle(terminalColor),
+            theme: selectThemeStyle(terminalColor),
         })
     }
 
@@ -923,7 +926,7 @@ export class ChatAct implements IChatAct {
         return await select({
             message: 'Select Chat:',
             choices,
-            theme: themeStyle(terminalColor),
+            theme: selectThemeStyle(terminalColor),
         })
     }
 
