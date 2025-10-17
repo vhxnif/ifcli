@@ -98,18 +98,4 @@ const checkboxThemeStyle = (color: ChalkTerminalColor): CheckBoxThemeStyle => {
     }
 }
 
-const inputRun = async (
-    message: string,
-    f: (str: string) => void
-): Promise<void> => {
-    f(await input({ message }))
-}
-
-export {
-    selectThemeStyle,
-    checkboxThemeStyle,
-    inputRun,
-    select,
-    input,
-    checkbox,
-}
+export { selectThemeStyle, checkboxThemeStyle, select, input, checkbox }
