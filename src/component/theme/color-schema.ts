@@ -1,5 +1,6 @@
 import type { ChalkInstance } from 'chalk'
 import { colorSchema as rosePine } from './rose-pine'
+import { colorSchema as catppuccin } from './catppuccin'
 import chalk from 'chalk'
 import type {
     ChalkChatBoxColor,
@@ -15,7 +16,7 @@ import type {
 } from './theme-type'
 import type { HelpConfiguration } from '@commander-js/extra-typings'
 
-const schemas = [...rosePine]
+const schemas = [...rosePine, ...catppuccin]
 
 const hex = (color: string): ChalkInstance => {
     return chalk.hex(color)

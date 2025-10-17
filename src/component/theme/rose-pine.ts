@@ -1,5 +1,6 @@
 import type { ChatBoxTheme, ColorSchema, TerminalColorName } from './theme-type'
 
+type RosePineType = 'Rose Pine' | 'Rose Pine Moon' | 'Rose Pine Dawn'
 type ColorName =
     | 'base'
     | 'surface'
@@ -17,7 +18,6 @@ type ColorName =
     | 'highlightMed'
     | 'highlightHigh'
 type Color = Record<ColorName, string>
-type RosePineType = 'Rose Pine' | 'Rose Pine Moon' | 'Rose Pine Dawn'
 
 const schema: Record<RosePineType, Color> = {
     'Rose Pine': {
