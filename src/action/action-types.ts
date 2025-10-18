@@ -7,7 +7,7 @@ export type AskContent = {
 export interface IChatAct {
     newChat: (name: string) => Promise<void>
     removeChat: () => Promise<void>
-    reAsk: () => Promise<void>
+    reAsk: (chatName?: string) => Promise<void>
     ask: (param: AskContent) => Promise<void>
     changeChat: (name?: string) => Promise<void>
     changeTopic: () => Promise<void>
@@ -47,7 +47,7 @@ export interface ISettingAct {
 
 export type AskAct = {
     run: (param: AskContent) => Promise<void>
-    reRun: () => Promise<void>
+    reRun: (chatName?: string) => Promise<void>
 }
 
 export type SwitchAct = {

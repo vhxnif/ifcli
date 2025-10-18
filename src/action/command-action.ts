@@ -47,7 +47,7 @@ export class Act implements IAct {
     private askAct(): AskAct {
         return {
             run: async (p) => await this.chatAct.ask(p),
-            reRun: async () => await this.chatAct.reAsk(),
+            reRun: async (n) => await this.chatAct.reAsk(n),
         } as AskAct
     }
 

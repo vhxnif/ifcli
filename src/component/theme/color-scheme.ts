@@ -23,7 +23,7 @@ const hex = (color: string): ChalkInstance => {
     return chalk.hex(color)
 }
 
-const defaultColor: ColorScheme = rosePine[0]
+const defaultColor: ColorScheme = tokyoNight[0]
 
 const colorScheme = (schema: string): ColorScheme => {
     const c = schemes.find((it) => it.name === schema)
