@@ -61,7 +61,7 @@ program
             await getContentAndAsk(async () => await editor(''))
         const stdinRun = async () => await getContentAndAsk(stdin)
         await matchRun([
-            [retry, reRun],
+            [retry, async () => await reRun(force)],
             [!isEmpty(content), contentRun],
             [edit, editRun],
             [true, stdinRun],

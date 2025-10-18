@@ -118,13 +118,16 @@ export class ChatAct implements IChatAct {
         )
     }
 
-    async reAsk(): Promise<void> {
+    async reAsk(chatName?: string): Promise<void> {
         const prevOptions = this.store.cache.get('prev_options')
         if (!prevOptions) {
             throw Error(promptMessage.retryOptionsMisssing)
         }
         const { value } = prevOptions
-        await this.ask(JSON.parse(value) as AskContent)
+        await this.ask({
+            ...(JSON.parse(value) as AskContent),
+            chatName,
+        })
     }
 
     async ask(params: AskContent): Promise<void> {
