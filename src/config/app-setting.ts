@@ -22,7 +22,7 @@ export type Setting = {
 export const APP_VERSION = version
 
 const defaultGeneralSetting: GeneralSetting = {
-    theme: `Rose Pine`,
+    theme: 'Tokyo Night',
 }
 
 export const defaultLLMSettings: LLMSetting[] = [
