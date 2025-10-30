@@ -10,7 +10,7 @@ export interface IChatAct {
     reAsk: (chatName?: string) => Promise<void>
     ask: (param: AskContent) => Promise<void>
     changeChat: (name?: string) => Promise<void>
-    changeTopic: () => Promise<void>
+    changeTopic: (chatName?: string) => Promise<void>
     printChatConfig: (chatName?: string) => void
     printChatHistory: (limit: number, chatName?: string) => Promise<void>
     modifyContextSize: (size: number, chatName?: string) => void
@@ -52,7 +52,7 @@ export type AskAct = {
 
 export type SwitchAct = {
     chat: (name?: string) => Promise<void>
-    topic: () => Promise<void>
+    topic: (chatName?: string) => Promise<void>
 }
 
 export type PromptAct = {

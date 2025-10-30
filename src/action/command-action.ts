@@ -54,7 +54,7 @@ export class Act implements IAct {
     private switchAct(): SwitchAct {
         return {
             chat: async (n) => await this.chatAct.changeChat(n),
-            topic: async () => await this.chatAct.changeTopic(),
+            topic: async (n) => await this.chatAct.changeTopic(n),
         } as SwitchAct
     }
 
