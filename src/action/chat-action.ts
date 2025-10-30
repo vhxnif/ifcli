@@ -230,8 +230,8 @@ export class ChatAct implements IChatAct {
         return frequency / 4
     }
 
-    async changeTopic(): Promise<void> {
-        const tpfun = this.store.chat.get().topic
+    async changeTopic(chatName?: string): Promise<void> {
+        const tpfun = this.store.chat.get(chatName).topic
         const topics = tpfun.list()
         const choices: Choice<ChatTopic>[] = topics.map((it) => ({
             name: this.subStr(it.content),

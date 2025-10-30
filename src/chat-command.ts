@@ -100,10 +100,11 @@ program
     .description('switch between chat sessions or topics')
     .option('-t, --topic', 'switch to a different topic')
     .argument('[name]', 'target chat session name')
-    .action(async (name, { topic }) => {
+    .action(async (name, { topic }, cmd) => {
         const { chat, topic: cgTopic } = act.chat.switch
         if (topic) {
-            await cgTopic()
+            const force = cmd.parent?.opts()?.force as string
+            await cgTopic(force)
             return
         }
         await chat(name)
