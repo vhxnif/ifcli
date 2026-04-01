@@ -1,11 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import type { LLMResultChunk } from '../llm/llm-types'
-import type { LLMOutputHandler, LLMState } from '../llm/llm-output-handler'
-import { Display } from './llm-result-show'
+import type { LLMResultChunk } from '../../llm/llm-types'
+import type { LLMOutputHandler, LLMState } from '../../llm/llm-output-handler'
+import { Display } from '../llm-result-show'
 import type {
     ChalkChatBoxTheme,
     ChalkTerminalColor,
-} from './theme/theme-type'
+} from '../theme/theme-type'
+
+export type DisplayOutputHandlerOptions = {
+    color: ChalkTerminalColor
+    theme: ChalkChatBoxTheme
+    enableSpinner?: boolean
+    textShowRender?: boolean
+}
 
 export class DisplayOutputHandler implements LLMOutputHandler {
     private display: Display
@@ -13,17 +20,9 @@ export class DisplayOutputHandler implements LLMOutputHandler {
     private hasReasoningStopped: boolean = false
     private collector: { tools: string[]; assistant: string[]; reasoning: string[] }
 
-    constructor({
-        color,
-        theme,
-        enableSpinner = true,
-        textShowRender = true,
-    }: {
-        color: ChalkTerminalColor
-        theme: ChalkChatBoxTheme
-        enableSpinner?: boolean
-        textShowRender?: boolean
-    }) {
+    constructor(options: DisplayOutputHandlerOptions) {
+        const { color, theme, enableSpinner = true, textShowRender = true } =
+            options
         this.display = new Display({
             color,
             theme,
