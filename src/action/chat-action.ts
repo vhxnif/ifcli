@@ -4,6 +4,7 @@ import path from 'path'
 import writeXlsxFile, { type Schema } from 'write-excel-file/node'
 import { terminalColor, chalkTheme } from '../app-context'
 import { Display } from '../component/llm-result-show'
+import { DisplayOutputHandler } from '../component/display-output-handler'
 import { simpleShow } from '../component/simple-show'
 import { TextShow } from '../component/text-show'
 import { type GeneralSetting, type Setting } from '../config/app-setting'
@@ -143,12 +144,20 @@ export class ChatAct implements IChatAct {
             await this.modifyModel(chatName)
             client = this.clientMap.get(chat.config.value.llmType)!
         }
+        const render = !noStream
+        const outputHandler = new DisplayOutputHandler({
+            color: terminalColor,
+            theme: chalkTheme,
+            enableSpinner: render,
+            textShowRender: render,
+        })
         await askFlow({
             chat,
             generalSetting: this.generalSetting,
             client: client.openai,
             mcps: this.mcps,
             userContent: content,
+            outputHandler,
             noStream,
             newTopic,
         })

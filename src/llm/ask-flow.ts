@@ -12,9 +12,9 @@ import type {
 import type MCPClient from './mcp-client'
 import type { ChatInfo, MessageContent } from '../store/store-types'
 import { isEmpty, println, uuid } from '../util/common-utils'
-import { Display } from '../component/llm-result-show'
 import { assistant, system, user } from './llm-utils'
-import { chalkTheme, terminalColor } from '../app-context'
+import type { LLMOutputHandler } from './llm-output-handler'
+import { SilentOutputHandler } from './llm-output-handler'
 
 export type AskShare = LLMParam & {
     chat: ChatInfo
@@ -33,6 +33,7 @@ export type AskShare = LLMParam & {
     }[]
     mcps?: MCPClient[]
     generalSetting?: GeneralSetting
+    outputHandler?: LLMOutputHandler
 }
 
 class SystemPromptNode extends Node<AskShare> {
@@ -181,14 +182,9 @@ class ToolsCallNode extends Node<AskShare> {
     }
 
     override async exec(prepRes: LLMToolsCallParam): Promise<LLMResultChunk> {
-        const { model, temperature, tools, messages, theme, noStream } = prepRes
-        const render = !noStream
-        const display = new Display({
-            color: terminalColor,
-            theme: chalkTheme,
-            textShowRender: render,
-            enableSpinner: render,
-        })
+        const { model, temperature, tools, messages, outputHandler, noStream } =
+            prepRes
+        const handler = outputHandler ?? new SilentOutputHandler()
         try {
             const runner = this.client.chat.completions
                 .runTools({
@@ -199,13 +195,13 @@ class ToolsCallNode extends Node<AskShare> {
                     stream: true,
                 })
                 .on('tool_calls.function.arguments.delta', () => {
-                    display.change('analyzing')
+                    handler.onStateChange('analyzing')
                 })
                 .on(
                     'tool_calls.function.arguments.done',
                     (it: { name: string; arguments: string }) => {
-                        const f = tools.find((i) => i.id == it.name)!
-                        display.toolCall(
+                        const f = tools.find((i) => i.id === it.name)!
+                        handler.onToolCall(
                             f?.mcpServer,
                             f?.mcpVersion,
                             f?.funName,
@@ -214,19 +210,20 @@ class ToolsCallNode extends Node<AskShare> {
                     }
                 )
                 .on('functionToolCallResult', (it: string) => {
-                    display.toolCallReult(it)
+                    handler.onToolResult(it)
                 })
                 .on('content', (it: string) => {
-                    display.contentShow(it)
+                    handler.onContentChunk(it)
                 })
             await runner.finalChatCompletion()
-            const res = display.contentStop().result()
+            handler.onContentComplete()
+            const result = handler.getResult()
             if (noStream) {
-                println(res.assistant.join(''))
+                println(result.assistant.join(''))
             }
-            return res
+            return result
         } catch (err: unknown) {
-            display.error()
+            handler.onError(err instanceof Error ? err : new Error(String(err)))
             throw err
         }
     }
@@ -265,14 +262,13 @@ class StreamCallNode extends Node<AskShare> {
     }
 
     override async exec(prepRes: LLMParam): Promise<LLMResultChunk> {
-        const { messages, model, temperature, noStream } = prepRes
-        const render = !noStream
-        const display = new Display({
-            color: terminalColor,
-            theme: chalkTheme,
-            textShowRender: render,
-            enableSpinner: render,
-        })
+        const { messages, model, temperature, outputHandler, noStream } =
+            prepRes
+        const handler = outputHandler ?? new SilentOutputHandler()
+        let lastChunk: string = ''
+        let hasReasoningContent: boolean = false
+        let hasReasoningStopped: boolean = false
+
         try {
             const stream = await this.client.chat.completions.create({
                 messages,
@@ -281,15 +277,49 @@ class StreamCallNode extends Node<AskShare> {
                 stream: true,
             })
             for await (const chunk of stream) {
-                display.thinkingShow(chunk)
+                const delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta & {
+                    reasoning_content?: string
+                    reasoning?: string
+                } = chunk.choices[0]?.delta
+                const reasoning = delta.reasoning || delta.reasoning_content || ''
+                const content = delta.content || ''
+
+                if (reasoning) {
+                    hasReasoningContent = true
+                    handler.onReasoningChunk(reasoning)
+                }
+
+                const combinedChunks = lastChunk + content
+                lastChunk = content
+
+                if (
+                    combinedChunks.includes('###Response') ||
+                    content === '```'
+                ) {
+                    if (hasReasoningContent && !hasReasoningStopped) {
+                        handler.onReasoningComplete()
+                        hasReasoningStopped = true
+                    }
+                }
+
+                if (hasReasoningContent && content && !hasReasoningStopped) {
+                    handler.onReasoningComplete()
+                    hasReasoningStopped = true
+                }
+
+                if (content) {
+                    handler.onContentChunk(content)
+                }
             }
-            const res = display.contentStop().result()
+
+            handler.onContentComplete()
+            const result = handler.getResult()
             if (noStream) {
-                println(res.assistant.join(''))
+                println(result.assistant.join(''))
             }
-            return res
+            return result
         } catch (e: unknown) {
-            display.error()
+            handler.onError(e instanceof Error ? e : new Error(String(e)))
             throw e
         }
     }
@@ -345,13 +375,13 @@ class StoreNode extends Node<AskShare> {
     }
 }
 
-// system prompt -> preset message -> context message -> user content -> tools -> router -> streamCall / toolsCall -> store
 const askFlow = async ({
     chat,
     client,
     userContent,
     mcps,
     generalSetting,
+    outputHandler,
     noStream = false,
     newTopic,
 }: {
@@ -360,6 +390,7 @@ const askFlow = async ({
     userContent: string
     mcps: MCPClient[]
     generalSetting: GeneralSetting
+    outputHandler?: LLMOutputHandler
     noStream?: boolean
     newTopic?: boolean
 }) => {
@@ -379,6 +410,7 @@ const askFlow = async ({
         theme: generalSetting.theme,
         noStream,
         newTopic,
+        outputHandler,
     }
 
     const systemPrompt = new SystemPromptNode()
