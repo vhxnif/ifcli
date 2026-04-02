@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import path from "path";
+import path from "node:path";
 import { env, tmpPath } from "./platform-utils";
 
 const debug = false;
@@ -89,7 +89,7 @@ const groupBy = <T, R>(arr: T[], key: (i: T) => R): Map<R, T[]> => {
 const jsonformat = (jsonString: string): string => {
 	try {
 		return JSON.stringify(JSON.parse(jsonString), null, 4);
-	} catch (err: unknown) {
+	} catch (_err: unknown) {
 		return jsonString;
 	}
 };
@@ -116,8 +116,8 @@ const parseIntNumber = (str: string | undefined, def: number): number => {
 	if (!str) {
 		return def;
 	}
-	const num = parseInt(str);
-	return isNaN(num) ? def : num;
+	const num = parseInt(str, 10);
+	return Number.isNaN(num) ? def : num;
 };
 
 export {

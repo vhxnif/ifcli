@@ -45,7 +45,7 @@ program
 			await run({
 				content: await withAttachment(ct),
 				chatName: force,
-				noStream: syncCall ? true : false,
+				noStream: !!syncCall,
 				newTopic,
 			});
 		};

@@ -37,10 +37,6 @@ export type AskShare = LLMParam & {
 };
 
 class SystemPromptNode extends Node<AskShare> {
-	constructor() {
-		super();
-	}
-
 	override async prep(shared: AskShare): Promise<void> {
 		const { systemPrompt } = shared;
 		if (isEmpty(systemPrompt)) {
@@ -51,10 +47,6 @@ class SystemPromptNode extends Node<AskShare> {
 }
 
 class PresetNode extends Node<AskShare> {
-	constructor() {
-		super();
-	}
-
 	override async prep(shared: AskShare): Promise<void> {
 		const { chat } = shared;
 		const presetMessage = chat.preset.get().flatMap(
@@ -69,10 +61,6 @@ class PresetNode extends Node<AskShare> {
 }
 
 class ContextNode extends Node<AskShare> {
-	constructor() {
-		super();
-	}
-
 	override async prep(shared: AskShare): Promise<void> {
 		const { chat, userContent, messages, withContext, contextLimit } = shared;
 		const tpfun = chat.topic;
@@ -95,10 +83,6 @@ class ContextNode extends Node<AskShare> {
 }
 
 class UserNode extends Node<AskShare> {
-	constructor() {
-		super();
-	}
-
 	override async prep(shared: AskShare): Promise<void> {
 		const { userContent } = shared;
 		shared.messages.push(user(userContent));
@@ -146,7 +130,7 @@ class ToolsNode extends Node<AskShare> {
 		shared.tools = tools;
 	}
 
-	override async execFallback(prepRes: unknown, error: Error): Promise<void> {
+	override async execFallback(_prepRes: unknown, error: Error): Promise<void> {
 		if (this.mcps) {
 			await Promise.all(this.mcps.map((it) => it.close()));
 		}
@@ -157,8 +141,8 @@ class ToolsNode extends Node<AskShare> {
 class AiRouterNode extends Node<AskShare> {
 	override async post(
 		shared: AskShare,
-		prepRes: unknown,
-		execRes: unknown,
+		_prepRes: unknown,
+		_execRes: unknown,
 	): Promise<string | undefined> {
 		const { tools } = shared;
 		if (tools) {
@@ -321,7 +305,7 @@ class StreamCallNode extends Node<AskShare> {
 
 	override async post(
 		shared: AskShare,
-		prepRes: LLMParam,
+		_prepRes: LLMParam,
 		execRes: LLMResultChunk,
 	): Promise<string | undefined> {
 		shared.resultChunk = execRes;
@@ -330,10 +314,6 @@ class StreamCallNode extends Node<AskShare> {
 }
 
 class StoreNode extends Node<AskShare> {
-	constructor() {
-		super();
-	}
-
 	override async prep(shared: AskShare): Promise<void> {
 		const { chat, userContent, resultChunk, topicId } = shared;
 		if (!resultChunk) {

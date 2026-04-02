@@ -60,7 +60,7 @@ export class DisplayOutputHandler implements LLMOutputHandler {
 		this.display.change(state);
 	}
 
-	onError(error: Error): void {
+	onError(_error: Error): void {
 		this.display.error();
 	}
 

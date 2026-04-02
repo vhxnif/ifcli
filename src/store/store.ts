@@ -150,9 +150,9 @@ export class Store implements IStore {
 			this.client.delConfig(chatId);
 			this.client.delConfigExt(chatId);
 			this.client.delPreset(chatId);
-			this.client
-				.queryTopic(chatId)
-				.forEach((it) => this.client.delMessage(it.id));
+			this.client.queryTopic(chatId).forEach((it) => {
+				this.client.delMessage(it.id);
+			});
 			this.client.delChatTopic(chatId);
 		});
 	}

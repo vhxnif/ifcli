@@ -319,7 +319,9 @@ export class DBClient implements IDBClient {
 					it.pairKey,
 					unixnow(),
 				])
-				.forEach((it) => statement.run(...it));
+				.forEach((it) => {
+					statement.run(...it);
+				});
 		})();
 	}
 

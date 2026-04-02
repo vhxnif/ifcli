@@ -82,7 +82,7 @@ export default class MCPClient {
 			await this.client.connect(this.transport);
 			this.connected = true;
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		} catch (e: unknown) {
+		} catch (_e: unknown) {
 			println(`${this.name}/${this.version} connect error.`);
 		}
 	}
@@ -139,7 +139,7 @@ export default class MCPClient {
 				this.connected = false;
 			}
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		} catch (e: unknown) {
+		} catch (_e: unknown) {
 			println(`${this.name}/${this.version} close error.`);
 		}
 	}

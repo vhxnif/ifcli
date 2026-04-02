@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+
+import path from "node:path";
 import { stringWidth } from "bun";
-import path from "path";
 import writeXlsxFile, { type Schema } from "write-excel-file/node";
 import { chalkTheme, terminalColor } from "../app-context";
 import { DisplayOutputHandler } from "../component/display/display-output-handler";
@@ -63,14 +64,16 @@ export class ChatAct implements IChatAct {
 			.map((it) => {
 				try {
 					return new MCPClient(it);
-				} catch (e: unknown) {
+				} catch (_e: unknown) {
 					return null;
 				}
 			})
 			.filter((it) => it != null);
 		llmSettings
 			.map((it) => new OpenAiClient(it))
-			.forEach((it) => this.clientMap.set(it.type, it));
+			.forEach((it) => {
+				this.clientMap.set(it.type, it);
+			});
 	}
 
 	private async selectLLmAndModel(): Promise<Model> {
@@ -108,7 +111,7 @@ export class ChatAct implements IChatAct {
 
 	async removeChat(): Promise<void> {
 		const cts = this.store.chat.list();
-		if (cts.length == 1) {
+		if (cts.length === 1) {
 			throw Error(promptMessage.oneChatRemain);
 		}
 		await this.selectChatRun(
@@ -214,7 +217,7 @@ export class ChatAct implements IChatAct {
 			}
 			qk.update(key, frequency);
 			return true;
-		} catch (e: unknown) {
+		} catch (_e: unknown) {
 			qk.delete(key);
 			return false;
 		}
@@ -419,7 +422,7 @@ export class ChatAct implements IChatAct {
 				} = JSON.parse(it);
 				return i;
 			});
-		} catch (err: unknown) {
+		} catch (_err: unknown) {
 			return toolsCall;
 		}
 	}
@@ -557,7 +560,7 @@ export class ChatAct implements IChatAct {
 
 	private promptChoice(name?: string): Choice<ChatPrompt>[] {
 		const { search, list } = this.store.prompt;
-		let prompts;
+		let prompts: ChatPrompt[];
 		if (name) {
 			prompts = search(name);
 		} else {
@@ -596,7 +599,7 @@ export class ChatAct implements IChatAct {
 					if (!it.isConnected) {
 						health = false;
 					}
-				} catch (e: unknown) {
+				} catch (_e: unknown) {
 					health = false;
 				} finally {
 					await it.close();
@@ -849,7 +852,7 @@ export class ChatAct implements IChatAct {
 		let result = "";
 		for (let i = 0; i < maxLoop && low <= high; i++) {
 			const mid = Math.floor((low + high) / 2);
-			const candidate = str.substring(0, mid) + "...";
+			const candidate = `${str.substring(0, mid)}...`;
 			if (stringWidth(candidate) <= targetWd) {
 				result = candidate;
 				low = mid + 1;

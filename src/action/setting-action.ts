@@ -13,8 +13,6 @@ import { objEnvCheck } from "../util/platform-utils";
 import type { ISettingAct } from "./action-types";
 
 export class SettingAct implements ISettingAct {
-	constructor() {}
-
 	async theme(): Promise<void> {
 		const setting = await appSetting();
 		const value = await select({

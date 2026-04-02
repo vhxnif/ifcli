@@ -3,8 +3,6 @@ import { isEmpty, println } from "../util/common-utils";
 import type { ChalkChatBoxTheme, ChalkTerminalColor } from "./theme/theme-type";
 
 class SimpleShow {
-	constructor() {}
-
 	yes(color: ChalkTerminalColor) {
 		return color.green.bold("✓");
 	}
@@ -86,7 +84,9 @@ class SimpleShow {
 					: cyan(`\n${mcpServers.map((it) => `  ${it.name}@${it.version}`)}`),
 			},
 		];
-		arr.forEach((it) => println(`${it.key}: ${it.value}`));
+		arr.forEach((it) => {
+			println(`${it.key}: ${it.value}`);
+		});
 	}
 }
 
