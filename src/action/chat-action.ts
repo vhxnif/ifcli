@@ -3,10 +3,9 @@ import { stringWidth } from 'bun'
 import path from 'path'
 import writeXlsxFile, { type Schema } from 'write-excel-file/node'
 import { terminalColor, chalkTheme } from '../app-context'
-import { Display } from '../component/llm-result-show'
+import { SimplifiedDisplay } from '../component/simplified-display'
 import { DisplayOutputHandler } from '../component/display/display-output-handler'
 import { simpleShow } from '../component/simple-show'
-import { TextShow } from '../component/text-show'
 import { type GeneralSetting, type Setting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { askFlow } from '../llm/ask-flow'
@@ -317,7 +316,7 @@ export class ChatAct implements IChatAct {
         const colExpInfo = (role: string, content: string) =>
             expInfo.push({ role, content })
         const { reasoning, toolsCall, assistant } = this.partMessageByRole(msgs)
-        const display = new Display({
+        const display = new SimplifiedDisplay({
             color: terminalColor,
             theme: chalkTheme,
             enableSpinner: false,
@@ -330,7 +329,7 @@ export class ChatAct implements IChatAct {
 
     private historyAssistantPrint(
         assistant: string,
-        display: Display,
+        display: SimplifiedDisplay,
         f: (role: string, content: string) => void
     ): void {
         display.contentShow(assistant)
@@ -340,7 +339,7 @@ export class ChatAct implements IChatAct {
 
     private historyReasoningPrint(
         reasoning: string,
-        display: Display,
+        display: SimplifiedDisplay,
         f: (role: string, content: string) => void
     ): void {
         if (!reasoning) {
@@ -353,7 +352,7 @@ export class ChatAct implements IChatAct {
 
     private historyToolsCallPrint(
         toolsCall: string,
-        display: Display,
+        display: SimplifiedDisplay,
         f: (role: string, content: string) => void
     ): void {
         if (!toolsCall) {
@@ -369,7 +368,7 @@ export class ChatAct implements IChatAct {
         res.forEach((it) => {
             const { mcpServer, mcpVersion, toolName, args, response } = it
             display.toolCall(mcpServer, mcpVersion, toolName, args)
-            display.toolCallReult(response)
+            display.toolCallResult(response)
         })
     }
 
@@ -580,17 +579,9 @@ export class ChatAct implements IChatAct {
 
     private showPrompt(pt: string): void {
         const { assisant } = chalkTheme
-        const { title: titleColor, bolder, content } = assisant
-        const textShow = new TextShow({
-            title: 'Promot',
-            titleColor: titleColor,
-            bolderColor: bolder,
-            textColor: content,
-            render: true,
-        })
-        textShow.start()
-        textShow.append(pt)
-        textShow.stop()
+        const { title, content } = assisant
+        console.log(title.bold('Prompt'))
+        console.log(content(pt))
     }
 
     async tools(): Promise<void> {

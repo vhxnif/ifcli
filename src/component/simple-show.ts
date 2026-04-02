@@ -1,6 +1,5 @@
 import type { ChatConfig, ConfigExt } from '../store/store-types'
 import { isEmpty, println } from '../util/common-utils'
-import { TextShow } from './text-show'
 import type { ChalkChatBoxTheme, ChalkTerminalColor } from './theme/theme-type'
 
 class SimpleShow {
@@ -38,19 +37,13 @@ class SimpleShow {
         }[],
         theme: ChalkChatBoxTheme
     ) {
-        const { title: titleColor, bolder, content } = theme.assisant
+        const { title: titleColor, content } = theme.assisant
 
         data.forEach((it) => {
             const { name, description } = it
-            const ts = new TextShow({
-                title: name,
-                titleColor: titleColor,
-                bolderColor: bolder,
-                textColor: content,
-            })
-            ts.start()
-            ts.append(description)
-            ts.stop()
+            println(titleColor.bold(name))
+            println(content(description))
+            println('')
         })
     }
 

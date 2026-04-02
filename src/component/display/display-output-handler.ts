@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type { LLMResultChunk } from '../../llm/llm-types'
 import type { LLMOutputHandler, LLMState } from '../../llm/llm-output-handler'
-import { Display } from '../llm-result-show'
+import { SimplifiedDisplay } from '../simplified-display'
 import type {
     ChalkChatBoxTheme,
     ChalkTerminalColor,
@@ -15,25 +15,18 @@ export type DisplayOutputHandlerOptions = {
 }
 
 export class DisplayOutputHandler implements LLMOutputHandler {
-    private display: Display
-    private hasReasoningContent: boolean = false
-    private hasReasoningStopped: boolean = false
-    private collector: { tools: string[]; assistant: string[]; reasoning: string[] }
+    private display: SimplifiedDisplay
 
     constructor(options: DisplayOutputHandlerOptions) {
-        const { color, theme, enableSpinner = true, textShowRender = true } =
-            options
-        this.display = new Display({
+        const { color, theme, enableSpinner = true } = options
+        this.display = new SimplifiedDisplay({
             color,
             theme,
             enableSpinner,
-            textShowRender,
         })
-        this.collector = { tools: [], assistant: [], reasoning: [] }
     }
 
     onContentChunk(content: string): void {
-        this.collector.assistant.push(content)
         this.display.contentShow(content)
     }
 
@@ -42,16 +35,11 @@ export class DisplayOutputHandler implements LLMOutputHandler {
     }
 
     onReasoningChunk(reasoning: string): void {
-        this.hasReasoningContent = true
-        this.collector.reasoning.push(reasoning)
         this.display.think(reasoning)
     }
 
     onReasoningComplete(): void {
-        if (!this.hasReasoningStopped) {
-            this.display.stopThink()
-            this.hasReasoningStopped = true
-        }
+        this.display.stopThink()
     }
 
     onToolCall(
@@ -64,8 +52,7 @@ export class DisplayOutputHandler implements LLMOutputHandler {
     }
 
     onToolResult(result: string): void {
-        this.display.toolCallReult(result)
-        this.collector.tools.push(result)
+        this.display.toolCallResult(result)
     }
 
     onStateChange(state: LLMState): void {
