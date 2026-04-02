@@ -8,7 +8,7 @@ const chat = `
         CONSTRAINT chat_PK PRIMARY KEY (id)
     );
     CREATE UNIQUE INDEX chat_name_IDX ON chat (name);
-`
+`;
 const chat_topic = `
     CREATE TABLE IF NOT EXISTS chat_topic (
         id TEXT,
@@ -20,7 +20,7 @@ const chat_topic = `
         CONSTRAINT chat_topic_PK PRIMARY KEY (id)
     );
     CREATE INDEX IF NOT EXISTS chat_topic_IDX ON chat_topic (chat_id);
-`
+`;
 
 const chat_message = `
     CREATE TABLE IF NOT EXISTS chat_message (
@@ -34,7 +34,7 @@ const chat_message = `
     );
     CREATE INDEX IF NOT EXISTS chat_message_IDX ON chat_message (topic_id);
     CREATE INDEX IF NOT EXISTS chat_message_2_IDX ON chat_message (pair_key);
-`
+`;
 
 const chat_config = `
     CREATE TABLE IF NOT EXISTS chat_config (
@@ -52,7 +52,7 @@ const chat_config = `
         CONSTRAINT chat_config_PK PRIMARY KEY (id)
     );
     CREATE INDEX IF NOT EXISTS chat_config_IDX ON chat_config (chat_id);
-`
+`;
 
 const chat_prompt = `
      CREATE TABLE IF NOT EXISTS chat_prompt (
@@ -63,7 +63,7 @@ const chat_prompt = `
         modify_time INTEGER,
         CONSTRAINT chat_prompt_PK PRIMARY KEY (name, version)
     );
-`
+`;
 const chat_preset_message = `
     CREATE TABLE IF NOT EXISTS chat_preset_message (
         id TEXT,
@@ -74,7 +74,7 @@ const chat_preset_message = `
         CONSTRAINT chat_preset_message_PK PRIMARY KEY (id)
     );
     CREATE INDEX IF NOT EXISTS chat_preset_message_IDX ON chat_preset_message (chat_id);
-`
+`;
 const cmd_history = `
     CREATE TABLE IF NOT EXISTS cmd_history (
         id TEXT,
@@ -85,7 +85,7 @@ const cmd_history = `
         CONSTRAINT cmd_history_PK PRIMARY KEY (id)
     );
     CREATE UNIQUE INDEX IF NOT EXISTS cmd_his_uk_IDX ON cmd_history (type, key);
-`
+`;
 
 const chat_config_ext = `
     CREATE TABLE IF NOT EXISTS "chat_config_ext" (
@@ -98,26 +98,26 @@ const chat_config_ext = `
     );
 
     CREATE INDEX IF NOT EXISTS "idx_chat_id_chat_config_ext" ON "chat_config_ext"("chat_id");    
-`
+`;
 const cache = `
     CREATE TABLE "cache" (
       "key" text NOT NULL,
       "value" text NOT NULL,
       PRIMARY KEY ("key")
     );
-`
+`;
 
 // table_name: ddl
 const table_def: Record<string, string> = {
-    chat: chat,
-    chat_topic: chat_topic,
-    chat_message: chat_message,
-    chat_config: chat_config,
-    chat_prompt: chat_prompt,
-    chat_preset_message: chat_preset_message,
-    cmd_history: cmd_history,
-    chat_config_ext: chat_config_ext,
-    cache: cache,
-}
+	chat: chat,
+	chat_topic: chat_topic,
+	chat_message: chat_message,
+	chat_config: chat_config,
+	chat_prompt: chat_prompt,
+	chat_preset_message: chat_preset_message,
+	cmd_history: cmd_history,
+	chat_config_ext: chat_config_ext,
+	cache: cache,
+};
 
-export { table_def }
+export { table_def };
