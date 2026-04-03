@@ -1,94 +1,112 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { LLMResultChunk } from "../llm/llm-types";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js"
+import type { LLMResultChunk } from "../llm/llm-types"
 import {
 	type LLMNotifyMessageType,
 	llmNotifyMessage,
 	llmNotifyMessageColor,
-} from "../llm/llm-utils";
-import { print, println } from "../util/common-utils";
-import { OraShow } from "./ora-show";
-import type { ChalkChatBoxTheme, ChalkTerminalColor } from "./theme/theme-type";
+} from "../llm/llm-utils"
+import { print, println } from "../util/common-utils"
+import { OraShow } from "./ora-show"
+import type { ChalkChatBoxTheme, ChalkTerminalColor } from "./theme/theme-type"
 
 export class SimplifiedDisplay {
-	private theme: ChalkChatBoxTheme;
-	private color: ChalkTerminalColor;
-	private spinner?: OraShow;
+	private theme: ChalkChatBoxTheme
+	private color: ChalkTerminalColor
+	private spinner?: OraShow
+	private enableRealtimeRender: boolean
 
-	private reasoningContent: string[] = [];
-	private assistantContent: string[] = [];
-	private toolsContent: string[] = [];
+	private reasoningContent: string[] = []
+	private assistantContent: string[] = []
+	private toolsContent: string[] = []
 
-	private pendingToolName: string | null = null;
-	private currentRole: "idle" | "reasoning" | "assistant" | "tools" = "idle";
+	private pendingToolName: string | null = null
+	private currentRole: "idle" | "reasoning" | "assistant" | "tools" = "idle"
 
-	private hasReasoningStopped: boolean = false;
+	private hasReasoningStopped: boolean = false
 
 	constructor({
 		color,
 		theme,
 		enableSpinner = true,
+		enableRealtimeRender = true,
 	}: {
 		color: ChalkTerminalColor;
 		theme: ChalkChatBoxTheme;
 		enableSpinner?: boolean;
+		enableRealtimeRender?: boolean;
 	}) {
-		this.theme = theme;
-		this.color = color;
+		this.theme = theme
+		this.color = color
+		this.enableRealtimeRender = enableRealtimeRender
 		if (enableSpinner) {
-			this.spinner = new OraShow(this.notice("waiting"));
-			this.spinner.start();
+			this.spinner = new OraShow(this.notice("waiting"))
+			this.spinner.start()
 		}
 	}
 
 	private notice(type: LLMNotifyMessageType) {
-		return this.color[llmNotifyMessageColor[type]](llmNotifyMessage[type]);
+		return this.color[llmNotifyMessageColor[type]](llmNotifyMessage[type])
 	}
 
 	think(reasoning: string): void {
-		this.spinner?.stop();
-
-		if (this.currentRole !== "reasoning") {
-			if (this.currentRole !== "idle") {
-				println("");
-			}
-			this.currentRole = "reasoning";
+		if (this.enableRealtimeRender) {
+			this.spinner?.stop()
 		}
 
-		this.reasoningContent.push(reasoning);
-		print(this.theme.reasoner.content(reasoning));
+		if (this.currentRole !== "reasoning") {
+			if (this.currentRole !== "idle" && this.enableRealtimeRender) {
+				println("")
+			}
+			this.currentRole = "reasoning"
+		}
+
+		this.reasoningContent.push(reasoning)
+		if (this.enableRealtimeRender) {
+			print(this.theme.reasoner.content(reasoning))
+		}
 	}
 
 	stopThink(): void {
 		// 如果有推理内容，输出空行分隔
 		if (this.reasoningContent.length > 0 && !this.hasReasoningStopped) {
-			this.hasReasoningStopped = true;
-			println(""); // 推理内容最后没有换行，先换行结束
-			println(""); // 输出空行，分隔推理和助手内容
-			this.currentRole = "idle";
+			this.hasReasoningStopped = true
+			if (this.enableRealtimeRender) {
+				println("")
+				println("")
+			}
+			this.currentRole = "idle"
 		}
-		this.spinner?.start();
+		if (this.enableRealtimeRender) {
+			this.spinner?.start()
+		}
 	}
 
 	contentShow(content: string): void {
-		this.spinner?.stop();
-
-		if (this.currentRole !== "assistant") {
-			if (this.currentRole !== "idle") {
-				println("");
-			}
-			this.currentRole = "assistant";
+		if (this.enableRealtimeRender) {
+			this.spinner?.stop()
 		}
 
-		this.assistantContent.push(content);
-		print(this.theme.assisant.content(content));
+		if (this.currentRole !== "assistant") {
+			if (this.currentRole !== "idle" && this.enableRealtimeRender) {
+				println("")
+			}
+			this.currentRole = "assistant"
+		}
+
+		this.assistantContent.push(content)
+		if (this.enableRealtimeRender) {
+			print(this.theme.assisant.content(content))
+		}
 	}
 
 	contentStop(): void {
-		println(""); // 结束助手内容
-		println(""); // 空行
-		this.currentRole = "idle";
+		if (this.enableRealtimeRender) {
+			println("")
+			println("")
+		}
+		this.currentRole = "idle"
 	}
 
 	toolCall(
@@ -97,52 +115,58 @@ export class SimplifiedDisplay {
 		funName: string,
 		_args: string,
 	): void {
-		this.spinner?.stop();
-		this.pendingToolName = funName;
+		if (this.enableRealtimeRender) {
+			this.spinner?.stop()
+		}
+		this.pendingToolName = funName
 	}
 
 	toolCallResult(result: string): void {
-		this.toolsContent.push(result);
+		this.toolsContent.push(result)
 
 		if (this.currentRole !== "tools") {
-			if (this.currentRole !== "idle") {
-				println("");
+			if (this.currentRole !== "idle" && this.enableRealtimeRender) {
+				println("")
 			}
-			this.currentRole = "tools";
+			this.currentRole = "tools"
 		}
 
-		const isSuccess = this.checkToolResult(result);
+		const isSuccess = this.checkToolResult(result)
 
 		if (this.pendingToolName) {
-			const textColor = this.theme.tools.title;
-			const statusColor = isSuccess ? this.color.green : this.color.red;
-			const statusSymbol = isSuccess ? "✓" : "✗";
+			if (this.enableRealtimeRender) {
+				const textColor = this.theme.tools.title
+				const statusColor = isSuccess ? this.color.green : this.color.red
+				const statusSymbol = isSuccess ? "✓" : "✗"
 
-			println(
-				textColor(`[${this.pendingToolName}] `) + statusColor(statusSymbol),
-			);
+				println(
+					textColor(`[${this.pendingToolName}] `) + statusColor(statusSymbol),
+				)
+			}
 
-			this.pendingToolName = null;
+			this.pendingToolName = null
 		}
 
-		this.spinner?.start(this.notice("rendering"));
+		if (this.enableRealtimeRender) {
+			this.spinner?.start(this.notice("rendering"))
+		}
 	}
 
 	private checkToolResult(content: string): boolean {
 		try {
-			const res: CallToolResult = JSON.parse(content);
-			return !res.isError;
+			const res: CallToolResult = JSON.parse(content)
+			return !res.isError
 		} catch {
-			return false;
+			return false
 		}
 	}
 
 	change(type: LLMNotifyMessageType): void {
-		this.spinner?.show(this.notice(type));
+		this.spinner?.show(this.notice(type))
 	}
 
 	error(): void {
-		this.spinner?.fail(this.notice("error"));
+		this.spinner?.fail(this.notice("error"))
 	}
 
 	result(): LLMResultChunk {
@@ -150,6 +174,6 @@ export class SimplifiedDisplay {
 			tools: this.toolsContent,
 			assistant: this.assistantContent,
 			reasoning: this.reasoningContent,
-		};
+		}
 	}
 }

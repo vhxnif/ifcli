@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import type { LLMOutputHandler, LLMState } from "../../llm/llm-output-handler";
-import type { LLMResultChunk } from "../../llm/llm-types";
-import { SimplifiedDisplay } from "../simplified-display";
+import type { LLMOutputHandler, LLMState } from "../../llm/llm-output-handler"
+import type { LLMResultChunk } from "../../llm/llm-types"
+import { SimplifiedDisplay } from "../simplified-display"
 import type {
 	ChalkChatBoxTheme,
 	ChalkTerminalColor,
-} from "../theme/theme-type";
+} from "../theme/theme-type"
 
 export type DisplayOutputHandlerOptions = {
 	color: ChalkTerminalColor;
@@ -16,31 +16,37 @@ export type DisplayOutputHandlerOptions = {
 };
 
 export class DisplayOutputHandler implements LLMOutputHandler {
-	private display: SimplifiedDisplay;
+	private display: SimplifiedDisplay
 
 	constructor(options: DisplayOutputHandlerOptions) {
-		const { color, theme, enableSpinner = true } = options;
+		const {
+			color,
+			theme,
+			enableSpinner = true,
+			textShowRender = true,
+		} = options
 		this.display = new SimplifiedDisplay({
 			color,
 			theme,
 			enableSpinner,
-		});
+			enableRealtimeRender: textShowRender,
+		})
 	}
 
 	onContentChunk(content: string): void {
-		this.display.contentShow(content);
+		this.display.contentShow(content)
 	}
 
 	onContentComplete(): void {
-		this.display.contentStop();
+		this.display.contentStop()
 	}
 
 	onReasoningChunk(reasoning: string): void {
-		this.display.think(reasoning);
+		this.display.think(reasoning)
 	}
 
 	onReasoningComplete(): void {
-		this.display.stopThink();
+		this.display.stopThink()
 	}
 
 	onToolCall(
@@ -49,22 +55,22 @@ export class DisplayOutputHandler implements LLMOutputHandler {
 		name: string,
 		args: string,
 	): void {
-		this.display.toolCall(server, version, name, args);
+		this.display.toolCall(server, version, name, args)
 	}
 
 	onToolResult(result: string): void {
-		this.display.toolCallResult(result);
+		this.display.toolCallResult(result)
 	}
 
 	onStateChange(state: LLMState): void {
-		this.display.change(state);
+		this.display.change(state)
 	}
 
 	onError(_error: Error): void {
-		this.display.error();
+		this.display.error()
 	}
 
 	getResult(): LLMResultChunk {
-		return this.display.result();
+		return this.display.result()
 	}
 }
