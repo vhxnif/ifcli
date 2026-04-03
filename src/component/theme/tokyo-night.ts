@@ -1,4 +1,9 @@
-import type { ChatBoxTheme, ColorScheme, TerminalColorName } from './theme-type'
+import type {
+    ChatBoxTheme,
+    ColorScheme,
+    TerminalColorName,
+    ThemeSemanticColors,
+} from './theme-type'
 
 //  https://github.com/folke/tokyonight.nvim/tree/main/extras/helix
 type TokyoNightType =
@@ -128,6 +133,17 @@ const generateTheme = (s: Color): ChatBoxTheme => {
     }
 }
 
+const generateSemanticColors = (): ThemeSemanticColors => {
+    return {
+        waiting: 'cyan',
+        analyzing: 'yellow',
+        thinking: 'magenta',
+        rendering: 'blue',
+        error: 'red',
+        completed: 'green',
+    }
+}
+
 const tokyoNight = scheme['Tokyo Night']
 const tokyoNightDay = scheme['Tokyo Night Day']
 const tokyoNightMoon = scheme['Tokyo Night Moon']
@@ -138,21 +154,25 @@ const colorScheme: ColorScheme[] = [
         name: 'Tokyo Night',
         color: generateTerminalColor(tokyoNight),
         theme: generateTheme(tokyoNight),
+        semantic: generateSemanticColors(),
     },
     {
         name: 'Tokyo Night Day',
         color: generateTerminalColor(tokyoNightDay),
         theme: generateTheme(tokyoNightDay),
+        semantic: generateSemanticColors(),
     },
     {
         name: 'Tokyo Night Moon',
         color: generateTerminalColor(tokyoNightMoon),
         theme: generateTheme(tokyoNightMoon),
+        semantic: generateSemanticColors(),
     },
     {
         name: 'Tokyo Night Storm',
         color: generateTerminalColor(tokyoNightStorm),
         theme: generateTheme(tokyoNightStorm),
+        semantic: generateSemanticColors(),
     },
 ]
 

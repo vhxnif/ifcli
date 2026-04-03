@@ -3,7 +3,7 @@
 import path from 'node:path'
 import { stringWidth } from 'bun'
 import writeXlsxFile, { type Schema } from 'write-excel-file/node'
-import { chalkTheme, terminalColor } from '../app-context'
+import { chalkTheme, semanticColors, terminalColor } from '../app-context'
 import { DisplayOutputHandler } from '../component/display/display-output-handler'
 import { simpleShow } from '../component/simple-show'
 import { SimplifiedDisplay } from '../component/simplified-display'
@@ -47,6 +47,7 @@ import {
     selectThemeStyle,
 } from '../util/inquirer-utils'
 import { env, terminal } from '../util/platform-utils'
+import { statusFormat } from '../util/ui-format'
 import type { AskContent, IChatAct } from './action-types'
 
 export class ChatAct implements IChatAct {
@@ -150,6 +151,7 @@ export class ChatAct implements IChatAct {
         const outputHandler = new DisplayOutputHandler({
             color: terminalColor,
             theme: chalkTheme,
+            semanticColors: semanticColors,
             enableSpinner: render,
             textShowRender: render,
         })
@@ -166,11 +168,12 @@ export class ChatAct implements IChatAct {
     }
 
     async changeChat(name?: string): Promise<void> {
-        const { green, white, cyan } = terminalColor
         const chat = this.store.chat.get()
         const f = (s: string) => {
             chat.switch(s)
-            print(`${green('✔')} ${white.bold('Select Chat:')} ${cyan(s)} `)
+            print(
+                `${statusFormat.success(terminalColor)} ${terminalColor.white.bold('Select Chat:')} ${terminalColor.cyan(s)} `,
+            )
         }
         if (name && (await this.quickCmd(name, f))) {
             return
@@ -322,6 +325,7 @@ export class ChatAct implements IChatAct {
         const display = new SimplifiedDisplay({
             color: terminalColor,
             theme: chalkTheme,
+            semanticColors: semanticColors,
             enableSpinner: false,
         })
         this.historyReasoningPrint(reasoning, display, colExpInfo)

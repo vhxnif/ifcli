@@ -1,4 +1,9 @@
-import type { ChatBoxTheme, ColorScheme, TerminalColorName } from './theme-type'
+import type {
+    ChatBoxTheme,
+    ColorScheme,
+    TerminalColorName,
+    ThemeSemanticColors,
+} from './theme-type'
 
 type CatppuccinType =
     | 'Catppuccin Latte'
@@ -193,6 +198,17 @@ const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
         whiteBright: text,
     }
 }
+
+const generateSemanticColors = (): ThemeSemanticColors => {
+    return {
+        waiting: 'magenta',
+        analyzing: 'yellow',
+        thinking: 'magenta',
+        rendering: 'blue',
+        error: 'red',
+        completed: 'green',
+    }
+}
 const latte = scheme['Catppuccin Latte']
 const frappe = scheme['Catppuccin Frappe']
 const macchiato = scheme['Catppuccin Macchiato']
@@ -209,22 +225,26 @@ const colorScheme: ColorScheme[] = [
             blackBright: latte.overlay2,
         },
         theme: generateTheme(latte),
+        semantic: generateSemanticColors(),
     },
     {
         name: 'Catppuccin Frappe',
         color: generateTerminalColor(frappe),
         theme: generateTheme(frappe),
+        semantic: generateSemanticColors(),
     },
 
     {
         name: 'Catppuccin Macchiato',
         color: generateTerminalColor(macchiato),
         theme: generateTheme(macchiato),
+        semantic: generateSemanticColors(),
     },
     {
         name: 'Catppuccin Mocha',
         color: generateTerminalColor(mocha),
         theme: generateTheme(mocha),
+        semantic: generateSemanticColors(),
     },
 ]
 

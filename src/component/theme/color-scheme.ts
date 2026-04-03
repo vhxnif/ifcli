@@ -14,6 +14,7 @@ import type {
     ChatBoxTheme,
     ColorScheme,
     TerminalColorName,
+    ThemeSemanticColors,
 } from './theme-type'
 import { colorScheme as tokyoNight } from './tokyo-night'
 
@@ -63,6 +64,11 @@ const chalkColor = (schema: string): ChalkColor => {
     return [chalkTerminalColor(color), chalkChatBoxTheme(theme)]
 }
 
+const getSemanticColors = (schema: string): ThemeSemanticColors => {
+    const c = colorScheme(schema)
+    return c.semantic ?? defaultColor.semantic!
+}
+
 const commanderHelpConfiguration = (
     color: ChalkTerminalColor,
 ): HelpConfiguration => {
@@ -79,4 +85,10 @@ const commanderHelpConfiguration = (
     } as HelpConfiguration
 }
 
-export { chalkColor, commanderHelpConfiguration, hex, schemes }
+export {
+    chalkColor,
+    commanderHelpConfiguration,
+    getSemanticColors,
+    hex,
+    schemes,
+}

@@ -1,14 +1,15 @@
 import type { ChatConfig, ConfigExt } from '../store/store-types'
 import { isEmpty, println } from '../util/common-utils'
+import { format, statusFormat } from '../util/ui-format'
 import type { ChalkChatBoxTheme, ChalkTerminalColor } from './theme/theme-type'
 
 class SimpleShow {
     yes(color: ChalkTerminalColor) {
-        return color.green.bold('✓')
+        return statusFormat.success(color)
     }
 
     no(color: ChalkTerminalColor) {
-        return color.red.bold('✗')
+        return statusFormat.error(color)
     }
 
     mcpHealthCheckShow(
@@ -19,12 +20,12 @@ class SimpleShow {
         }[],
         color: ChalkTerminalColor,
     ) {
+        println(format.section('MCP Servers Status', color))
         data.forEach((it) => {
-            println(
-                `${it.name}@${it.version}: ${
-                    it.health ? this.yes(color) : this.no(color)
-                }`,
-            )
+            const status = it.health
+                ? format.status('success', 'Connected', color)
+                : format.status('error', 'Failed', color)
+            println(`${color.cyan(`${it.name}@${it.version}`)}: ${status}`)
         })
     }
 
@@ -60,35 +61,37 @@ class SimpleShow {
             contextLimit,
         } = config
         const { mcpServers } = ext
-        const { yellow, cyan } = color
-        const arr = [
-            { key: 'Name', value: cyan(chatName) },
-            { key: 'Provider', value: cyan(llmType) },
-            { key: 'Model', value: cyan(model) },
-            {
-                key: 'Scenario',
-                value: `${cyan(scenarioName)}(${yellow(scenario)})`,
-            },
-            {
-                key: 'Context Size',
-                value: `${color.yellow(contextLimit)}`,
-            },
-            {
-                key: 'Context',
-                value: withContext ? this.yes(color) : this.no(color),
-            },
-            {
-                key: 'MCP',
-                value: isEmpty(mcpServers)
-                    ? this.no(color)
-                    : cyan(
-                          `\n${mcpServers.map((it) => `  ${it.name}@${it.version}`)}`,
-                      ),
-            },
-        ]
-        arr.forEach((it) => {
-            println(`${it.key}: ${it.value}`)
-        })
+
+        println(format.section('Chat Configuration', color))
+        println(format.keyValue('Name', chatName, color))
+        println(format.keyValue('Provider', llmType, color))
+        println(format.keyValue('Model', model, color))
+        println(
+            format.keyValue(
+                'Scenario',
+                `${scenarioName} (${color.yellow(scenario)})`,
+                color,
+            ),
+        )
+        println(format.keyValue('Context Size', String(contextLimit), color))
+        println(
+            format.keyValue(
+                'Context',
+                withContext ? this.yes(color) : this.no(color),
+                color,
+            ),
+        )
+
+        if (isEmpty(mcpServers)) {
+            println(format.keyValue('MCP', this.no(color), color))
+        } else {
+            println(color.cyan.bold('\nMCP Servers:'))
+            mcpServers.forEach((it) => {
+                println(
+                    `  ${color.white('•')} ${color.cyan(`${it.name}@${it.version}`)}`,
+                )
+            })
+        }
     }
 }
 

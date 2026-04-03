@@ -32,10 +32,21 @@ export type ChatBoxContentType = 'reasoner' | 'tools' | 'assisant'
 export type ChatBoxTheme = Record<ChatBoxContentType, ChatBoxColor>
 export type ChalkChatBoxTheme = Record<ChatBoxContentType, ChalkChatBoxColor>
 
+export type SemanticColorType =
+    | 'waiting'
+    | 'analyzing'
+    | 'thinking'
+    | 'rendering'
+    | 'error'
+    | 'completed'
+
+export type ThemeSemanticColors = Record<SemanticColorType, TerminalColorName>
+
 export type ColorScheme = {
     name: string
     color: Record<TerminalColorName, string>
     theme: ChatBoxTheme
+    semantic?: ThemeSemanticColors
 }
 
 export type ChalkColor = [

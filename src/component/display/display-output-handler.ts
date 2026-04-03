@@ -3,11 +3,16 @@
 import type { LLMOutputHandler, LLMState } from '../../llm/llm-output-handler'
 import type { LLMResultChunk } from '../../llm/llm-types'
 import { SimplifiedDisplay } from '../simplified-display'
-import type { ChalkChatBoxTheme, ChalkTerminalColor } from '../theme/theme-type'
+import type {
+    ChalkChatBoxTheme,
+    ChalkTerminalColor,
+    ThemeSemanticColors,
+} from '../theme/theme-type'
 
 export type DisplayOutputHandlerOptions = {
     color: ChalkTerminalColor
     theme: ChalkChatBoxTheme
+    semanticColors: ThemeSemanticColors
     enableSpinner?: boolean
     textShowRender?: boolean
 }
@@ -19,12 +24,14 @@ export class DisplayOutputHandler implements LLMOutputHandler {
         const {
             color,
             theme,
+            semanticColors,
             enableSpinner = true,
             textShowRender = true,
         } = options
         this.display = new SimplifiedDisplay({
             color,
             theme,
+            semanticColors,
             enableSpinner,
             enableRealtimeRender: textShowRender,
         })

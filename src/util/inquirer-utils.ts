@@ -32,7 +32,7 @@ const style = (color: ChalkTerminalColor) => {
                     return blue.bold(text)
             }
         },
-        error: (text: string) => red(text),
+        error: (text: string) => red.bold(text),
         help: (text: string) => blue.italic.dim(text),
         highlight: (text: string) => cyan.italic(text),
         description: (text: string) => magenta(text),

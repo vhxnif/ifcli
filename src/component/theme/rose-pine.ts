@@ -1,4 +1,9 @@
-import type { ChatBoxTheme, ColorScheme, TerminalColorName } from './theme-type'
+import type {
+    ChatBoxTheme,
+    ColorScheme,
+    TerminalColorName,
+    ThemeSemanticColors,
+} from './theme-type'
 
 type RosePineType = 'Rose Pine' | 'Rose Pine Moon' | 'Rose Pine Dawn'
 type ColorName =
@@ -116,6 +121,17 @@ const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
     }
 }
 
+const generateSemanticColors = (): ThemeSemanticColors => {
+    return {
+        waiting: 'cyan',
+        analyzing: 'yellow',
+        thinking: 'magenta',
+        rendering: 'blue',
+        error: 'red',
+        completed: 'green',
+    }
+}
+
 const rosePine = scheme['Rose Pine']
 const rosePineMoon = scheme['Rose Pine Moon']
 const rosePineDawn = scheme['Rose Pine Dawn']
@@ -125,6 +141,7 @@ const colorScheme: ColorScheme[] = [
         name: 'Rose Pine',
         color: generateTerminalColor(rosePine),
         theme: generateTheme(rosePine),
+        semantic: generateSemanticColors(),
     },
     {
         name: 'Rose Pine Moon',
@@ -132,6 +149,7 @@ const colorScheme: ColorScheme[] = [
             ...generateTerminalColor(rosePineMoon),
         },
         theme: generateTheme(rosePineMoon),
+        semantic: generateSemanticColors(),
     },
     {
         name: 'Rose Pine Dawn',
@@ -141,6 +159,7 @@ const colorScheme: ColorScheme[] = [
             white: rosePineDawn.base,
         },
         theme: generateTheme(rosePineDawn),
+        semantic: generateSemanticColors(),
     },
 ]
 

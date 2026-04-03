@@ -3,17 +3,22 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import type { LLMResultChunk } from '../llm/llm-types'
 import {
+    getSemanticColor,
     type LLMNotifyMessageType,
     llmNotifyMessage,
-    llmNotifyMessageColor,
 } from '../llm/llm-utils'
 import { print, println } from '../util/common-utils'
 import { OraShow } from './ora-show'
-import type { ChalkChatBoxTheme, ChalkTerminalColor } from './theme/theme-type'
+import type {
+    ChalkChatBoxTheme,
+    ChalkTerminalColor,
+    ThemeSemanticColors,
+} from './theme/theme-type'
 
 export class SimplifiedDisplay {
     private theme: ChalkChatBoxTheme
     private color: ChalkTerminalColor
+    private semanticColors: ThemeSemanticColors
     private spinner?: OraShow
     private enableRealtimeRender: boolean
 
@@ -29,16 +34,19 @@ export class SimplifiedDisplay {
     constructor({
         color,
         theme,
+        semanticColors,
         enableSpinner = true,
         enableRealtimeRender = true,
     }: {
         color: ChalkTerminalColor
         theme: ChalkChatBoxTheme
+        semanticColors: ThemeSemanticColors
         enableSpinner?: boolean
         enableRealtimeRender?: boolean
     }) {
         this.theme = theme
         this.color = color
+        this.semanticColors = semanticColors
         this.enableRealtimeRender = enableRealtimeRender
         if (enableSpinner) {
             this.spinner = new OraShow(this.notice('waiting'))
@@ -47,7 +55,8 @@ export class SimplifiedDisplay {
     }
 
     private notice(type: LLMNotifyMessageType) {
-        return this.color[llmNotifyMessageColor[type]](llmNotifyMessage[type])
+        const colorName = getSemanticColor(this.semanticColors, type)
+        return this.color[colorName](llmNotifyMessage[type])
     }
 
     think(reasoning: string): void {
