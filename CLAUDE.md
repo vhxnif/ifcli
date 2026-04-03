@@ -19,11 +19,14 @@ Builds the TypeScript source files into the `build/` directory using Bun's nativ
 ### Code Quality
 
 ```bash
-# Lint code (ESLint configured)
-bunx eslint src/
+# Check and lint code (Biome)
+bun run lint
 
-# Format code (Prettier configured)
-bunx prettier --write src/
+# Fix linting issues
+bun run lint:fix
+
+# Format code
+bun run format
 ```
 
 ## Architecture
@@ -73,19 +76,22 @@ bunx prettier --write src/
 
 ### Code Quality Checks
 
-#### ESLint Validation
+#### Biome Validation
 
-After making code changes, always run ESLint to ensure code style consistency:
+After making code changes, always run Biome to ensure code style consistency:
 
 ```bash
 # Check all source files
-bunx eslint src/
+bun run lint
 
 # Check specific file
-bunx eslint src/path/to/file.ts
+bunx biome check src/path/to/file.ts
 
 # Auto-fix fixable issues
-bunx eslint src/ --fix
+bun run lint:fix
+
+# Format code
+bun run format
 ```
 
 #### IDE Configuration
@@ -93,24 +99,23 @@ bunx eslint src/ --fix
 Ensure your IDE is configured with the following settings:
 
 -   **TypeScript**: Enable strict mode and type checking
--   **ESLint**: Enable automatic linting on save
--   **Prettier**: Configure to match project style (single quotes, no semicolons)
--   **EditorConfig**: Use 4-space indentation
+-   **Biome**: Enable automatic linting and formatting on save
+-   **EditorConfig**: Use4-space indentation
 
 #### Pre-Change Validation Checklist
 
 Before committing changes, verify:
 
-1. ✅ ESLint passes without errors
+1. ✅ Biome linter passes without errors (`bun run lint`)
 2. ✅ TypeScript compilation succeeds (`bun run build`)
 3. ✅ Code follows project style guidelines
 4. ✅ No console warnings in development mode
 
 ### Code Style
 
--   **Semicolons**: Disabled (ESLint rule: `semi: ['error', 'never']`)
--   **Quotes**: Single quotes preferred
--   **Indentation**: 4 spaces
+-   **Semicolons**: Disabled (Biome formatter: `semicolons: "none"`)
+-   **Quotes**: Single quotes preferred (Biome formatter: `quoteStyle: "single"`)
+-   **Indentation**: 4 spaces (Biome formatter: `indentStyle: "space"`, `indentWidth: 4`)
 -   **TypeScript**: Strict mode enabled with comprehensive type definitions
 
 ### Adding New Features

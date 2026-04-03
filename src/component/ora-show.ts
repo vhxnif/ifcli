@@ -1,96 +1,96 @@
-import { sleep } from "bun";
-import type { Ora } from "ora";
-import ora from "ora";
+import { sleep } from 'bun'
+import type { Ora } from 'ora'
+import ora from 'ora'
 
 export class OraShow {
-	private spinner: Ora;
-	private isStop: boolean = true;
+    private spinner: Ora
+    private isStop: boolean = true
 
-	constructor(initMessage: string) {
-		this.spinner = ora({
-			text: initMessage,
-			spinner: {
-				frames: [
-					"⋆",
-					"✶",
-					"✦",
-					"✧",
-					"✻",
-					"✾",
-					"✽",
-					"✿",
-					"❀",
-					"❀",
-					"❀",
-					"✿",
-					"✽",
-					"✾",
-					"✻",
-					"✧",
-					"✦",
-					"✶",
-					"⋆",
-					"⋆",
-					"✶",
-					"✦",
-					"✧",
-					"✷",
-					"✹",
-					"✺",
-					"❁",
-					"❂",
-					"❂",
-					"❂",
-					"❁",
-					"✺",
-					"✹",
-					"✷",
-					"✧",
-					"✦",
-					"✶",
-					"⋆",
-				],
-			},
-			color: "magenta",
-			indent: 1,
-		});
-	}
+    constructor(initMessage: string) {
+        this.spinner = ora({
+            text: initMessage,
+            spinner: {
+                frames: [
+                    '⋆',
+                    '✶',
+                    '✦',
+                    '✧',
+                    '✻',
+                    '✾',
+                    '✽',
+                    '✿',
+                    '❀',
+                    '❀',
+                    '❀',
+                    '✿',
+                    '✽',
+                    '✾',
+                    '✻',
+                    '✧',
+                    '✦',
+                    '✶',
+                    '⋆',
+                    '⋆',
+                    '✶',
+                    '✦',
+                    '✧',
+                    '✷',
+                    '✹',
+                    '✺',
+                    '❁',
+                    '❂',
+                    '❂',
+                    '❂',
+                    '❁',
+                    '✺',
+                    '✹',
+                    '✷',
+                    '✧',
+                    '✦',
+                    '✶',
+                    '⋆',
+                ],
+            },
+            color: 'magenta',
+            indent: 1,
+        })
+    }
 
-	start(msg?: string): void {
-		if (this.isStop) {
-			this.spinner.start();
-			this.isStop = false;
-			if (msg) {
-				this.show(msg);
-			}
-		}
-	}
+    start(msg?: string): void {
+        if (this.isStop) {
+            this.spinner.start()
+            this.isStop = false
+            if (msg) {
+                this.show(msg)
+            }
+        }
+    }
 
-	async stop(): Promise<void> {
-		this.inProgressRun(() => {
-			this.spinner.stop();
-			this.isStop = true;
-		});
-		await sleep(100);
-	}
+    async stop(): Promise<void> {
+        this.inProgressRun(() => {
+            this.spinner.stop()
+            this.isStop = true
+        })
+        await sleep(100)
+    }
 
-	show(text: string): void {
-		this.inProgressRun(() => {
-			this.spinner.text = text;
-		});
-	}
+    show(text: string): void {
+        this.inProgressRun(() => {
+            this.spinner.text = text
+        })
+    }
 
-	fail(msg: string): void {
-		this.inProgressRun(() => {
-			this.spinner.fail(msg);
-			this.isStop = true;
-		});
-	}
+    fail(msg: string): void {
+        this.inProgressRun(() => {
+            this.spinner.fail(msg)
+            this.isStop = true
+        })
+    }
 
-	private inProgressRun(f: () => void): void {
-		if (this.isStop) {
-			return;
-		}
-		f();
-	}
+    private inProgressRun(f: () => void): void {
+        if (this.isStop) {
+            return
+        }
+        f()
+    }
 }
