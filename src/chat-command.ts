@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
 import { act, terminalColor } from './app-context'
+import { commanderHelpConfiguration } from './component/theme/color-scheme'
 import { APP_VERSION } from './config/app-setting'
 import {
     editor,
@@ -10,7 +11,7 @@ import {
     print,
     stdin,
 } from './util/common-utils'
-import { commanderHelpConfiguration } from './component/theme/color-scheme'
+
 const program = new Command()
     .configureHelp(commanderHelpConfiguration(terminalColor))
     .enablePositionalOptions()
@@ -28,7 +29,7 @@ program
     .option('-a, --attachment <file>', 'attach text file content to message')
     .argument(
         '[string...]',
-        'chat message content (multiple arguments will be joined into a single string)'
+        'chat message content (multiple arguments will be joined into a single string)',
     )
     .action(async (content, option) => {
         const { edit, syncCall, newTopic, force, retry, attachment } = option
@@ -44,12 +45,12 @@ program
             await run({
                 content: await withAttachment(ct),
                 chatName: force,
-                noStream: syncCall ? true : false,
+                noStream: !!syncCall,
                 newTopic,
             })
         }
         const getContentAndAsk = async (
-            f: () => Promise<string | undefined>
+            f: () => Promise<string | undefined>,
         ) => {
             const text = await f()
             if (text) {
@@ -81,7 +82,7 @@ program
     .option(
         '-l, --limit <number>',
         'maximum number of messages to display',
-        '100'
+        '100',
     )
     .action(async ({ limit }, cmd) => {
         const force = cmd.parent?.opts()?.force as string
@@ -143,7 +144,7 @@ program
                 [typeof cover === 'string', coverRun],
                 [publish, async () => await ps(name)],
             ],
-            () => show(name)
+            () => show(name),
         )
     })
 
@@ -162,7 +163,7 @@ program
                 [edit, async () => await pt.edit(name)],
                 [clear, () => pt.clear(name)],
             ],
-            () => pt.show(name)
+            () => pt.show(name),
         )
     })
 
@@ -189,7 +190,7 @@ program
                 [mcp, () => cf.mcp(name)],
                 [scenario, () => cf.scenario(name)],
             ],
-            () => cf.show(name)
+            () => cf.show(name),
         )
     })
 

@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import Database from 'bun:sqlite'
+import type Database from 'bun:sqlite'
+import { temperature } from '../llm/llm-constant'
+import { isEmpty, unixnow, uuid } from '../util/common-utils'
 import {
     Cache,
     Chat,
@@ -10,19 +12,17 @@ import {
     ChatPrompt,
     ChatTopic,
     CmdHistory,
-    ExportMessage,
-    SqliteTable,
     type CmdHistoryType,
+    ExportMessage,
     type IDBClient,
     type MessageContent,
     type Model,
     type PresetMessageContent,
     type RunSql,
     type Scenario,
+    SqliteTable,
 } from './store-types'
 import { table_def } from './table-def'
-import { isEmpty, unixnow, uuid } from '../util/common-utils'
-import { temperature } from '../llm/llm-constant'
 
 export class DBClient implements IDBClient {
     private readonly db: Database
@@ -79,7 +79,7 @@ export class DBClient implements IDBClient {
         const now = unixnow()
         const chatId = uuid()
         const statement = this.db.prepare(
-            `INSERT INTO chat (id, name, "select", action_time, select_time) VALUES (?, ?, ?, ?, ?)`
+            `INSERT INTO chat (id, name, "select", action_time, select_time) VALUES (?, ?, ?, ?, ?)`,
         )
         statement.run(chatId, name, false, now, now)
         return chatId
@@ -87,7 +87,7 @@ export class DBClient implements IDBClient {
 
     addConfig(chatId: string, model: Model): void {
         const configStatement = this.db.prepare(
-            `INSERT INTO chat_config (id, chat_id, sys_prompt, with_context, context_limit, with_mcp, llm_type, model, scenario_name, scenario, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            `INSERT INTO chat_config (id, chat_id, sys_prompt, with_context, context_limit, with_mcp, llm_type, model, scenario_name, scenario, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         const [scenarioName, scenario] = temperature.general
         const { llmType, model: value } = model
@@ -102,7 +102,7 @@ export class DBClient implements IDBClient {
             value,
             scenarioName,
             scenario,
-            unixnow()
+            unixnow(),
         )
     }
 
@@ -110,14 +110,14 @@ export class DBClient implements IDBClient {
         const now = unixnow()
         this.db
             .prepare(
-                `INSERT INTO chat_config_ext (id, chat_id, ext, create_time, update_time) VALUES (?, ?, ?, ?, ?)`
+                `INSERT INTO chat_config_ext (id, chat_id, ext, create_time, update_time) VALUES (?, ?, ?, ?, ?)`,
             )
             .run(uuid(), chatId, ext, now, now)
     }
 
     addPreset(chatId: string, contents: PresetMessageContent[]): void {
         const statement = this.db.prepare(
-            `INSERT INTO chat_preset_message (id, chat_id, user, assistant, create_time) VALUES (?, ?, ?, ?, ?)`
+            `INSERT INTO chat_preset_message (id, chat_id, user, assistant, create_time) VALUES (?, ?, ?, ?, ?)`,
         )
         contents.forEach((it) => {
             statement.run(uuid(), chatId, it.user, it.assistant, unixnow())
@@ -128,7 +128,7 @@ export class DBClient implements IDBClient {
         const now = unixnow()
         this.db
             .prepare(
-                `INSERT INTO chat_topic (id, chat_id, content, "select", select_time, create_time) VALUES (?, ?, ?, ?, ?, ?)`
+                `INSERT INTO chat_topic (id, chat_id, content, "select", select_time, create_time) VALUES (?, ?, ?, ?, ?, ?)`,
             )
             .run(topicId, chatId, content, true, now, now)
     }
@@ -142,7 +142,7 @@ export class DBClient implements IDBClient {
     unselectTopic(chatId: string): void {
         this.db
             .prepare(
-                `UPDATE chat_topic SET "select" = ? where "select" = ? and chat_id = ?`
+                `UPDATE chat_topic SET "select" = ? where "select" = ? and chat_id = ?`,
             )
             .run(false, true, chatId)
     }
@@ -156,7 +156,7 @@ export class DBClient implements IDBClient {
     currentTopic(chatId: string): ChatTopic | null {
         return this.db
             .query(
-                `SELECT ${this.chatTopicColumn} FROM chat_topic WHERE "select" = ? and chat_id = ? limit 1`
+                `SELECT ${this.chatTopicColumn} FROM chat_topic WHERE "select" = ? and chat_id = ? limit 1`,
             )
             .as(ChatTopic)
             .get(true, chatId)
@@ -177,7 +177,7 @@ export class DBClient implements IDBClient {
     queryConfig(chatId: string): ChatConfig | null {
         return this.db
             .query(
-                `SELECT ${this.chatConfigColumn} FROM chat_config WHERE chat_id = ?`
+                `SELECT ${this.chatConfigColumn} FROM chat_config WHERE chat_id = ?`,
             )
             .as(ChatConfig)
             .get(chatId)
@@ -185,7 +185,7 @@ export class DBClient implements IDBClient {
     queryConfigExt(chatId: string): ChatConfigExt | null {
         return this.db
             .prepare(
-                `SELECT ${this.chatConfigExtColumn} FROM chat_config_ext WHERE chat_id = ?`
+                `SELECT ${this.chatConfigExtColumn} FROM chat_config_ext WHERE chat_id = ?`,
             )
             .as(ChatConfigExt)
             .get(chatId)
@@ -193,7 +193,7 @@ export class DBClient implements IDBClient {
     queryPreset(chatId: string): ChatPresetMessage[] {
         return this.db
             .query(
-                `SELECT ${this.chatPresetMessageColumn} FROM chat_preset_message WHERE chat_id = ?`
+                `SELECT ${this.chatPresetMessageColumn} FROM chat_preset_message WHERE chat_id = ?`,
             )
             .as(ChatPresetMessage)
             .all(chatId)
@@ -202,7 +202,7 @@ export class DBClient implements IDBClient {
     queryTopic(chatId: string): ChatTopic[] {
         return this.db
             .query(
-                `SELECT ${this.chatTopicColumn} FROM chat_topic WHERE chat_id = ?`
+                `SELECT ${this.chatTopicColumn} FROM chat_topic WHERE chat_id = ?`,
             )
             .as(ChatTopic)
             .all(chatId)
@@ -211,28 +211,28 @@ export class DBClient implements IDBClient {
     modifySystemPrompt(configId: string, prompt: string): void {
         this.db
             .prepare(
-                `UPDATE chat_config SET sys_prompt = ?, update_time = ? where id = ?`
+                `UPDATE chat_config SET sys_prompt = ?, update_time = ? where id = ?`,
             )
             .run(prompt, unixnow(), configId)
     }
     modifyContextLimit(configId: string, limit: number): void {
         this.db
             .prepare(
-                `UPDATE chat_config SET context_limit = ?, update_time = ? where id = ?`
+                `UPDATE chat_config SET context_limit = ?, update_time = ? where id = ?`,
             )
             .run(limit, unixnow(), configId)
     }
     modifyContext(configId: string, active: boolean): void {
         this.db
             .prepare(
-                `UPDATE chat_config SET with_context = ?, update_time = ? where id = ?`
+                `UPDATE chat_config SET with_context = ?, update_time = ? where id = ?`,
             )
             .run(active, unixnow(), configId)
     }
     modifyMcp(configId: string, active: boolean): void {
         this.db
             .prepare(
-                `UPDATE chat_config SET with_mcp = ?, update_time = ? where id = ?`
+                `UPDATE chat_config SET with_mcp = ?, update_time = ? where id = ?`,
             )
             .run(active, unixnow(), configId)
     }
@@ -240,7 +240,7 @@ export class DBClient implements IDBClient {
         const { name, value } = scenario
         this.db
             .prepare(
-                `UPDATE chat_config SET scenario_name = ?, scenario = ?, update_time = ? where id = ?`
+                `UPDATE chat_config SET scenario_name = ?, scenario = ?, update_time = ? where id = ?`,
             )
             .run(name, value, unixnow(), configId)
     }
@@ -248,14 +248,14 @@ export class DBClient implements IDBClient {
         const { llmType, model: value } = model
         this.db
             .prepare(
-                `UPDATE chat_config SET llm_type = ?, model = ?, update_time = ? where id = ?`
+                `UPDATE chat_config SET llm_type = ?, model = ?, update_time = ? where id = ?`,
             )
             .run(llmType, value, unixnow(), configId)
     }
     updateConfigExt(chatId: string, ext: string): void {
         this.db
             .prepare(
-                `UPDATE chat_config_ext SET ext = ?, update_time = ? WHERE chat_id = ?`
+                `UPDATE chat_config_ext SET ext = ?, update_time = ? WHERE chat_id = ?`,
             )
             .run(ext, unixnow(), chatId)
     }
@@ -293,7 +293,7 @@ export class DBClient implements IDBClient {
     queryMessage(
         topicId: string,
         limit: number,
-        withReasoning?: boolean
+        withReasoning?: boolean,
     ): ChatMessage[] {
         return this.db
             .query(
@@ -305,7 +305,7 @@ export class DBClient implements IDBClient {
                 } and pair_key in (
                     select pair_key from chat_message group by pair_key order by max(action_time) desc limit ?
                 ) order by action_time desc
-                `
+                `,
             )
             .as(ChatMessage)
             .all(topicId, limit)
@@ -313,7 +313,7 @@ export class DBClient implements IDBClient {
 
     saveMessage(messages: MessageContent[]) {
         const statement = this.db.prepare(
-            `INSERT INTO chat_message (id, topic_id, "role", content, pair_key, action_time) VALUES (?, ?, ?, ?, ?, ?)`
+            `INSERT INTO chat_message (id, topic_id, "role", content, pair_key, action_time) VALUES (?, ?, ?, ?, ?, ?)`,
         )
         this.db.transaction(() => {
             messages
@@ -326,14 +326,16 @@ export class DBClient implements IDBClient {
                     it.pairKey,
                     unixnow(),
                 ])
-                .forEach((it) => statement.run(...it))
+                .forEach((it) => {
+                    statement.run(...it)
+                })
         })()
     }
 
     queryCmdHis(type: CmdHistoryType, key: string) {
         return this.db
             .query(
-                `SELECT ${this.cmdHistoryColumn} FROM cmd_history WHERE type = ? and key like ?`
+                `SELECT ${this.cmdHistoryColumn} FROM cmd_history WHERE type = ? and key like ?`,
             )
             .as(CmdHistory)
             .all(type, `%${key}%`)
@@ -342,7 +344,7 @@ export class DBClient implements IDBClient {
     getCmdHis(type: CmdHistoryType, key: string) {
         return this.db
             .query(
-                `SELECT ${this.cmdHistoryColumn} FROM cmd_history WHERE type = ? and key = ?`
+                `SELECT ${this.cmdHistoryColumn} FROM cmd_history WHERE type = ? and key = ?`,
             )
             .as(CmdHistory)
             .get(type, key)
@@ -351,7 +353,7 @@ export class DBClient implements IDBClient {
     addCmdHis(type: CmdHistoryType, key: string) {
         this.db
             .prepare(
-                `INSERT INTO cmd_history (id, type, key, last_switch_time, frequency) VALUES (?, ?, ?, ?, ?)`
+                `INSERT INTO cmd_history (id, type, key, last_switch_time, frequency) VALUES (?, ?, ?, ?, ?)`,
             )
             .run(uuid(), type, key, unixnow(), 1)
     }
@@ -365,7 +367,7 @@ export class DBClient implements IDBClient {
     updateCmdHis(type: CmdHistoryType, key: string, frequency: number) {
         this.db
             .prepare(
-                `UPDATE cmd_history SET last_switch_time = ?, frequency = ? WHERE type = ? and key = ?`
+                `UPDATE cmd_history SET last_switch_time = ?, frequency = ? WHERE type = ? and key = ?`,
             )
             .run(unixnow(), frequency + 1, type, key)
     }
@@ -382,21 +384,21 @@ export class DBClient implements IDBClient {
     publishPrompt(name: string, version: string, content: string) {
         const prompt = this.db
             .query(
-                `SELECT ${this.chatPromptColumn} FROM chat_prompt WHERE name = ? AND version = ?`
+                `SELECT ${this.chatPromptColumn} FROM chat_prompt WHERE name = ? AND version = ?`,
             )
             .as(ChatPrompt)
             .get(name, version)
         if (prompt) {
             this.db
                 .prepare(
-                    `UPDATE chat_prompt SET content = ?, modify_time = ${unixnow()} WHERE name = ? AND version = ?`
+                    `UPDATE chat_prompt SET content = ?, modify_time = ${unixnow()} WHERE name = ? AND version = ?`,
                 )
                 .run(content, name, version)
             return
         }
         this.db
             .prepare(
-                `INSERT INTO chat_prompt (name, version, role, content, modify_time) VALUES (?, ?, ?, ?, ?)`
+                `INSERT INTO chat_prompt (name, version, role, content, modify_time) VALUES (?, ?, ?, ?, ?)`,
             )
             .run(name, version, 'system', content, unixnow())
     }
@@ -441,7 +443,7 @@ export class DBClient implements IDBClient {
 
     queryChatTopicExportMessage(
         chatId: string,
-        topicId: string
+        topicId: string,
     ): ExportMessage[] {
         return this.db
             .query(this.exportMessageSql({ chatId: true, topicId: true }))

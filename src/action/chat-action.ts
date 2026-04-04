@@ -1,31 +1,32 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+
+import path from 'node:path'
 import { stringWidth } from 'bun'
-import path from 'path'
 import writeXlsxFile, { type Schema } from 'write-excel-file/node'
-import { terminalColor, chalkTheme } from '../app-context'
-import { Display } from '../component/llm-result-show'
+import { chalkTheme, semanticColors, terminalColor } from '../app-context'
+import { DisplayOutputHandler } from '../component/display/display-output-handler'
 import { simpleShow } from '../component/simple-show'
-import { TextShow } from '../component/text-show'
-import { type GeneralSetting, type Setting } from '../config/app-setting'
+import { SimplifiedDisplay } from '../component/simplified-display'
+import type { GeneralSetting, Setting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { askFlow } from '../llm/ask-flow'
 import { temperature } from '../llm/llm-constant'
 import type { ILLMClient } from '../llm/llm-types'
 import MCPClient from '../llm/mcp-client'
 import { OpenAiClient } from '../llm/open-ai-client'
-import {
+import type {
     Chat,
     ChatMessage,
     ChatPresetMessage,
     ChatPrompt,
     ChatTopic,
     CmdHistory,
+    ConfigExt,
     ExportMessage,
-    type ConfigExt,
-    type IStore,
-    type MCPServerKey,
-    type Model,
-    type PresetMessageContent,
+    IStore,
+    MCPServerKey,
+    Model,
+    PresetMessageContent,
 } from '../store/store-types'
 import {
     editor,
@@ -37,15 +38,16 @@ import {
     unixnow,
 } from '../util/common-utils'
 import {
+    type Choice,
     checkbox,
     checkboxThemeStyle,
     input,
     inputThemeStyle,
     select,
     selectThemeStyle,
-    type Choice,
 } from '../util/inquirer-utils'
 import { env, terminal } from '../util/platform-utils'
+import { statusFormat } from '../util/ui-format'
 import type { AskContent, IChatAct } from './action-types'
 
 export class ChatAct implements IChatAct {
@@ -63,14 +65,16 @@ export class ChatAct implements IChatAct {
             .map((it) => {
                 try {
                     return new MCPClient(it)
-                } catch (e: unknown) {
+                } catch (_e: unknown) {
                     return null
                 }
             })
             .filter((it) => it != null)
         llmSettings
             .map((it) => new OpenAiClient(it))
-            .forEach((it) => this.clientMap.set(it.type, it))
+            .forEach((it) => {
+                this.clientMap.set(it.type, it)
+            })
     }
 
     private async selectLLmAndModel(): Promise<Model> {
@@ -108,13 +112,13 @@ export class ChatAct implements IChatAct {
 
     async removeChat(): Promise<void> {
         const cts = this.store.chat.list()
-        if (cts.length == 1) {
+        if (cts.length === 1) {
             throw Error(promptMessage.oneChatRemain)
         }
         await this.selectChatRun(
             'Remove Chat:',
             cts.filter((it) => !it.select),
-            (answer) => this.store.chat.get(answer).remove()
+            (answer) => this.store.chat.get(answer).remove(),
         )
     }
 
@@ -143,23 +147,33 @@ export class ChatAct implements IChatAct {
             await this.modifyModel(chatName)
             client = this.clientMap.get(chat.config.value.llmType)!
         }
+        const render = !noStream
+        const outputHandler = new DisplayOutputHandler({
+            color: terminalColor,
+            theme: chalkTheme,
+            semanticColors: semanticColors,
+            enableSpinner: render,
+            textShowRender: render,
+        })
         await askFlow({
             chat,
             generalSetting: this.generalSetting,
             client: client.openai,
             mcps: this.mcps,
             userContent: content,
+            outputHandler,
             noStream,
             newTopic,
         })
     }
 
     async changeChat(name?: string): Promise<void> {
-        const { green, white, cyan } = terminalColor
         const chat = this.store.chat.get()
         const f = (s: string) => {
             chat.switch(s)
-            print(`${green('✔')} ${white.bold('Select Chat:')} ${cyan(s)} `)
+            print(
+                `${statusFormat.success(terminalColor)} ${terminalColor.white.bold('Select Chat:')} ${terminalColor.cyan(s)} `,
+            )
         }
         if (name && (await this.quickCmd(name, f))) {
             return
@@ -189,7 +203,7 @@ export class ChatAct implements IChatAct {
 
     private async quickCmd(
         subkey: string,
-        quikeRun: (s: string) => void | Promise<void>
+        quikeRun: (s: string) => void | Promise<void>,
     ): Promise<boolean> {
         const qk = this.store.quickSwitch
         const cmd = qk
@@ -206,7 +220,7 @@ export class ChatAct implements IChatAct {
             }
             qk.update(key, frequency)
             return true
-        } catch (e: unknown) {
+        } catch (_e: unknown) {
             qk.delete(key)
             return false
         }
@@ -308,9 +322,10 @@ export class ChatAct implements IChatAct {
         const colExpInfo = (role: string, content: string) =>
             expInfo.push({ role, content })
         const { reasoning, toolsCall, assistant } = this.partMessageByRole(msgs)
-        const display = new Display({
+        const display = new SimplifiedDisplay({
             color: terminalColor,
             theme: chalkTheme,
+            semanticColors: semanticColors,
             enableSpinner: false,
         })
         this.historyReasoningPrint(reasoning, display, colExpInfo)
@@ -321,8 +336,8 @@ export class ChatAct implements IChatAct {
 
     private historyAssistantPrint(
         assistant: string,
-        display: Display,
-        f: (role: string, content: string) => void
+        display: SimplifiedDisplay,
+        f: (role: string, content: string) => void,
     ): void {
         display.contentShow(assistant)
         display.contentStop()
@@ -331,8 +346,8 @@ export class ChatAct implements IChatAct {
 
     private historyReasoningPrint(
         reasoning: string,
-        display: Display,
-        f: (role: string, content: string) => void
+        display: SimplifiedDisplay,
+        f: (role: string, content: string) => void,
     ): void {
         if (!reasoning) {
             return
@@ -344,8 +359,8 @@ export class ChatAct implements IChatAct {
 
     private historyToolsCallPrint(
         toolsCall: string,
-        display: Display,
-        f: (role: string, content: string) => void
+        display: SimplifiedDisplay,
+        f: (role: string, content: string) => void,
     ): void {
         if (!toolsCall) {
             return
@@ -360,7 +375,7 @@ export class ChatAct implements IChatAct {
         res.forEach((it) => {
             const { mcpServer, mcpVersion, toolName, args, response } = it
             display.toolCall(mcpServer, mcpVersion, toolName, args)
-            display.toolCallReult(response)
+            display.toolCallResult(response)
         })
     }
 
@@ -411,7 +426,7 @@ export class ChatAct implements IChatAct {
                 } = JSON.parse(it)
                 return i
             })
-        } catch (err: unknown) {
+        } catch (_err: unknown) {
             return toolsCall
         }
     }
@@ -456,7 +471,7 @@ export class ChatAct implements IChatAct {
                 return false
             }
             const item = mcpServers.find(
-                (it) => key(m.name, m.version) === key(it.name, it.version)
+                (it) => key(m.name, m.version) === key(it.name, it.version),
             )
             return item !== void 0
         }
@@ -549,7 +564,7 @@ export class ChatAct implements IChatAct {
 
     private promptChoice(name?: string): Choice<ChatPrompt>[] {
         const { search, list } = this.store.prompt
-        let prompts
+        let prompts: ChatPrompt[]
         if (name) {
             prompts = search(name)
         } else {
@@ -571,17 +586,9 @@ export class ChatAct implements IChatAct {
 
     private showPrompt(pt: string): void {
         const { assisant } = chalkTheme
-        const { title: titleColor, bolder, content } = assisant
-        const textShow = new TextShow({
-            title: 'Promot',
-            titleColor: titleColor,
-            bolderColor: bolder,
-            textColor: content,
-            render: true,
-        })
-        textShow.start()
-        textShow.append(pt)
-        textShow.stop()
+        const { title, content } = assisant
+        console.log(title.bold('Prompt'))
+        console.log(content(pt))
     }
 
     async tools(): Promise<void> {
@@ -596,7 +603,7 @@ export class ChatAct implements IChatAct {
                     if (!it.isConnected) {
                         health = false
                     }
-                } catch (e: unknown) {
+                } catch (_e: unknown) {
                     health = false
                 } finally {
                     await it.close()
@@ -606,7 +613,7 @@ export class ChatAct implements IChatAct {
                     version: it.version,
                     health,
                 }
-            })
+            }),
         )
         simpleShow.mcpHealthCheckShow(data, terminalColor)
     }
@@ -631,7 +638,7 @@ export class ChatAct implements IChatAct {
                     name: it.name,
                     description: it.description ?? '',
                 })),
-                chalkTheme
+                chalkTheme,
             )
         } finally {
             await m.close()
@@ -823,7 +830,7 @@ export class ChatAct implements IChatAct {
     private async selectChatRun(
         message: string,
         chats: Chat[],
-        f: (str: string) => void
+        f: (str: string) => void,
     ): Promise<void> {
         if (isEmpty(chats)) {
             throw Error(promptMessage.chatMissing)
@@ -852,7 +859,7 @@ export class ChatAct implements IChatAct {
         let result = ''
         for (let i = 0; i < maxLoop && low <= high; i++) {
             const mid = Math.floor((low + high) / 2)
-            const candidate = str.substring(0, mid) + '...'
+            const candidate = `${str.substring(0, mid)}...`
             if (stringWidth(candidate) <= targetWd) {
                 result = candidate
                 low = mid + 1
@@ -873,7 +880,7 @@ export class ChatAct implements IChatAct {
         await this.exportXlsx(
             this.store.exprot.chat(chatId),
             `ifcli_chat_message_${unixnow()}`,
-            path
+            path,
         )
     }
 
@@ -884,7 +891,7 @@ export class ChatAct implements IChatAct {
         await this.exportXlsx(
             this.store.exprot.topic(chatId, topicId),
             `ifcli_chat_topic_message_${unixnow()}`,
-            path
+            path,
         )
     }
 
@@ -894,7 +901,7 @@ export class ChatAct implements IChatAct {
         await this.exportXlsx(
             this.store.exprot.topic(chatId, topicId),
             `ifcli_chat_topic_message_${unixnow()}`,
-            path
+            path,
         )
     }
 
@@ -941,7 +948,7 @@ export class ChatAct implements IChatAct {
     private async exportXlsx(
         objs: ExportMessage[],
         fileName: string,
-        exportPath?: string
+        exportPath?: string,
     ): Promise<void> {
         const schema: Schema<ExportMessage> = [
             {

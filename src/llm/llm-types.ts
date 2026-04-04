@@ -1,5 +1,6 @@
 import type OpenAI from 'openai'
 import type { RunnableToolFunctionWithoutParse } from 'openai/lib/RunnableFunction.mjs'
+import type { LLMOutputHandler } from './llm-output-handler'
 import type MCPClient from './mcp-client'
 
 export type LLMRole = 'system' | 'user' | 'assistant'
@@ -22,6 +23,7 @@ export type LLMParam = {
     theme?: string
     noStream?: boolean
     newTopic?: boolean
+    outputHandler?: LLMOutputHandler
 }
 
 export type LLMResultChunk = {

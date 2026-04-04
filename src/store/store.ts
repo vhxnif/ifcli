@@ -154,9 +154,9 @@ export class Store implements IStore {
             this.client.delConfig(chatId)
             this.client.delConfigExt(chatId)
             this.client.delPreset(chatId)
-            this.client
-                .queryTopic(chatId)
-                .forEach((it) => this.client.delMessage(it.id))
+            this.client.queryTopic(chatId).forEach((it) => {
+                this.client.delMessage(it.id)
+            })
             this.client.delChatTopic(chatId)
         })
     }
@@ -170,7 +170,7 @@ export class Store implements IStore {
 
     private async newChat(
         name: string,
-        model: () => Promise<Model>
+        model: () => Promise<Model>,
     ): Promise<void> {
         const chat = this.client.queryChat(name)
         const f = () => {
@@ -190,7 +190,7 @@ export class Store implements IStore {
             this.client.addConfig(chatId, md)
             this.client.addConfigExt(
                 chatId,
-                JSON.stringify({ mcpServers: [] } as ConfigExt)
+                JSON.stringify({ mcpServers: [] } as ConfigExt),
             )
             f()
         })

@@ -1,6 +1,6 @@
+import checkbox from '@inquirer/checkbox'
 import input from '@inquirer/input'
 import select from '@inquirer/select'
-import checkbox from '@inquirer/checkbox'
 import type { ChalkTerminalColor } from '../component/theme/theme-type'
 
 export type Choice<V> = {
@@ -32,7 +32,7 @@ const style = (color: ChalkTerminalColor) => {
                     return blue.bold(text)
             }
         },
-        error: (text: string) => red(text),
+        error: (text: string) => red.bold(text),
         help: (text: string) => blue.italic.dim(text),
         highlight: (text: string) => cyan.italic(text),
         description: (text: string) => magenta(text),
@@ -143,10 +143,10 @@ const inputThemeStyle = (color: ChalkTerminalColor): InputThemeStyle => {
 }
 
 export {
-    selectThemeStyle,
+    checkbox,
     checkboxThemeStyle,
+    input,
     inputThemeStyle,
     select,
-    checkbox,
-    input,
+    selectThemeStyle,
 }

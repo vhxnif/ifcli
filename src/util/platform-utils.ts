@@ -27,7 +27,7 @@ const isEnvKey = (str: string): boolean => {
 const arrEach = (
     arr: any[],
     objEach: (obj: any, f: (str: string) => string) => void,
-    f: (str: string) => string
+    f: (str: string) => string,
 ): any[] => {
     return arr.map((a) => {
         if (typeof a === 'string') {
@@ -46,7 +46,7 @@ const arrEach = (
 const objEach = (
     obj: any,
     f: (str: string) => string,
-    visited = new WeakSet()
+    visited = new WeakSet(),
 ): void => {
     if (visited.has(obj)) {
         return
@@ -64,14 +64,13 @@ const objEach = (
                 continue
             }
             objEach(value, f)
-            continue
         }
     }
 }
 
 const objEnvKeyProcess = (
     str: string,
-    f: (key: string, envValue: string | undefined) => string
+    f: (key: string, envValue: string | undefined) => string,
 ): string => {
     if (!isEnvKey(str)) {
         return str
@@ -93,7 +92,7 @@ const objEnvCheck = (obj: any): void => {
     })
     if (!isEmpty(missingKeys)) {
         console.error(
-            `Missing required environment variables: ${missingKeys.join(', ')}`
+            `Missing required environment variables: ${missingKeys.join(', ')}`,
         )
     }
 }
@@ -109,4 +108,4 @@ const objEnvFill = (obj: any): void => {
     })
 }
 
-export { env, objEnvCheck, objEnvFill, tmpPath, platform, terminal }
+export { env, objEnvCheck, objEnvFill, platform, terminal, tmpPath }

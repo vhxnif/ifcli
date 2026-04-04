@@ -66,12 +66,12 @@ export class OraShow {
         }
     }
 
-    stop(): void {
+    async stop(): Promise<void> {
         this.inProgressRun(() => {
             this.spinner.stop()
             this.isStop = true
-            sleep(100)
         })
+        await sleep(100)
     }
 
     show(text: string): void {

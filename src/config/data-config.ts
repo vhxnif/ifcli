@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { accessSync, constants, mkdirSync } from 'node:fs'
-import path from 'path'
+import path from 'node:path'
 import { env, platform } from '../util/platform-utils'
 import { APP_VERSION } from './app-setting'
 
@@ -15,15 +15,15 @@ export class DataPathConfig {
         const appConfig = `${platformConfigPath}${path.sep}${appName}`
         try {
             accessSync(platformConfigPath, constants.F_OK)
-        } catch (err: any) {
+        } catch (_err: any) {
             throw Error(
-                `platform: ${platform}, configPath missing. ${platformConfigPath}`
+                `platform: ${platform}, configPath missing. ${platformConfigPath}`,
             )
         }
         try {
             accessSync(appConfig, constants.F_OK)
             return appConfig
-        } catch (err: any) {
+        } catch (_err: any) {
             mkdirSync(appConfig, { recursive: true })
             return appConfig
         }

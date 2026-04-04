@@ -3,18 +3,18 @@ import type OpenAI from 'openai'
 import type { RunnableToolFunctionWithoutParse } from 'openai/lib/RunnableFunction.mjs'
 import { Flow, Node } from 'pocketflow'
 import type { GeneralSetting } from '../config/app-setting'
+import type { ChatInfo, MessageContent } from '../store/store-types'
+import { isEmpty, println, uuid } from '../util/common-utils'
+import type { LLMOutputHandler } from './llm-output-handler'
+import { SilentOutputHandler } from './llm-output-handler'
 import type {
     LLMMessage,
     LLMParam,
     LLMResultChunk,
     LLMToolsCallParam,
 } from './llm-types'
-import type MCPClient from './mcp-client'
-import type { ChatInfo, MessageContent } from '../store/store-types'
-import { isEmpty, println, uuid } from '../util/common-utils'
-import { Display } from '../component/llm-result-show'
 import { assistant, system, user } from './llm-utils'
-import { chalkTheme, terminalColor } from '../app-context'
+import type MCPClient from './mcp-client'
 
 export type AskShare = LLMParam & {
     chat: ChatInfo
@@ -33,13 +33,10 @@ export type AskShare = LLMParam & {
     }[]
     mcps?: MCPClient[]
     generalSetting?: GeneralSetting
+    outputHandler?: LLMOutputHandler
 }
 
 class SystemPromptNode extends Node<AskShare> {
-    constructor() {
-        super()
-    }
-
     override async prep(shared: AskShare): Promise<void> {
         const { systemPrompt } = shared
         if (isEmpty(systemPrompt)) {
@@ -50,10 +47,6 @@ class SystemPromptNode extends Node<AskShare> {
 }
 
 class PresetNode extends Node<AskShare> {
-    constructor() {
-        super()
-    }
-
     override async prep(shared: AskShare): Promise<void> {
         const { chat } = shared
         const presetMessage = chat.preset.get().flatMap(
@@ -61,17 +54,13 @@ class PresetNode extends Node<AskShare> {
                 [
                     { role: 'user', content: it.user },
                     { role: 'assistant', content: it.assistant },
-                ] as LLMMessage[]
+                ] as LLMMessage[],
         )
         shared.messages = [...shared.messages, ...presetMessage]
     }
 }
 
 class ContextNode extends Node<AskShare> {
-    constructor() {
-        super()
-    }
-
     override async prep(shared: AskShare): Promise<void> {
         const { chat, userContent, messages, withContext, contextLimit } =
             shared
@@ -95,10 +84,6 @@ class ContextNode extends Node<AskShare> {
 }
 
 class UserNode extends Node<AskShare> {
-    constructor() {
-        super()
-    }
-
     override async prep(shared: AskShare): Promise<void> {
         const { userContent } = shared
         shared.messages.push(user(userContent))
@@ -126,7 +111,7 @@ class ToolsNode extends Node<AskShare> {
         }
         const filterActiveMCPServer = (m: MCPClient) => {
             const one = mcpServers.find(
-                (it) => it.name === m.name && it.version === m.version
+                (it) => it.name === m.name && it.version === m.version,
             )
             return one !== void 0
         }
@@ -140,13 +125,16 @@ class ToolsNode extends Node<AskShare> {
                 mcps.flatMap(async (it) => {
                     await it.connect()
                     return await it.tools()
-                })
+                }),
             )
         ).flat()
         shared.tools = tools
     }
 
-    override async execFallback(prepRes: unknown, error: Error): Promise<void> {
+    override async execFallback(
+        _prepRes: unknown,
+        error: Error,
+    ): Promise<void> {
         if (this.mcps) {
             await Promise.all(this.mcps.map((it) => it.close()))
         }
@@ -157,8 +145,8 @@ class ToolsNode extends Node<AskShare> {
 class AiRouterNode extends Node<AskShare> {
     override async post(
         shared: AskShare,
-        prepRes: unknown,
-        execRes: unknown
+        _prepRes: unknown,
+        _execRes: unknown,
     ): Promise<string | undefined> {
         const { tools } = shared
         if (tools) {
@@ -181,14 +169,9 @@ class ToolsCallNode extends Node<AskShare> {
     }
 
     override async exec(prepRes: LLMToolsCallParam): Promise<LLMResultChunk> {
-        const { model, temperature, tools, messages, theme, noStream } = prepRes
-        const render = !noStream
-        const display = new Display({
-            color: terminalColor,
-            theme: chalkTheme,
-            textShowRender: render,
-            enableSpinner: render,
-        })
+        const { model, temperature, tools, messages, outputHandler, noStream } =
+            prepRes
+        const handler = outputHandler ?? new SilentOutputHandler()
         try {
             const runner = this.client.chat.completions
                 .runTools({
@@ -199,34 +182,35 @@ class ToolsCallNode extends Node<AskShare> {
                     stream: true,
                 })
                 .on('tool_calls.function.arguments.delta', () => {
-                    display.change('analyzing')
+                    handler.onStateChange('analyzing')
                 })
                 .on(
                     'tool_calls.function.arguments.done',
                     (it: { name: string; arguments: string }) => {
-                        const f = tools.find((i) => i.id == it.name)!
-                        display.toolCall(
+                        const f = tools.find((i) => i.id === it.name)!
+                        handler.onToolCall(
                             f?.mcpServer,
                             f?.mcpVersion,
                             f?.funName,
-                            it.arguments
+                            it.arguments,
                         )
-                    }
+                    },
                 )
                 .on('functionToolCallResult', (it: string) => {
-                    display.toolCallReult(it)
+                    handler.onToolResult(it)
                 })
                 .on('content', (it: string) => {
-                    display.contentShow(it)
+                    handler.onContentChunk(it)
                 })
             await runner.finalChatCompletion()
-            const res = display.contentStop().result()
+            handler.onContentComplete()
+            const result = handler.getResult()
             if (noStream) {
-                println(res.assistant.join(''))
+                println(result.assistant.join(''))
             }
-            return res
+            return result
         } catch (err: unknown) {
-            display.error()
+            handler.onError(err instanceof Error ? err : new Error(String(err)))
             throw err
         }
     }
@@ -234,7 +218,7 @@ class ToolsCallNode extends Node<AskShare> {
     override async post(
         shared: AskShare,
         prepRes: LLMToolsCallParam,
-        execRes: LLMResultChunk
+        execRes: LLMResultChunk,
     ): Promise<string | undefined> {
         shared.resultChunk = execRes
         await Promise.all(prepRes.mcps.map((it) => it.close()))
@@ -243,7 +227,7 @@ class ToolsCallNode extends Node<AskShare> {
 
     override async execFallback(
         prepRes: LLMToolsCallParam,
-        error: Error
+        error: Error,
     ): Promise<void> {
         await Promise.all(prepRes.mcps.map((it) => it.close()))
         throw error
@@ -265,14 +249,13 @@ class StreamCallNode extends Node<AskShare> {
     }
 
     override async exec(prepRes: LLMParam): Promise<LLMResultChunk> {
-        const { messages, model, temperature, noStream } = prepRes
-        const render = !noStream
-        const display = new Display({
-            color: terminalColor,
-            theme: chalkTheme,
-            textShowRender: render,
-            enableSpinner: render,
-        })
+        const { messages, model, temperature, outputHandler, noStream } =
+            prepRes
+        const handler = outputHandler ?? new SilentOutputHandler()
+        let lastChunk: string = ''
+        let hasReasoningContent: boolean = false
+        let hasReasoningStopped: boolean = false
+
         try {
             const stream = await this.client.chat.completions.create({
                 messages,
@@ -281,23 +264,58 @@ class StreamCallNode extends Node<AskShare> {
                 stream: true,
             })
             for await (const chunk of stream) {
-                display.thinkingShow(chunk)
+                const delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta & {
+                    reasoning_content?: string
+                    reasoning?: string
+                } = chunk.choices[0]?.delta
+                const reasoning =
+                    delta.reasoning || delta.reasoning_content || ''
+                const content = delta.content || ''
+
+                if (reasoning) {
+                    hasReasoningContent = true
+                    handler.onReasoningChunk(reasoning)
+                }
+
+                const combinedChunks = lastChunk + content
+                lastChunk = content
+
+                if (
+                    combinedChunks.includes('###Response') ||
+                    content === '```'
+                ) {
+                    if (hasReasoningContent && !hasReasoningStopped) {
+                        handler.onReasoningComplete()
+                        hasReasoningStopped = true
+                    }
+                }
+
+                if (hasReasoningContent && content && !hasReasoningStopped) {
+                    handler.onReasoningComplete()
+                    hasReasoningStopped = true
+                }
+
+                if (content) {
+                    handler.onContentChunk(content)
+                }
             }
-            const res = display.contentStop().result()
+
+            handler.onContentComplete()
+            const result = handler.getResult()
             if (noStream) {
-                println(res.assistant.join(''))
+                println(result.assistant.join(''))
             }
-            return res
+            return result
         } catch (e: unknown) {
-            display.error()
+            handler.onError(e instanceof Error ? e : new Error(String(e)))
             throw e
         }
     }
 
     override async post(
         shared: AskShare,
-        prepRes: LLMParam,
-        execRes: LLMResultChunk
+        _prepRes: LLMParam,
+        execRes: LLMResultChunk,
     ): Promise<string | undefined> {
         shared.resultChunk = execRes
         return undefined
@@ -305,10 +323,6 @@ class StreamCallNode extends Node<AskShare> {
 }
 
 class StoreNode extends Node<AskShare> {
-    constructor() {
-        super()
-    }
-
     override async prep(shared: AskShare): Promise<void> {
         const { chat, userContent, resultChunk, topicId } = shared
         if (!resultChunk) {
@@ -345,13 +359,13 @@ class StoreNode extends Node<AskShare> {
     }
 }
 
-// system prompt -> preset message -> context message -> user content -> tools -> router -> streamCall / toolsCall -> store
 const askFlow = async ({
     chat,
     client,
     userContent,
     mcps,
     generalSetting,
+    outputHandler,
     noStream = false,
     newTopic,
 }: {
@@ -360,6 +374,7 @@ const askFlow = async ({
     userContent: string
     mcps: MCPClient[]
     generalSetting: GeneralSetting
+    outputHandler?: LLMOutputHandler
     noStream?: boolean
     newTopic?: boolean
 }) => {
@@ -379,6 +394,7 @@ const askFlow = async ({
         theme: generalSetting.theme,
         noStream,
         newTopic,
+        outputHandler,
     }
 
     const systemPrompt = new SystemPromptNode()

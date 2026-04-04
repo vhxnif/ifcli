@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import path from 'path'
+import path from 'node:path'
 import { env, tmpPath } from './platform-utils'
 
 const debug = false
@@ -36,7 +36,7 @@ const stringWidth = (str: string): number => {
 
 const editor = async (
     content: string,
-    fileType: string = 'md'
+    fileType: string = 'md',
 ): Promise<string> => {
     const editor = env('EDITOR') ?? 'vim'
     const tmpFile = path.join(tmpPath(), `tmp-${uuid()}.${fileType}`)
@@ -89,7 +89,7 @@ const groupBy = <T, R>(arr: T[], key: (i: T) => R): Map<R, T[]> => {
 const jsonformat = (jsonString: string): string => {
     try {
         return JSON.stringify(JSON.parse(jsonString), null, 4)
-    } catch (err: unknown) {
+    } catch (_err: unknown) {
         return jsonString
     }
 }
@@ -104,7 +104,7 @@ type OptionAction = () => VoidResult
 
 const matchRun = async (
     orderedMatchItems: [OptionType, OptionAction][],
-    defaultAction?: () => VoidResult
+    defaultAction?: () => VoidResult,
 ): Promise<void> => {
     await orderedMatchItems.find((it) => it[0])?.[1]()
     if (defaultAction) {
@@ -116,14 +116,11 @@ const parseIntNumber = (str: string | undefined, def: number): number => {
     if (!str) {
         return def
     }
-    const num = parseInt(str)
-    return isNaN(num) ? def : num
+    const num = parseInt(str, 10)
+    return Number.isNaN(num) ? def : num
 }
 
 export {
-    type VoidResult,
-    type OptionType,
-    type OptionAction,
     containsChinese,
     editor,
     exit,
@@ -131,14 +128,17 @@ export {
     isEmpty,
     isTextSame,
     jsonformat,
-    objToJson,
     log,
     matchRun,
+    type OptionAction,
+    type OptionType,
+    objToJson,
+    parseIntNumber,
     print,
     println,
     stdin,
     stringWidth,
     unixnow,
     uuid,
-    parseIntNumber,
+    type VoidResult,
 }

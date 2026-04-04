@@ -1,8 +1,8 @@
+import type { HelpConfiguration } from '@commander-js/extra-typings'
 import type { ChalkInstance } from 'chalk'
-import { colorScheme as rosePine } from './rose-pine'
-import { colorScheme as catppuccin } from './catppuccin'
-import { colorScheme as tokyoNight } from './tokyo-night'
 import chalk from 'chalk'
+import { colorScheme as catppuccin } from './catppuccin'
+import { colorScheme as rosePine } from './rose-pine'
 import type {
     ChalkChatBoxColor,
     ChalkChatBoxTheme,
@@ -14,8 +14,9 @@ import type {
     ChatBoxTheme,
     ColorScheme,
     TerminalColorName,
+    ThemeSemanticColors,
 } from './theme-type'
-import type { HelpConfiguration } from '@commander-js/extra-typings'
+import { colorScheme as tokyoNight } from './tokyo-night'
 
 const schemes = [...rosePine, ...catppuccin, ...tokyoNight]
 
@@ -34,7 +35,7 @@ const colorScheme = (schema: string): ColorScheme => {
 }
 
 const chalkTerminalColor = (
-    color: Record<TerminalColorName, string>
+    color: Record<TerminalColorName, string>,
 ): ChalkTerminalColor => {
     return Object.entries(color).reduce((obj, it) => {
         const [key, value] = it
@@ -63,8 +64,13 @@ const chalkColor = (schema: string): ChalkColor => {
     return [chalkTerminalColor(color), chalkChatBoxTheme(theme)]
 }
 
+const getSemanticColors = (schema: string): ThemeSemanticColors => {
+    const c = colorScheme(schema)
+    return c.semantic ?? defaultColor.semantic!
+}
+
 const commanderHelpConfiguration = (
-    color: ChalkTerminalColor
+    color: ChalkTerminalColor,
 ): HelpConfiguration => {
     const { red, yellow, green, blue, magenta, cyan } = color
     return {
@@ -79,4 +85,10 @@ const commanderHelpConfiguration = (
     } as HelpConfiguration
 }
 
-export { schemes, chalkColor, hex, commanderHelpConfiguration }
+export {
+    chalkColor,
+    commanderHelpConfiguration,
+    getSemanticColors,
+    hex,
+    schemes,
+}

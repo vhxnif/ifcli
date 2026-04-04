@@ -162,14 +162,14 @@ export interface IDBClient {
     queryMessage: (
         topicId: string,
         limit: number,
-        withReasoning?: boolean
+        withReasoning?: boolean,
     ) => ChatMessage[]
     saveMessage: (messages: MessageContent[]) => void
     queryAllExportMessage: () => ExportMessage[]
     queryChatExportMessage: (chatId: string) => ExportMessage[]
     queryChatTopicExportMessage: (
         chatId: string,
-        topicId: string
+        topicId: string,
     ) => ExportMessage[]
 
     // quick cmd
@@ -225,7 +225,7 @@ export type TopicMessageAct = {
     list: (
         topicId: string,
         limit: number,
-        withReasoning?: boolean
+        withReasoning?: boolean,
     ) => ChatMessage[]
     save: (messages: MessageContent[]) => void
 }

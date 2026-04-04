@@ -61,7 +61,7 @@ export default class MCPClient {
                 capabilities: {
                     tools: {},
                 },
-            }
+            },
         )
         if (config.type === 'stdio') {
             this.transport = new StdioClientTransport({
@@ -73,7 +73,7 @@ export default class MCPClient {
         if (config.type === 'http') {
             this.transport = new StreamableHTTPClientTransport(
                 new URL(url),
-                opts
+                opts,
             )
             return
         }
@@ -85,7 +85,7 @@ export default class MCPClient {
             await this.client.connect(this.transport)
             this.connected = true
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (e: unknown) {
+        } catch (_e: unknown) {
             println(`${this.name}/${this.version} connect error.`)
         }
     }
@@ -125,14 +125,14 @@ export default class MCPClient {
                     funName: t.name,
                     f: f,
                 }
-            })
+            }),
         )
     }
 
     async callTool(name: string, args: any) {
         return await this.client.callTool(
             { name, arguments: { ...args } },
-            CallToolResultSchema
+            CallToolResultSchema,
         )
     }
 
@@ -143,7 +143,7 @@ export default class MCPClient {
                 this.connected = false
             }
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (e: unknown) {
+        } catch (_e: unknown) {
             println(`${this.name}/${this.version} close error.`)
         }
     }

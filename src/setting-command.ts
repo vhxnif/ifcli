@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 import { Command } from '@commander-js/extra-typings'
 import { act, terminalColor } from './app-context'
+import { commanderHelpConfiguration } from './component/theme/color-scheme'
 import { APP_VERSION } from './config/app-setting'
 import { matchRun, print } from './util/common-utils'
-import { commanderHelpConfiguration } from './component/theme/color-scheme'
 
 const program = new Command().configureHelp(
-    commanderHelpConfiguration(terminalColor)
+    commanderHelpConfiguration(terminalColor),
 )
 
 program

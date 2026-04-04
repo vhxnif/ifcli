@@ -1,5 +1,8 @@
+import type {
+    TerminalColorName,
+    ThemeSemanticColors,
+} from '../component/theme/theme-type'
 import type { LLMMessage, LLMRole } from './llm-types'
-import type { TerminalColorName } from '../component/theme/theme-type'
 
 export type LLMNotifyMessageType =
     | 'waiting'
@@ -16,6 +19,15 @@ const llmNotifyMessage: Record<LLMNotifyMessageType, string> = {
     rendering: 'Assembling response framework...',
     error: 'System protocol violation',
     completed: 'Cognitive cycle complete',
+}
+
+const defaultSemanticColors: ThemeSemanticColors = {
+    waiting: 'cyan',
+    analyzing: 'yellow',
+    thinking: 'magenta',
+    rendering: 'blue',
+    error: 'red',
+    completed: 'green',
 }
 
 const llmNotifyMessageColor: Record<LLMNotifyMessageType, TerminalColorName> = {
@@ -45,10 +57,19 @@ const assistant = (content: string): LLMMessage => {
     return message('assistant', content)
 }
 
+const getSemanticColor = (
+    semanticColors: ThemeSemanticColors | undefined,
+    type: LLMNotifyMessageType,
+): TerminalColorName => {
+    return semanticColors?.[type] ?? defaultSemanticColors[type]
+}
+
 export {
+    assistant,
+    defaultSemanticColors,
+    getSemanticColor,
     llmNotifyMessage,
     llmNotifyMessageColor,
-    assistant,
     message,
     system,
     user,

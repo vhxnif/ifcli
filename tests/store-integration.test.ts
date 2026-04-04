@@ -1,10 +1,10 @@
-import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import Database from 'bun:sqlite'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { Store } from '../src/store/store'
 import type {
+    Cache,
     Model,
     PresetMessageContent,
-    Cache,
 } from '../src/store/store-types'
 
 // Helper functions for test data
@@ -15,7 +15,7 @@ const createModel = (llmType: string, model: string): Model => ({
 
 const createPresetMessage = (
     user: string,
-    assistant: string
+    assistant: string,
 ): PresetMessageContent => ({
     user,
     assistant,
@@ -133,7 +133,7 @@ describe('Store - Integration Tests with Memory Database', () => {
 
             // Assert
             expect(chatInfo.config.value.withContext).toBe(
-                initialContext === 1 ? 0 : 1
+                initialContext === 1 ? 0 : 1,
             )
         })
 
@@ -220,10 +220,10 @@ describe('Store - Integration Tests with Memory Database', () => {
             // Assert
             expect(retrievedMessages).toHaveLength(2)
             expect(retrievedMessages.some((m) => m.content === 'Hello')).toBe(
-                true
+                true,
             )
             expect(
-                retrievedMessages.some((m) => m.content === 'Hi there')
+                retrievedMessages.some((m) => m.content === 'Hi there'),
             ).toBe(true)
         })
     })

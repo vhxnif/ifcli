@@ -1,8 +1,8 @@
 import {
-    table,
     type Alignment,
     type ColumnUserConfig,
     type TableUserConfig,
+    table,
 } from 'table'
 import { terminal } from './platform-utils'
 
@@ -81,9 +81,9 @@ const printTable = (data: unknown[][], userConfig?: TableUserConfig): void => {
 }
 
 export {
-    type TableExt,
-    type TableConfigParam,
-    tableConfigWithExt,
-    tableConfig,
     printTable,
+    type TableConfigParam,
+    type TableExt,
+    tableConfig,
+    tableConfigWithExt,
 }

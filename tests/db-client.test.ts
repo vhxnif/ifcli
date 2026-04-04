@@ -1,13 +1,13 @@
-import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import Database from 'bun:sqlite'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { DBClient } from '../src/store/db-client'
 import type {
-    MessageContent,
-    Model,
-    PresetMessageContent,
     Cache,
     CmdHistoryType,
+    MessageContent,
     MessageRoleType,
+    Model,
+    PresetMessageContent,
 } from '../src/store/store-types'
 
 // Helper function to create test data
@@ -15,7 +15,7 @@ const createMessageContent = (
     topicId: string,
     role: MessageRoleType,
     content: string,
-    pairKey: string
+    pairKey: string,
 ): MessageContent => ({
     topicId,
     role,
@@ -25,7 +25,7 @@ const createMessageContent = (
 
 const createPresetMessage = (
     user: string,
-    assistant: string
+    assistant: string,
 ): PresetMessageContent => ({
     user,
     assistant,
@@ -167,7 +167,7 @@ describe('DBClient - Database Operations Tests', () => {
                     topicId,
                     'assistant',
                     'Hi there',
-                    'pair-1'
+                    'pair-1',
                 ),
                 createMessageContent(topicId, 'user', 'How are you?', 'pair-2'),
             ]
@@ -180,13 +180,13 @@ describe('DBClient - Database Operations Tests', () => {
             expect(queriedMessages).toHaveLength(3)
             // Note: queryMessage returns messages in descending order by action_time
             expect(queriedMessages.some((m) => m.content === 'Hello')).toBe(
-                true
+                true,
             )
             expect(queriedMessages.some((m) => m.content === 'Hi there')).toBe(
-                true
+                true,
             )
             expect(
-                queriedMessages.some((m) => m.content === 'How are you?')
+                queriedMessages.some((m) => m.content === 'How are you?'),
             ).toBe(true)
         })
 
@@ -202,13 +202,13 @@ describe('DBClient - Database Operations Tests', () => {
                     topicId,
                     'reasoning',
                     'Thinking...',
-                    'pair-1'
+                    'pair-1',
                 ),
                 createMessageContent(
                     topicId,
                     'assistant',
                     'Hi there',
-                    'pair-1'
+                    'pair-1',
                 ),
             ]
 
@@ -219,7 +219,7 @@ describe('DBClient - Database Operations Tests', () => {
             // Assert
             expect(queriedMessages).toHaveLength(2) // Should exclude reasoning
             expect(queriedMessages.some((m) => m.role === 'reasoning')).toBe(
-                false
+                false,
             )
         })
     })
@@ -354,7 +354,7 @@ describe('DBClient - Database Operations Tests', () => {
                     topicId,
                     'assistant',
                     'Hi there',
-                    'pair-1'
+                    'pair-1',
                 ),
             ]
             dbClient.saveMessage(messages)
@@ -364,7 +364,7 @@ describe('DBClient - Database Operations Tests', () => {
             const chatExports = dbClient.queryChatExportMessage(chatId)
             const topicExports = dbClient.queryChatTopicExportMessage(
                 chatId,
-                topicId
+                topicId,
             )
 
             // Assert
@@ -390,7 +390,7 @@ describe('DBClient - Database Operations Tests', () => {
             expect(transactionExecuted).toBe(true)
             const chats = dbClient.chats()
             expect(chats.some((chat) => chat.name === 'transaction-chat')).toBe(
-                true
+                true,
             )
         })
     })
