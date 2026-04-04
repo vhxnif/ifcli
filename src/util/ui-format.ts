@@ -32,15 +32,6 @@ export const format = {
         return formatMap[type]()
     },
 
-    section: (
-        title: string,
-        color: ChalkTerminalColor,
-        separator: string = '─',
-    ): string => {
-        const line = separator.repeat(Math.max(title.length + 2, 20))
-        return `\n${color.cyan(line)}\n${color.white.bold(title.toUpperCase())}\n${color.cyan(line)}\n`
-    },
-
     keyValue: (
         key: string,
         value: string,

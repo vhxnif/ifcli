@@ -20,7 +20,6 @@ class SimpleShow {
         }[],
         color: ChalkTerminalColor,
     ) {
-        println(format.section('MCP Servers Status', color))
         data.forEach((it) => {
             const status = it.health
                 ? format.status('success', 'Connected', color)
@@ -62,7 +61,6 @@ class SimpleShow {
         } = config
         const { mcpServers } = ext
 
-        println(format.section('Chat Configuration', color))
         println(format.keyValue('Name', chatName, color))
         println(format.keyValue('Provider', llmType, color))
         println(format.keyValue('Model', model, color))
