@@ -52,6 +52,12 @@ export class DBClient implements IDBClient {
     }
 
     init(): void {
+        this.db.run('PRAGMA journal_mode = WAL')
+        this.db.run('PRAGMA busy_timeout = 5000')
+        this.db.run('PRAGMA synchronous = NORMAL')
+        this.db.run('PRAGMA cache_size = -64000')
+        this.db.run('PRAGMA temp_store = MEMORY')
+
         const tables = this.db
             .query("SELECT name FROM sqlite_master WHERE type='table';")
             .as(SqliteTable)
