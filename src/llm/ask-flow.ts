@@ -120,25 +120,42 @@ class ToolsNode extends Node<AskShare> {
             return
         }
         shared.mcps = mcps
-        const tools = (
-            await Promise.all(
-                mcps.flatMap(async (it) => {
-                    await it.connect()
-                    return await it.tools()
-                }),
-            )
-        ).flat()
-        shared.tools = tools
+
+        const results = await Promise.allSettled(
+            mcps.map(async (it) => {
+                await it.connect()
+                if (!it.isConnected) {
+                    const err = it.connectionErr
+                    throw new Error(
+                        `MCP ${it.name}/${it.version} connection failed: ${err?.message ?? 'unknown error'}`,
+                    )
+                }
+                return await it.tools()
+            }),
+        )
+
+        const tools = results
+            .flatMap((result) => {
+                if (result.status === 'fulfilled') {
+                    return result.value
+                }
+                println(
+                    `MCP connection warning: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`,
+                )
+                return []
+            })
+            .flat()
+
+        shared.tools = tools.length > 0 ? tools : undefined
     }
 
     override async execFallback(
         _prepRes: unknown,
-        error: Error,
+        _error: Error,
     ): Promise<void> {
         if (this.mcps) {
-            await Promise.all(this.mcps.map((it) => it.close()))
+            await Promise.allSettled(this.mcps.map((it) => it.close()))
         }
-        throw error
     }
 }
 
@@ -210,8 +227,14 @@ class ToolsCallNode extends Node<AskShare> {
             }
             return result
         } catch (err: unknown) {
-            handler.onError(err instanceof Error ? err : new Error(String(err)))
-            throw err
+            const error = err instanceof Error ? err : new Error(String(err))
+            handler.onError(error)
+            handler.onContentComplete()
+            const result = handler.getResult()
+            result.assistant.push(
+                `\n\n[MCP Error] Tool execution failed: ${error.message}. Please try again or disable MCP tools.`,
+            )
+            return result
         }
     }
 
@@ -221,16 +244,15 @@ class ToolsCallNode extends Node<AskShare> {
         execRes: LLMResultChunk,
     ): Promise<string | undefined> {
         shared.resultChunk = execRes
-        await Promise.all(prepRes.mcps.map((it) => it.close()))
+        await Promise.allSettled(prepRes.mcps.map((it) => it.close()))
         return undefined
     }
 
     override async execFallback(
         prepRes: LLMToolsCallParam,
-        error: Error,
+        _error: Error,
     ): Promise<void> {
-        await Promise.all(prepRes.mcps.map((it) => it.close()))
-        throw error
+        await Promise.allSettled(prepRes.mcps.map((it) => it.close()))
     }
 }
 

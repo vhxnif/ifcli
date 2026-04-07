@@ -222,13 +222,19 @@ This allows you to securely store sensitive information like API keys in environ
 
 ### MCP Server (Stdio)
 
-| Field   | Type                  | Required |
-| :------ | :-------------------- | :------- |
-| name    | string                | true     |
-| version | string                | true     |
-| enable  | boolean               | true     |
-| type    | 'stdio'               | true     |
-| params  | StdioServerParameters | true     |
+| Field   | Type                  | Required | Description |
+| :------ | :-------------------- | :------- | :---------- |
+| name    | string                | true     | Server name |
+| version | string                | true     | Server version |
+| enable  | boolean               | true     | Enable/disable server |
+| type    | 'stdio'               | true     | Transport type |
+| params  | StdioServerParameters | true     | Server parameters |
+| logMode | 'ignore' \| 'inherit' \| 'file' | false    | Log output mode (default: captured silently) |
+
+**Log Mode Options:**
+- (default): Capture stderr silently, preventing log mixing with CLI output
+- `ignore`: Discard all stderr output from MCP server
+- `inherit`: Pass stderr output to parent process (may mix with CLI output)
 
 ## Usage Tips
 
