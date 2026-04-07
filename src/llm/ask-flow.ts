@@ -189,6 +189,9 @@ class ToolsCallNode extends Node<AskShare> {
         const { model, temperature, tools, messages, outputHandler, noStream } =
             prepRes
         const handler = outputHandler ?? new SilentOutputHandler()
+        let hasReasoningContent = false
+        let hasReasoningStopped = false
+
         try {
             const runner = this.client.chat.completions
                 .runTools({
@@ -198,6 +201,33 @@ class ToolsCallNode extends Node<AskShare> {
                     messages,
                     stream: true,
                 })
+                .on(
+                    'chunk',
+                    (chunk: OpenAI.Chat.Completions.ChatCompletionChunk) => {
+                        const delta = chunk.choices[0]
+                            ?.delta as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta & {
+                            reasoning_content?: string
+                            reasoning?: string
+                        }
+                        const reasoning =
+                            delta?.reasoning || delta?.reasoning_content || ''
+                        const content = delta?.content || ''
+
+                        if (reasoning) {
+                            hasReasoningContent = true
+                            handler.onReasoningChunk(reasoning)
+                        }
+
+                        if (
+                            hasReasoningContent &&
+                            content &&
+                            !hasReasoningStopped
+                        ) {
+                            handler.onReasoningComplete()
+                            hasReasoningStopped = true
+                        }
+                    },
+                )
                 .on('tool_calls.function.arguments.delta', () => {
                     handler.onStateChange('analyzing')
                 })
@@ -220,6 +250,11 @@ class ToolsCallNode extends Node<AskShare> {
                     handler.onContentChunk(it)
                 })
             await runner.finalChatCompletion()
+
+            if (hasReasoningContent && !hasReasoningStopped) {
+                handler.onReasoningComplete()
+            }
+
             handler.onContentComplete()
             const result = handler.getResult()
             if (noStream) {
