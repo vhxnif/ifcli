@@ -24,6 +24,7 @@ export type LLMParam = {
     noStream?: boolean
     newTopic?: boolean
     outputHandler?: LLMOutputHandler
+    topicNamePromise?: Promise<string>
 }
 
 export type LLMResultChunk = {

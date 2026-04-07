@@ -258,6 +258,11 @@ export class DBClient implements IDBClient {
             )
             .run(llmType, value, unixnow(), configId)
     }
+    updateTopicContent(topicId: string, content: string): void {
+        this.db
+            .prepare('UPDATE chat_topic SET content = ? WHERE id = ?')
+            .run(content, topicId)
+    }
     updateConfigExt(chatId: string, ext: string): void {
         this.db
             .prepare(

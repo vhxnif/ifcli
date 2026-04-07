@@ -135,6 +135,9 @@ export class Store implements IStore {
                     this.client.selectTopic(targetTopicId, true)
                 })
             },
+            update: (topicId: string, topicName: string) => {
+                this.client.updateTopicContent(topicId, topicName)
+            },
             message: this.topicMessage(),
         } as TopicAct
     }

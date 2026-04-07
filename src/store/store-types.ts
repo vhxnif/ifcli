@@ -156,6 +156,7 @@ export interface IDBClient {
     selectTopic: (topicId: string, active: boolean) => void
     queryTopic: (chatId: string) => ChatTopic[]
     delChatTopic: (chatId: string) => void
+    updateTopicContent: (topicId: string, content: string) => void
 
     // message
     delMessage: (topicId: string) => void
@@ -235,6 +236,7 @@ export type TopicAct = {
     list: () => ChatTopic[]
     new: (topicName: string) => string
     switch: (targetTopicId: string) => void
+    update: (topicId: string, topicName: string) => void
     message: TopicMessageAct
 }
 

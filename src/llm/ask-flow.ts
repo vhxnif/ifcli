@@ -15,6 +15,11 @@ import type {
 } from './llm-types'
 import { assistant, system, user } from './llm-utils'
 import type MCPClient from './mcp-client'
+import {
+    generateTempTopicName,
+    generateTopicName,
+    isTempTopicName,
+} from './topic-generator'
 
 export type AskShare = LLMParam & {
     chat: ChatInfo
@@ -34,6 +39,7 @@ export type AskShare = LLMParam & {
     mcps?: MCPClient[]
     generalSetting?: GeneralSetting
     outputHandler?: LLMOutputHandler
+    isNewTopic?: boolean
 }
 
 class SystemPromptNode extends Node<AskShare> {
@@ -61,16 +67,42 @@ class PresetNode extends Node<AskShare> {
 }
 
 class ContextNode extends Node<AskShare> {
+    private readonly client: OpenAI
+
+    constructor(client: OpenAI) {
+        super()
+        this.client = client
+    }
+
     override async prep(shared: AskShare): Promise<void> {
         const { chat, userContent, messages, withContext, contextLimit } =
             shared
         const tpfun = chat.topic
         const tp = tpfun.get()
+
+        let needGenerateTopic = false
+
         if (!tp || shared.newTopic) {
-            shared.topicId = tpfun.new(userContent)
+            shared.topicId = tpfun.new(generateTempTopicName())
+            shared.isNewTopic = true
+            needGenerateTopic = true
         } else {
             shared.topicId = tp.id
+            shared.isNewTopic = false
+
+            if (isTempTopicName(tp.content)) {
+                needGenerateTopic = true
+            }
         }
+
+        if (needGenerateTopic) {
+            shared.topicNamePromise = generateTopicName(
+                userContent,
+                this.client,
+                shared.model,
+            )
+        }
+
         const context = withContext
             ? tpfun.message.list(shared.topicId, contextLimit).map((it) => {
                   if (it.role === 'user') {
@@ -381,7 +413,8 @@ class StreamCallNode extends Node<AskShare> {
 
 class StoreNode extends Node<AskShare> {
     override async prep(shared: AskShare): Promise<void> {
-        const { chat, userContent, resultChunk, topicId } = shared
+        const { chat, userContent, resultChunk, topicId, topicNamePromise } =
+            shared
         if (!resultChunk) {
             return
         }
@@ -413,6 +446,17 @@ class StoreNode extends Node<AskShare> {
             })
         }
         chat.topic.message.save(messages)
+
+        if (topicNamePromise) {
+            try {
+                const resolvedTopicName = await topicNamePromise
+                if (resolvedTopicName) {
+                    chat.topic.update(topicId!, resolvedTopicName)
+                }
+            } catch {
+                // Failed to generate topic name, will retry on next message
+            }
+        }
     }
 }
 
@@ -456,7 +500,7 @@ const askFlow = async ({
 
     const systemPrompt = new SystemPromptNode()
     const preset = new PresetNode()
-    const context = new ContextNode()
+    const context = new ContextNode(client)
     const userNode = new UserNode()
     const tools = new ToolsNode(mcps)
     const router = new AiRouterNode()
