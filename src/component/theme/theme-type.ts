@@ -39,6 +39,7 @@ export type SemanticColorType =
     | 'rendering'
     | 'error'
     | 'completed'
+    | 'toolCalling'
 
 export type ThemeSemanticColors = Record<SemanticColorType, TerminalColorName>
 

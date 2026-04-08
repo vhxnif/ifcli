@@ -208,6 +208,7 @@ const generateSemanticColors = (): ThemeSemanticColors => {
         rendering: 'blue',
         error: 'red',
         completed: 'green',
+        toolCalling: 'yellow',
     }
 }
 const latte = scheme['Catppuccin Latte']

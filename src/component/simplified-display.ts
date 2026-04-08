@@ -135,10 +135,18 @@ export class SimplifiedDisplay {
         funName: string,
         _args: string,
     ): void {
-        if (this.enableRealtimeRender) {
-            this.spinner?.stop()
-        }
         this.pendingToolName = funName
+        if (this.enableRealtimeRender) {
+            const toolCallingColor = getSemanticColor(
+                this.semanticColors,
+                'toolCalling',
+            )
+            const message = this.color[toolCallingColor](
+                `${llmNotifyMessage.toolCalling} [${funName}]`,
+            )
+            this.spinner?.show(message)
+            this.spinner?.setColor(toolCallingColor)
+        }
     }
 
     toolCallResult(result: string): void {
@@ -155,6 +163,7 @@ export class SimplifiedDisplay {
 
         if (this.pendingToolName) {
             if (this.enableRealtimeRender) {
+                this.spinner?.stop()
                 const textColor = this.theme.tools.title
                 const toolResultColor = this.theme.tools.content
                 const statusColor = isSuccess

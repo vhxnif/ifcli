@@ -11,6 +11,7 @@ export type LLMNotifyMessageType =
     | 'rendering'
     | 'error'
     | 'completed'
+    | 'toolCalling'
 
 const llmNotifyMessage: Record<LLMNotifyMessageType, string> = {
     waiting: 'Booting cognitive engine...',
@@ -19,6 +20,7 @@ const llmNotifyMessage: Record<LLMNotifyMessageType, string> = {
     rendering: 'Assembling response framework...',
     error: 'System protocol violation',
     completed: 'Cognitive cycle complete',
+    toolCalling: 'Calling tool...',
 }
 
 const defaultSemanticColors: ThemeSemanticColors = {
@@ -28,6 +30,7 @@ const defaultSemanticColors: ThemeSemanticColors = {
     rendering: 'blue',
     error: 'red',
     completed: 'green',
+    toolCalling: 'yellow',
 }
 
 const llmNotifyMessageColor: Record<LLMNotifyMessageType, TerminalColorName> = {
@@ -37,6 +40,7 @@ const llmNotifyMessageColor: Record<LLMNotifyMessageType, TerminalColorName> = {
     rendering: 'blue',
     error: 'red',
     completed: 'green',
+    toolCalling: 'yellow',
 }
 
 const message = (role: LLMRole, content: string): LLMMessage => {
