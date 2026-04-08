@@ -7,11 +7,13 @@ export class OpenAiClient implements ILLMClient {
     type: string
     models: string[]
     defaultModel: string
+    topicModel: string
 
-    constructor({ baseUrl, apiKey, models, name }: LLMSetting) {
+    constructor({ baseUrl, apiKey, models, name, topicModel }: LLMSetting) {
         this.type = name
         this.models = models
         this.defaultModel = models[0]
+        this.topicModel = topicModel || models[0]
         this.openai = new OpenAi({
             baseURL: baseUrl,
             apiKey: apiKey,

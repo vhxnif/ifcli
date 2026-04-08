@@ -165,6 +165,7 @@ export interface IDBClient {
         limit: number,
         withReasoning?: boolean,
     ) => ChatMessage[]
+    firstUserMessage: (topicId: string) => ChatMessage | null
     saveMessage: (messages: MessageContent[]) => void
     queryAllExportMessage: () => ExportMessage[]
     queryChatExportMessage: (chatId: string) => ExportMessage[]
@@ -229,6 +230,7 @@ export type TopicMessageAct = {
         withReasoning?: boolean,
     ) => ChatMessage[]
     save: (messages: MessageContent[]) => void
+    first: (topicId: string) => ChatMessage | null
 }
 
 export type TopicAct = {

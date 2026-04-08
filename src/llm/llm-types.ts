@@ -51,4 +51,5 @@ export interface ILLMClient {
     type: string
     models: string[]
     defaultModel: string
+    topicModel: string
 }

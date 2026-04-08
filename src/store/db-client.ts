@@ -343,6 +343,15 @@ export class DBClient implements IDBClient {
         })()
     }
 
+    firstUserMessage(topicId: string): ChatMessage | null {
+        return this.db
+            .query(
+                `SELECT ${this.chatMessageColumn} FROM chat_message WHERE topic_id = ? AND role = 'user' ORDER BY action_time ASC LIMIT 1`,
+            )
+            .as(ChatMessage)
+            .get(topicId)
+    }
+
     queryCmdHis(type: CmdHistoryType, key: string) {
         return this.db
             .query(

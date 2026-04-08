@@ -148,6 +148,7 @@ export class Store implements IStore {
                 this.client.queryMessage(topicId, limit, withReasoning),
             save: (messages: MessageContent[]) =>
                 this.client.saveMessage(messages),
+            first: (topicId: string) => this.client.firstUserMessage(topicId),
         } as TopicMessageAct
     }
 

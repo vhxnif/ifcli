@@ -40,6 +40,7 @@ export type AskShare = LLMParam & {
     generalSetting?: GeneralSetting
     outputHandler?: LLMOutputHandler
     isNewTopic?: boolean
+    topicModel?: string
 }
 
 class SystemPromptNode extends Node<AskShare> {
@@ -81,6 +82,7 @@ class ContextNode extends Node<AskShare> {
         const tp = tpfun.get()
 
         let needGenerateTopic = false
+        let seedContent = userContent
 
         if (!tp || shared.newTopic) {
             shared.topicId = tpfun.new(generateTempTopicName())
@@ -92,14 +94,18 @@ class ContextNode extends Node<AskShare> {
 
             if (isTempTopicName(tp.content)) {
                 needGenerateTopic = true
+                const firstMsg = chat.topic.message.first(tp.id)
+                if (firstMsg) {
+                    seedContent = firstMsg.content
+                }
             }
         }
 
         if (needGenerateTopic) {
             shared.topicNamePromise = generateTopicName(
-                userContent,
+                seedContent,
                 this.client,
-                shared.model,
+                shared.topicModel || shared.model,
             )
         }
 
@@ -469,6 +475,7 @@ const askFlow = async ({
     outputHandler,
     noStream = false,
     newTopic,
+    topicModel,
 }: {
     chat: ChatInfo
     client: OpenAI
@@ -478,6 +485,7 @@ const askFlow = async ({
     outputHandler?: LLMOutputHandler
     noStream?: boolean
     newTopic?: boolean
+    topicModel?: string
 }) => {
     const { model, scenario, sysPrompt, withContext, contextLimit, withMCP } =
         chat.config.value
@@ -496,6 +504,7 @@ const askFlow = async ({
         noStream,
         newTopic,
         outputHandler,
+        topicModel,
     }
 
     const systemPrompt = new SystemPromptNode()

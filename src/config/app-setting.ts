@@ -7,6 +7,7 @@ export type LLMSetting = {
     baseUrl: string
     apiKey: string
     models: string[]
+    topicModel?: string
 }
 
 export type GeneralSetting = {
@@ -31,6 +32,7 @@ export const defaultLLMSettings: LLMSetting[] = [
         baseUrl: 'https://api.deepseek.com',
         apiKey: '',
         models: ['deepseek-chat', 'deepseek-reasoner'],
+        topicModel: 'deepseek-chat',
     },
     {
         name: 'ollama',
@@ -43,6 +45,7 @@ export const defaultLLMSettings: LLMSetting[] = [
         baseUrl: 'https://api.openai.com/v1',
         apiKey: '',
         models: ['gpt-4o'],
+        topicModel: 'gpt-4o-mini',
     },
 ]
 
