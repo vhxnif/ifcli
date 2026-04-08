@@ -139,12 +139,13 @@ export class SimplifiedDisplay {
             }
             this.currentRole = 'tools'
         }
-
-        const isSuccess = this.checkToolResult(result)
+        const res = this.parseToolResult(result)
+        const isSuccess = res ? !res.isError : false
 
         if (this.pendingToolName) {
             if (this.enableRealtimeRender) {
                 const textColor = this.theme.tools.title
+                const toolResultColor = this.theme.tools.content
                 const statusColor = isSuccess
                     ? this.color.green
                     : this.color.red
@@ -152,7 +153,10 @@ export class SimplifiedDisplay {
 
                 println(
                     textColor(`[${this.pendingToolName}] `) +
-                        statusColor(statusSymbol),
+                        statusColor(statusSymbol) +
+                        toolResultColor(
+                            this.subResultContent(res as CallToolResult),
+                        ),
                 )
             }
 
@@ -164,12 +168,23 @@ export class SimplifiedDisplay {
         }
     }
 
-    private checkToolResult(content: string): boolean {
+    private subResultContent(result: CallToolResult): string {
+        const text = result?.content?.find((it) => it?.type === 'text')?.text
+        if (!text) {
+            return ''
+        }
+        const l = text.length
+        if (l <= 100) {
+            return `\n${text}`
+        }
+        return `\n${text.slice(0, 50)}....${text.slice(l - 50, l)}`
+    }
+
+    private parseToolResult(content: string): CallToolResult | null {
         try {
-            const res: CallToolResult = JSON.parse(content)
-            return !res.isError
+            return JSON.parse(content)
         } catch {
-            return false
+            return null
         }
     }
 
