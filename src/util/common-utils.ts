@@ -98,6 +98,18 @@ const objToJson = (obj: unknown): string => {
     return JSON.stringify(obj, null, 4)
 }
 
+const injectSchema = (jsonString: string, schemaPath: string): string => {
+    const obj = JSON.parse(jsonString) as Record<string, unknown>
+    return JSON.stringify({ $schema: schemaPath, ...obj }, null, 4)
+}
+
+const restoreSchema = (
+    obj: Record<string, unknown>,
+    relativePath: string,
+): void => {
+    obj.$schema = relativePath
+}
+
 type VoidResult = Promise<void> | void
 type OptionType = string | boolean | undefined
 type OptionAction = () => VoidResult
@@ -125,6 +137,7 @@ export {
     editor,
     exit,
     groupBy,
+    injectSchema,
     isEmpty,
     isTextSame,
     jsonformat,
@@ -136,6 +149,7 @@ export {
     parseIntNumber,
     print,
     println,
+    restoreSchema,
     stdin,
     stringWidth,
     unixnow,

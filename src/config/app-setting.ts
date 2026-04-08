@@ -1,6 +1,7 @@
 import { version } from '../../package.json'
 import type { MCPConfig } from '../llm/mcp-client'
 import { dataPath } from './data-config'
+import schemaContent from './ifcli-settings-schema.json'
 
 export type LLMSetting = {
     name: string
@@ -52,15 +53,20 @@ export const defaultLLMSettings: LLMSetting[] = [
 export const initAppSetting = async (): Promise<void> => {
     const f = Bun.file(dataPath.setting)
     const ext = await f.exists()
-    if (ext) {
-        return
+    if (!ext) {
+        const defSetting = {
+            $schema: './ifcli-settings-schema.json',
+            generalSetting: defaultGeneralSetting,
+            llmSettings: defaultLLMSettings,
+            mcpServers: [],
+        }
+        f.write(JSON.stringify(defSetting, null, 2))
     }
-    const defSetting = {
-        generalSetting: defaultGeneralSetting,
-        llmSettings: defaultLLMSettings,
-        mcpServers: [],
+    const sf = Bun.file(dataPath.schema)
+    const schemaExt = await sf.exists()
+    if (!schemaExt) {
+        await sf.write(JSON.stringify(schemaContent, null, 2))
     }
-    f.write(JSON.stringify(defSetting, null, 2))
 }
 
 export const appSetting = async (): Promise<Setting> => {

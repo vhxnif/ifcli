@@ -45,6 +45,10 @@ export class DataPathConfig {
     get setting(): string {
         return `${this.configPath}${path.sep}${this.appName}.json`
     }
+
+    get schema(): string {
+        return `${this.configPath}${path.sep}${this.appName}-settings-schema.json`
+    }
 }
 
 export const dataPath = new DataPathConfig()
