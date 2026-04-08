@@ -145,8 +145,13 @@ export default class MCPClient {
                         parameters: {
                             ...t.inputSchema,
                         },
-                        function: async (args: any) =>
-                            await this.callTool(t.name, args),
+                        function: async (args: any) => {
+                            try {
+                                return await this.callTool(t.name, args)
+                            } catch (err: any) {
+                                return err
+                            }
+                        },
                         parse: JSON.parse,
                     },
                 } as RunnableToolFunction<any>
