@@ -12,6 +12,7 @@ import { OraShow } from './ora-show'
 import type {
     ChalkChatBoxTheme,
     ChalkTerminalColor,
+    SpinnerName,
     ThemeSemanticColors,
 } from './theme/theme-type'
 
@@ -37,19 +38,29 @@ export class SimplifiedDisplay {
         semanticColors,
         enableSpinner = true,
         enableRealtimeRender = true,
+        spinnerName = 'helix',
     }: {
         color: ChalkTerminalColor
         theme: ChalkChatBoxTheme
         semanticColors: ThemeSemanticColors
         enableSpinner?: boolean
         enableRealtimeRender?: boolean
+        spinnerName?: SpinnerName
     }) {
         this.theme = theme
         this.color = color
         this.semanticColors = semanticColors
         this.enableRealtimeRender = enableRealtimeRender
         if (enableSpinner) {
-            this.spinner = new OraShow(this.notice('waiting'))
+            const spinnerColor = getSemanticColor(
+                this.semanticColors,
+                'waiting',
+            )
+            this.spinner = new OraShow(
+                this.notice('waiting'),
+                spinnerName,
+                spinnerColor,
+            )
             this.spinner.start()
         }
     }
@@ -164,6 +175,11 @@ export class SimplifiedDisplay {
         }
 
         if (this.enableRealtimeRender) {
+            const renderColor = getSemanticColor(
+                this.semanticColors,
+                'rendering',
+            )
+            this.spinner?.setColor(renderColor)
             this.spinner?.start(this.notice('rendering'))
         }
     }
@@ -190,6 +206,7 @@ export class SimplifiedDisplay {
 
     change(type: LLMNotifyMessageType): void {
         this.spinner?.show(this.notice(type))
+        this.spinner?.setColor(getSemanticColor(this.semanticColors, type))
     }
 
     error(): void {

@@ -1,57 +1,23 @@
 import { sleep } from 'bun'
 import type { Ora } from 'ora'
 import ora from 'ora'
+import spinners from 'unicode-animations'
+import type { SpinnerName, TerminalColorName } from './theme/theme-type'
 
 export class OraShow {
     private spinner: Ora
     private isStop: boolean = true
 
-    constructor(initMessage: string) {
+    constructor(
+        initMessage: string,
+        spinnerName: SpinnerName = 'helix',
+        color: TerminalColorName = 'magenta',
+    ) {
+        const { frames, interval } = spinners[spinnerName]
         this.spinner = ora({
             text: initMessage,
-            spinner: {
-                frames: [
-                    '⋆',
-                    '✶',
-                    '✦',
-                    '✧',
-                    '✻',
-                    '✾',
-                    '✽',
-                    '✿',
-                    '❀',
-                    '❀',
-                    '❀',
-                    '✿',
-                    '✽',
-                    '✾',
-                    '✻',
-                    '✧',
-                    '✦',
-                    '✶',
-                    '⋆',
-                    '⋆',
-                    '✶',
-                    '✦',
-                    '✧',
-                    '✷',
-                    '✹',
-                    '✺',
-                    '❁',
-                    '❂',
-                    '❂',
-                    '❂',
-                    '❁',
-                    '✺',
-                    '✹',
-                    '✷',
-                    '✧',
-                    '✦',
-                    '✶',
-                    '⋆',
-                ],
-            },
-            color: 'magenta',
+            spinner: { frames, interval },
+            color,
             indent: 1,
         })
     }
@@ -77,6 +43,12 @@ export class OraShow {
     show(text: string): void {
         this.inProgressRun(() => {
             this.spinner.text = text
+        })
+    }
+
+    setColor(color: TerminalColorName): void {
+        this.inProgressRun(() => {
+            this.spinner.color = color
         })
     }
 

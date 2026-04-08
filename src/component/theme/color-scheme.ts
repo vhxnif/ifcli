@@ -13,6 +13,7 @@ import type {
     ChatBoxPart,
     ChatBoxTheme,
     ColorScheme,
+    SpinnerName,
     TerminalColorName,
     ThemeSemanticColors,
 } from './theme-type'
@@ -69,6 +70,13 @@ const getSemanticColors = (schema: string): ThemeSemanticColors => {
     return c.semantic ?? defaultColor.semantic!
 }
 
+const defaultSpinner: SpinnerName = 'helix'
+
+const getSpinnerName = (schema: string): SpinnerName => {
+    const c = colorScheme(schema)
+    return c.spinner ?? defaultSpinner
+}
+
 const commanderHelpConfiguration = (
     color: ChalkTerminalColor,
 ): HelpConfiguration => {
@@ -89,6 +97,7 @@ export {
     chalkColor,
     commanderHelpConfiguration,
     getSemanticColors,
+    getSpinnerName,
     hex,
     schemes,
 }

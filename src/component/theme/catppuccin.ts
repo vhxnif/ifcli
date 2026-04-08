@@ -1,6 +1,7 @@
 import type {
     ChatBoxTheme,
     ColorScheme,
+    SpinnerName,
     TerminalColorName,
     ThemeSemanticColors,
 } from './theme-type'
@@ -226,12 +227,14 @@ const colorScheme: ColorScheme[] = [
         },
         theme: generateTheme(latte),
         semantic: generateSemanticColors(),
+        spinner: 'orbit' as SpinnerName,
     },
     {
         name: 'Catppuccin Frappe',
         color: generateTerminalColor(frappe),
         theme: generateTheme(frappe),
         semantic: generateSemanticColors(),
+        spinner: 'orbit' as SpinnerName,
     },
 
     {
@@ -239,12 +242,14 @@ const colorScheme: ColorScheme[] = [
         color: generateTerminalColor(macchiato),
         theme: generateTheme(macchiato),
         semantic: generateSemanticColors(),
+        spinner: 'orbit' as SpinnerName,
     },
     {
         name: 'Catppuccin Mocha',
         color: generateTerminalColor(mocha),
         theme: generateTheme(mocha),
         semantic: generateSemanticColors(),
+        spinner: 'orbit' as SpinnerName,
     },
 ]
 

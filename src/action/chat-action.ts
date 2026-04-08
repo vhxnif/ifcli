@@ -3,7 +3,12 @@
 import path from 'node:path'
 import { stringWidth } from 'bun'
 import writeXlsxFile, { type Schema } from 'write-excel-file/node'
-import { chalkTheme, semanticColors, terminalColor } from '../app-context'
+import {
+    chalkTheme,
+    semanticColors,
+    spinnerName,
+    terminalColor,
+} from '../app-context'
 import { DisplayOutputHandler } from '../component/display/display-output-handler'
 import { simpleShow } from '../component/simple-show'
 import { SimplifiedDisplay } from '../component/simplified-display'
@@ -154,6 +159,7 @@ export class ChatAct implements IChatAct {
             semanticColors: semanticColors,
             enableSpinner: render,
             textShowRender: render,
+            spinnerName: spinnerName,
         })
         await askFlow({
             chat,
@@ -328,6 +334,7 @@ export class ChatAct implements IChatAct {
             theme: chalkTheme,
             semanticColors: semanticColors,
             enableSpinner: false,
+            spinnerName: spinnerName,
         })
         this.historyReasoningPrint(reasoning, display, colExpInfo)
         this.historyToolsCallPrint(toolsCall, display, colExpInfo)

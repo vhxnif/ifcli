@@ -1,6 +1,7 @@
 import type {
     ChatBoxTheme,
     ColorScheme,
+    SpinnerName,
     TerminalColorName,
     ThemeSemanticColors,
 } from './theme-type'
@@ -155,24 +156,28 @@ const colorScheme: ColorScheme[] = [
         color: generateTerminalColor(tokyoNight),
         theme: generateTheme(tokyoNight),
         semantic: generateSemanticColors(),
+        spinner: 'helix' as SpinnerName,
     },
     {
         name: 'Tokyo Night Day',
         color: generateTerminalColor(tokyoNightDay),
         theme: generateTheme(tokyoNightDay),
         semantic: generateSemanticColors(),
+        spinner: 'helix' as SpinnerName,
     },
     {
         name: 'Tokyo Night Moon',
         color: generateTerminalColor(tokyoNightMoon),
         theme: generateTheme(tokyoNightMoon),
         semantic: generateSemanticColors(),
+        spinner: 'helix' as SpinnerName,
     },
     {
         name: 'Tokyo Night Storm',
         color: generateTerminalColor(tokyoNightStorm),
         theme: generateTheme(tokyoNightStorm),
         semantic: generateSemanticColors(),
+        spinner: 'helix' as SpinnerName,
     },
 ]
 
