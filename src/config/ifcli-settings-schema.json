@@ -1,0 +1,233 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "ifcli Settings",
+    "description": "ifcli CLI 应用的配置文件 Schema",
+    "type": "object",
+    "properties": {
+        "$schema": {
+            "type": "string",
+            "description": "JSON Schema 文件路径，用于 IDE 自动补全和校验"
+        },
+        "generalSetting": {
+            "type": "object",
+            "description": "通用设置",
+            "properties": {
+                "theme": {
+                    "type": "string",
+                    "description": "UI 主题名称",
+                    "enum": [
+                        "Tokyo Night",
+                        "Tokyo Night Day",
+                        "Tokyo Night Moon",
+                        "Tokyo Night Storm",
+                        "Rose Pine",
+                        "Rose Pine Moon",
+                        "Rose Pine Dawn",
+                        "Catppuccin Latte",
+                        "Catppuccin Frappe",
+                        "Catppuccin Macchiato",
+                        "Catppuccin Mocha"
+                    ],
+                    "default": "Tokyo Night"
+                }
+            },
+            "required": ["theme"],
+            "additionalProperties": false
+        },
+        "llmSettings": {
+            "type": "array",
+            "description": "LLM 提供商配置列表",
+            "items": {
+                "type": "object",
+                "description": "LLM 提供商配置",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "提供商标识名称，在聊天中选择模型时使用此名称"
+                    },
+                    "baseUrl": {
+                        "type": "string",
+                        "description": "API 基础 URL，例如 https://api.deepseek.com"
+                    },
+                    "apiKey": {
+                        "type": "string",
+                        "description": "API 密钥。支持使用 $env.VARIABLE_NAME 格式引用环境变量，例如 $env.DEEPSEEK_API_KEY"
+                    },
+                    "models": {
+                        "type": "array",
+                        "description": "可用的模型名称列表",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "topicModel": {
+                        "type": "string",
+                        "description": "用于生成话题名称的模型（可选），如果不设置则使用 models 列表中的第一个模型"
+                    }
+                },
+                "required": ["name", "baseUrl", "apiKey", "models"],
+                "additionalProperties": false
+            }
+        },
+        "mcpServers": {
+            "type": "array",
+            "description": "MCP (Model Context Protocol) 服务器配置列表",
+            "items": {
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "description": "SSE 连接类型的 MCP 服务器",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "服务器名称"
+                            },
+                            "version": {
+                                "type": "string",
+                                "description": "服务器版本"
+                            },
+                            "enable": {
+                                "type": "boolean",
+                                "description": "是否启用此服务器",
+                                "default": true
+                            },
+                            "type": {
+                                "type": "string",
+                                "const": "sse",
+                                "description": "连接类型：SSE (Server-Sent Events)"
+                            },
+                            "url": {
+                                "type": "string",
+                                "description": "SSE 端点 URL",
+                                "format": "uri"
+                            },
+                            "opts": {
+                                "type": "object",
+                                "description": "SSE 传输选项"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "version",
+                            "enable",
+                            "type",
+                            "url"
+                        ],
+                        "additionalProperties": false
+                    },
+                    {
+                        "type": "object",
+                        "description": "Stdio 连接类型的 MCP 服务器",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "服务器名称"
+                            },
+                            "version": {
+                                "type": "string",
+                                "description": "服务器版本"
+                            },
+                            "enable": {
+                                "type": "boolean",
+                                "description": "是否启用此服务器",
+                                "default": true
+                            },
+                            "type": {
+                                "type": "string",
+                                "const": "stdio",
+                                "description": "连接类型：Stdio (标准输入输出)"
+                            },
+                            "params": {
+                                "type": "object",
+                                "description": "Stdio 服务器参数",
+                                "properties": {
+                                    "command": {
+                                        "type": "string",
+                                        "description": "要执行的命令，例如 node、python、npx"
+                                    },
+                                    "args": {
+                                        "type": "array",
+                                        "description": "命令参数列表",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "env": {
+                                        "type": "object",
+                                        "description": "环境变量映射",
+                                        "additionalProperties": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": ["command"],
+                                "additionalProperties": false
+                            },
+                            "logMode": {
+                                "type": "string",
+                                "description": "日志模式：ignore 忽略、inherit 继承父进程、file 写入日志文件",
+                                "enum": ["ignore", "inherit", "file"],
+                                "default": "file"
+                            },
+                            "logFile": {
+                                "type": "string",
+                                "description": "日志文件路径（logMode 为 file 时使用）"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "version",
+                            "enable",
+                            "type",
+                            "params"
+                        ],
+                        "additionalProperties": false
+                    },
+                    {
+                        "type": "object",
+                        "description": "HTTP 连接类型的 MCP 服务器",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "服务器名称"
+                            },
+                            "version": {
+                                "type": "string",
+                                "description": "服务器版本"
+                            },
+                            "enable": {
+                                "type": "boolean",
+                                "description": "是否启用此服务器",
+                                "default": true
+                            },
+                            "type": {
+                                "type": "string",
+                                "const": "http",
+                                "description": "连接类型：HTTP (Streamable HTTP)"
+                            },
+                            "url": {
+                                "type": "string",
+                                "description": "HTTP 端点 URL",
+                                "format": "uri"
+                            },
+                            "opts": {
+                                "type": "object",
+                                "description": "HTTP 传输选项"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "version",
+                            "enable",
+                            "type",
+                            "url"
+                        ],
+                        "additionalProperties": false
+                    }
+                ]
+            }
+        }
+    },
+    "required": ["generalSetting", "llmSettings", "mcpServers"],
+    "additionalProperties": false
+}
