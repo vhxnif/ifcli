@@ -15,6 +15,11 @@ import type {
 } from './llm-types'
 import { assistant, system, user } from './llm-utils'
 import type MCPClient from './mcp-client'
+import {
+    generateTempTopicName,
+    generateTopicName,
+    isTempTopicName,
+} from './topic-generator'
 
 export type AskShare = LLMParam & {
     chat: ChatInfo
@@ -34,6 +39,8 @@ export type AskShare = LLMParam & {
     mcps?: MCPClient[]
     generalSetting?: GeneralSetting
     outputHandler?: LLMOutputHandler
+    isNewTopic?: boolean
+    topicModel?: string
 }
 
 class SystemPromptNode extends Node<AskShare> {
@@ -61,16 +68,47 @@ class PresetNode extends Node<AskShare> {
 }
 
 class ContextNode extends Node<AskShare> {
+    private readonly client: OpenAI
+
+    constructor(client: OpenAI) {
+        super()
+        this.client = client
+    }
+
     override async prep(shared: AskShare): Promise<void> {
         const { chat, userContent, messages, withContext, contextLimit } =
             shared
         const tpfun = chat.topic
         const tp = tpfun.get()
+
+        let needGenerateTopic = false
+        let seedContent = userContent
+
         if (!tp || shared.newTopic) {
-            shared.topicId = tpfun.new(userContent)
+            shared.topicId = tpfun.new(generateTempTopicName())
+            shared.isNewTopic = true
+            needGenerateTopic = true
         } else {
             shared.topicId = tp.id
+            shared.isNewTopic = false
+
+            if (isTempTopicName(tp.content)) {
+                needGenerateTopic = true
+                const firstMsg = chat.topic.message.first(tp.id)
+                if (firstMsg) {
+                    seedContent = firstMsg.content
+                }
+            }
         }
+
+        if (needGenerateTopic) {
+            shared.topicNamePromise = generateTopicName(
+                seedContent,
+                this.client,
+                shared.topicModel || shared.model,
+            )
+        }
+
         const context = withContext
             ? tpfun.message.list(shared.topicId, contextLimit).map((it) => {
                   if (it.role === 'user') {
@@ -120,25 +158,42 @@ class ToolsNode extends Node<AskShare> {
             return
         }
         shared.mcps = mcps
-        const tools = (
-            await Promise.all(
-                mcps.flatMap(async (it) => {
-                    await it.connect()
-                    return await it.tools()
-                }),
-            )
-        ).flat()
-        shared.tools = tools
+
+        const results = await Promise.allSettled(
+            mcps.map(async (it) => {
+                await it.connect()
+                if (!it.isConnected) {
+                    const err = it.connectionErr
+                    throw new Error(
+                        `MCP ${it.name}/${it.version} connection failed: ${err?.message ?? 'unknown error'}`,
+                    )
+                }
+                return await it.tools()
+            }),
+        )
+
+        const tools = results
+            .flatMap((result) => {
+                if (result.status === 'fulfilled') {
+                    return result.value
+                }
+                println(
+                    `MCP connection warning: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`,
+                )
+                return []
+            })
+            .flat()
+
+        shared.tools = tools.length > 0 ? tools : undefined
     }
 
     override async execFallback(
         _prepRes: unknown,
-        error: Error,
+        _error: Error,
     ): Promise<void> {
         if (this.mcps) {
-            await Promise.all(this.mcps.map((it) => it.close()))
+            await Promise.allSettled(this.mcps.map((it) => it.close()))
         }
-        throw error
     }
 }
 
@@ -172,6 +227,9 @@ class ToolsCallNode extends Node<AskShare> {
         const { model, temperature, tools, messages, outputHandler, noStream } =
             prepRes
         const handler = outputHandler ?? new SilentOutputHandler()
+        let hasReasoningContent = false
+        let hasReasoningStopped = false
+
         try {
             const runner = this.client.chat.completions
                 .runTools({
@@ -181,6 +239,33 @@ class ToolsCallNode extends Node<AskShare> {
                     messages,
                     stream: true,
                 })
+                .on(
+                    'chunk',
+                    (chunk: OpenAI.Chat.Completions.ChatCompletionChunk) => {
+                        const delta = chunk.choices[0]
+                            ?.delta as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta & {
+                            reasoning_content?: string
+                            reasoning?: string
+                        }
+                        const reasoning =
+                            delta?.reasoning || delta?.reasoning_content || ''
+                        const content = delta?.content || ''
+
+                        if (reasoning) {
+                            hasReasoningContent = true
+                            handler.onReasoningChunk(reasoning)
+                        }
+
+                        if (
+                            hasReasoningContent &&
+                            content &&
+                            !hasReasoningStopped
+                        ) {
+                            handler.onReasoningComplete()
+                            hasReasoningStopped = true
+                        }
+                    },
+                )
                 .on('tool_calls.function.arguments.delta', () => {
                     handler.onStateChange('analyzing')
                 })
@@ -203,6 +288,11 @@ class ToolsCallNode extends Node<AskShare> {
                     handler.onContentChunk(it)
                 })
             await runner.finalChatCompletion()
+
+            if (hasReasoningContent && !hasReasoningStopped) {
+                handler.onReasoningComplete()
+            }
+
             handler.onContentComplete()
             const result = handler.getResult()
             if (noStream) {
@@ -210,8 +300,14 @@ class ToolsCallNode extends Node<AskShare> {
             }
             return result
         } catch (err: unknown) {
-            handler.onError(err instanceof Error ? err : new Error(String(err)))
-            throw err
+            const error = err instanceof Error ? err : new Error(String(err))
+            handler.onError(error)
+            handler.onContentComplete()
+            const result = handler.getResult()
+            result.assistant.push(
+                `\n\n[MCP Error] Tool execution failed: ${error.message}. Please try again or disable MCP tools.`,
+            )
+            return result
         }
     }
 
@@ -221,16 +317,15 @@ class ToolsCallNode extends Node<AskShare> {
         execRes: LLMResultChunk,
     ): Promise<string | undefined> {
         shared.resultChunk = execRes
-        await Promise.all(prepRes.mcps.map((it) => it.close()))
+        await Promise.allSettled(prepRes.mcps.map((it) => it.close()))
         return undefined
     }
 
     override async execFallback(
         prepRes: LLMToolsCallParam,
-        error: Error,
+        _error: Error,
     ): Promise<void> {
-        await Promise.all(prepRes.mcps.map((it) => it.close()))
-        throw error
+        await Promise.allSettled(prepRes.mcps.map((it) => it.close()))
     }
 }
 
@@ -324,7 +419,8 @@ class StreamCallNode extends Node<AskShare> {
 
 class StoreNode extends Node<AskShare> {
     override async prep(shared: AskShare): Promise<void> {
-        const { chat, userContent, resultChunk, topicId } = shared
+        const { chat, userContent, resultChunk, topicId, topicNamePromise } =
+            shared
         if (!resultChunk) {
             return
         }
@@ -356,6 +452,17 @@ class StoreNode extends Node<AskShare> {
             })
         }
         chat.topic.message.save(messages)
+
+        if (topicNamePromise) {
+            try {
+                const resolvedTopicName = await topicNamePromise
+                if (resolvedTopicName) {
+                    chat.topic.update(topicId!, resolvedTopicName)
+                }
+            } catch {
+                // Failed to generate topic name, will retry on next message
+            }
+        }
     }
 }
 
@@ -368,6 +475,7 @@ const askFlow = async ({
     outputHandler,
     noStream = false,
     newTopic,
+    topicModel,
 }: {
     chat: ChatInfo
     client: OpenAI
@@ -377,6 +485,7 @@ const askFlow = async ({
     outputHandler?: LLMOutputHandler
     noStream?: boolean
     newTopic?: boolean
+    topicModel?: string
 }) => {
     const { model, scenario, sysPrompt, withContext, contextLimit, withMCP } =
         chat.config.value
@@ -395,11 +504,12 @@ const askFlow = async ({
         noStream,
         newTopic,
         outputHandler,
+        topicModel,
     }
 
     const systemPrompt = new SystemPromptNode()
     const preset = new PresetNode()
-    const context = new ContextNode()
+    const context = new ContextNode(client)
     const userNode = new UserNode()
     const tools = new ToolsNode(mcps)
     const router = new AiRouterNode()

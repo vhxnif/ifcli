@@ -164,6 +164,7 @@ export class ChatAct implements IChatAct {
             outputHandler,
             noStream,
             newTopic,
+            topicModel: client.topicModel,
         })
     }
 

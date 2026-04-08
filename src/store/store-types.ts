@@ -156,6 +156,7 @@ export interface IDBClient {
     selectTopic: (topicId: string, active: boolean) => void
     queryTopic: (chatId: string) => ChatTopic[]
     delChatTopic: (chatId: string) => void
+    updateTopicContent: (topicId: string, content: string) => void
 
     // message
     delMessage: (topicId: string) => void
@@ -164,6 +165,7 @@ export interface IDBClient {
         limit: number,
         withReasoning?: boolean,
     ) => ChatMessage[]
+    firstUserMessage: (topicId: string) => ChatMessage | null
     saveMessage: (messages: MessageContent[]) => void
     queryAllExportMessage: () => ExportMessage[]
     queryChatExportMessage: (chatId: string) => ExportMessage[]
@@ -228,6 +230,7 @@ export type TopicMessageAct = {
         withReasoning?: boolean,
     ) => ChatMessage[]
     save: (messages: MessageContent[]) => void
+    first: (topicId: string) => ChatMessage | null
 }
 
 export type TopicAct = {
@@ -235,6 +238,7 @@ export type TopicAct = {
     list: () => ChatTopic[]
     new: (topicName: string) => string
     switch: (targetTopicId: string) => void
+    update: (topicId: string, topicName: string) => void
     message: TopicMessageAct
 }
 

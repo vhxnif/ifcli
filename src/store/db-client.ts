@@ -258,6 +258,11 @@ export class DBClient implements IDBClient {
             )
             .run(llmType, value, unixnow(), configId)
     }
+    updateTopicContent(topicId: string, content: string): void {
+        this.db
+            .prepare('UPDATE chat_topic SET content = ? WHERE id = ?')
+            .run(content, topicId)
+    }
     updateConfigExt(chatId: string, ext: string): void {
         this.db
             .prepare(
@@ -336,6 +341,15 @@ export class DBClient implements IDBClient {
                     statement.run(...it)
                 })
         })()
+    }
+
+    firstUserMessage(topicId: string): ChatMessage | null {
+        return this.db
+            .query(
+                `SELECT ${this.chatMessageColumn} FROM chat_message WHERE topic_id = ? AND role = 'user' ORDER BY action_time ASC LIMIT 1`,
+            )
+            .as(ChatMessage)
+            .get(topicId)
     }
 
     queryCmdHis(type: CmdHistoryType, key: string) {

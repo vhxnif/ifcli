@@ -135,6 +135,9 @@ export class Store implements IStore {
                     this.client.selectTopic(targetTopicId, true)
                 })
             },
+            update: (topicId: string, topicName: string) => {
+                this.client.updateTopicContent(topicId, topicName)
+            },
             message: this.topicMessage(),
         } as TopicAct
     }
@@ -145,6 +148,7 @@ export class Store implements IStore {
                 this.client.queryMessage(topicId, limit, withReasoning),
             save: (messages: MessageContent[]) =>
                 this.client.saveMessage(messages),
+            first: (topicId: string) => this.client.firstUserMessage(topicId),
         } as TopicMessageAct
     }
 

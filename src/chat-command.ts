@@ -216,6 +216,5 @@ program
     })
 
 program.parseAsync().catch((e: unknown) => {
-    const { message } = e as Error
-    print(terminalColor.red(message))
+    print(terminalColor.red(e))
 })

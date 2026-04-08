@@ -32,9 +32,13 @@ export interface SSEConfig extends MCPConfig {
     opts?: SSEClientTransportOptions
 }
 
+export type MCPLogMode = 'ignore' | 'inherit' | 'file'
+
 export interface StdioConfig extends MCPConfig {
     type: 'stdio'
     params: StdioServerParameters
+    logMode?: MCPLogMode
+    logFile?: string
 }
 
 export interface HttpConfig extends MCPConfig {
@@ -49,6 +53,8 @@ export default class MCPClient {
     client: Client
     transport: Transport
     private connected: boolean = false
+    private connectionError: Error | null = null
+
     constructor(config: MCPConfig) {
         this.name = config.name
         this.version = config.version
@@ -64,8 +70,11 @@ export default class MCPClient {
             },
         )
         if (config.type === 'stdio') {
+            const stdioConfig = config as StdioConfig
+            const stderr = this.getStderrConfig(stdioConfig.logMode)
             this.transport = new StdioClientTransport({
-                ...(config as StdioConfig).params,
+                ...stdioConfig.params,
+                stderr,
             })
             return
         }
@@ -80,18 +89,41 @@ export default class MCPClient {
         this.transport = new SSEClientTransport(new URL(url), opts)
     }
 
+    private getStderrConfig(
+        logMode?: MCPLogMode,
+    ): 'inherit' | 'ignore' | 'pipe' {
+        if (logMode === 'inherit') {
+            return 'inherit'
+        }
+        if (logMode === 'ignore') {
+            return 'ignore'
+        }
+        if (logMode === 'file') {
+            return 'pipe'
+        }
+        return 'pipe'
+    }
+
     async connect(): Promise<void> {
         try {
             await this.client.connect(this.transport)
             this.connected = true
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (_e: unknown) {
-            println(`${this.name}/${this.version} connect error.`)
+            this.connectionError = null
+        } catch (e: unknown) {
+            this.connected = false
+            this.connectionError = e instanceof Error ? e : new Error(String(e))
+            println(
+                `${this.name}/${this.version} connect error: ${this.connectionError.message}`,
+            )
         }
     }
 
     get isConnected() {
         return this.connected
+    }
+
+    get connectionErr() {
+        return this.connectionError
     }
 
     async listTools() {
@@ -113,8 +145,13 @@ export default class MCPClient {
                         parameters: {
                             ...t.inputSchema,
                         },
-                        function: async (args: any) =>
-                            await this.callTool(t.name, args),
+                        function: async (args: any) => {
+                            try {
+                                return await this.callTool(t.name, args)
+                            } catch (err: any) {
+                                return err
+                            }
+                        },
                         parse: JSON.parse,
                     },
                 } as RunnableToolFunction<any>
@@ -141,8 +178,9 @@ export default class MCPClient {
             if (this.connected) {
                 await this.client.close()
                 this.connected = false
+            } else {
+                await this.transport.close()
             }
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (_e: unknown) {
             println(`${this.name}/${this.version} close error.`)
         }
