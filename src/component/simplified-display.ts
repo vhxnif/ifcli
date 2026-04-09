@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import chalk from 'chalk'
+import type { Color } from 'ora'
 import type { LLMResultChunk } from '../llm/llm-types'
 import {
     getSemanticColor,
@@ -59,7 +60,7 @@ export class SimplifiedDisplay {
             this.spinner = new OraShow(
                 this.notice('waiting'),
                 spinnerName,
-                spinnerColor,
+                spinnerColor as Color,
             )
             this.spinner.start()
         }
@@ -67,7 +68,7 @@ export class SimplifiedDisplay {
 
     private notice(type: LLMNotifyMessageType) {
         const colorName = getSemanticColor(this.semanticColors, type)
-        return this.color[colorName](llmNotifyMessage[type])
+        return chalk[colorName](llmNotifyMessage[type])
     }
 
     think(reasoning: string): void {

@@ -1,5 +1,5 @@
 import { sleep } from 'bun'
-import type { Ora } from 'ora'
+import type { Color, Ora } from 'ora'
 import ora from 'ora'
 import spinners from 'unicode-animations'
 import type { SpinnerName, TerminalColorName } from './theme/theme-type'
@@ -7,16 +7,18 @@ import type { SpinnerName, TerminalColorName } from './theme/theme-type'
 export class OraShow {
     private spinner: Ora
     private isStop: boolean = true
+    private color: Color
 
     constructor(
         initMessage: string,
         spinnerName: SpinnerName = 'helix',
-        color: TerminalColorName = 'magenta',
+        color: Color = 'magenta',
     ) {
+        this.color = color
         const { frames, interval } = spinners[spinnerName]
         this.spinner = ora({
             text: initMessage,
-            spinner: { frames, interval },
+            spinner: { frames: frames.slice(), interval },
             color,
             indent: 1,
         })
@@ -46,7 +48,7 @@ export class OraShow {
         })
     }
 
-    setColor(color: TerminalColorName): void {
+    setColor(color: Color): void {
         this.inProgressRun(() => {
             this.spinner.color = color
         })

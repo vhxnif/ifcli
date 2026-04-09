@@ -202,13 +202,13 @@ const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
 
 const generateSemanticColors = (): ThemeSemanticColors => {
     return {
-        waiting: 'magenta',
+        waiting: 'cyan',
         analyzing: 'yellow',
         thinking: 'magenta',
         rendering: 'blue',
         error: 'red',
         completed: 'green',
-        toolCalling: 'yellow',
+        toolCalling: 'magentaBright',
     }
 }
 const latte = scheme['Catppuccin Latte']
