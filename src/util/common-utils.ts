@@ -100,7 +100,7 @@ const objToJson = (obj: unknown): string => {
 
 const injectSchema = (jsonString: string, schemaPath: string): string => {
     const obj = JSON.parse(jsonString) as Record<string, unknown>
-    return JSON.stringify({ $schema: schemaPath, ...obj }, null, 4)
+    return JSON.stringify({ ...obj, $schema: schemaPath }, null, 4)
 }
 
 const restoreSchema = (

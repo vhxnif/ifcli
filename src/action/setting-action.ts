@@ -36,7 +36,12 @@ export class SettingAct implements ISettingAct {
     async modify(): Promise<void> {
         const setting = await appSetting()
         const sourceText = objToJson(setting)
-        const contentWithSchema = injectSchema(sourceText, dataPath.schema)
+        const contentWithSchema = injectSchema(
+            sourceText,
+            dataPath.schema.startsWith('/')
+                ? `file://${dataPath.schema}`
+                : `file:///${dataPath.schema}`,
+        )
         const text = await editor(contentWithSchema, 'json')
         if (!text) {
             return
