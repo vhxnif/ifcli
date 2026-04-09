@@ -229,7 +229,6 @@ class ToolsCallNode extends Node<AskShare> {
         const handler = outputHandler ?? new SilentOutputHandler()
         let hasReasoningContent = false
         let hasReasoningStopped = false
-        let hasToolCallingStarted = false
 
         try {
             const runner = this.client.chat.completions
@@ -268,10 +267,7 @@ class ToolsCallNode extends Node<AskShare> {
                     },
                 )
                 .on('tool_calls.function.arguments.delta', () => {
-                    if (!hasToolCallingStarted) {
-                        hasToolCallingStarted = true
-                        handler.onStateChange('toolCalling')
-                    }
+                    handler.onStateChange('toolCalling')
                 })
                 .on(
                     'tool_calls.function.arguments.done',

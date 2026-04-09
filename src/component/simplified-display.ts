@@ -136,17 +136,18 @@ export class SimplifiedDisplay {
         _args: string,
     ): void {
         this.pendingToolName = funName
-        if (this.enableRealtimeRender) {
-            const toolCallingColor = getSemanticColor(
-                this.semanticColors,
-                'toolCalling',
-            )
-            const message = this.color[toolCallingColor](
-                `${llmNotifyMessage.toolCalling} [${funName}]`,
-            )
-            this.spinner?.show(message)
-            this.spinner?.setColor(toolCallingColor)
-        }
+        this.spinner?.stop()
+        // if (this.enableRealtimeRender) {
+        //     const toolCallingColor = getSemanticColor(
+        //         this.semanticColors,
+        //         'toolCalling',
+        //     )
+        //     const message = this.color[toolCallingColor](
+        //         `${llmNotifyMessage.toolCalling} [${funName}]`,
+        //     )
+        //     this.spinner?.show(message)
+        //     this.spinner?.setColor(toolCallingColor)
+        // }
     }
 
     toolCallResult(result: string): void {
@@ -214,6 +215,7 @@ export class SimplifiedDisplay {
     }
 
     change(type: LLMNotifyMessageType): void {
+        this.spinner?.start()
         this.spinner?.show(this.notice(type))
         this.spinner?.setColor(getSemanticColor(this.semanticColors, type))
     }
