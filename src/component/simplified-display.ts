@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import chalk from 'chalk'
 import type { Color } from 'ora'
@@ -17,12 +16,20 @@ import type {
     ThemeSemanticColors,
 } from './theme/theme-type'
 
+export type OutputFn = {
+    print: (str: string) => void
+    println: (str: string) => void
+}
+
+const defaultOutput: OutputFn = { print, println }
+
 export class SimplifiedDisplay {
     private theme: ChalkChatBoxTheme
     private color: ChalkTerminalColor
     private semanticColors: ThemeSemanticColors
     private spinner?: OraShow
     private enableRealtimeRender: boolean
+    private output: OutputFn
 
     private reasoningContent: string[] = []
     private assistantContent: string[] = []
@@ -30,6 +37,7 @@ export class SimplifiedDisplay {
 
     private pendingToolName: string | null = null
     private currentRole: 'idle' | 'reasoning' | 'assistant' | 'tools' = 'idle'
+    private needsNewline: boolean = false
 
     private hasReasoningStopped: boolean = false
 
@@ -40,6 +48,7 @@ export class SimplifiedDisplay {
         enableSpinner = true,
         enableRealtimeRender = true,
         spinnerName = 'helix',
+        output = defaultOutput,
     }: {
         color: ChalkTerminalColor
         theme: ChalkChatBoxTheme
@@ -47,11 +56,13 @@ export class SimplifiedDisplay {
         enableSpinner?: boolean
         enableRealtimeRender?: boolean
         spinnerName?: SpinnerName
+        output?: OutputFn
     }) {
         this.theme = theme
         this.color = color
         this.semanticColors = semanticColors
         this.enableRealtimeRender = enableRealtimeRender
+        this.output = output
         if (enableSpinner) {
             const spinnerColor = getSemanticColor(
                 this.semanticColors,
@@ -71,6 +82,13 @@ export class SimplifiedDisplay {
         return chalk[colorName](llmNotifyMessage[type])
     }
 
+    private ensureNewline(): void {
+        if (this.needsNewline && this.enableRealtimeRender) {
+            this.output.println('')
+            this.needsNewline = false
+        }
+    }
+
     think(reasoning: string): void {
         if (this.enableRealtimeRender) {
             this.spinner?.stop()
@@ -78,24 +96,25 @@ export class SimplifiedDisplay {
 
         if (this.currentRole !== 'reasoning') {
             if (this.currentRole !== 'idle' && this.enableRealtimeRender) {
-                println('')
+                this.output.println('')
             }
             this.currentRole = 'reasoning'
         }
 
         this.reasoningContent.push(reasoning)
         if (this.enableRealtimeRender) {
-            print(this.theme.reasoner.content(reasoning))
+            this.output.print(this.theme.reasoner.content(reasoning))
+            this.needsNewline = true
         }
     }
 
     stopThink(): void {
-        // 如果有推理内容，输出空行分隔
         if (this.reasoningContent.length > 0 && !this.hasReasoningStopped) {
             this.hasReasoningStopped = true
             if (this.enableRealtimeRender) {
-                println('')
-                println('')
+                this.output.println('')
+                this.output.println('')
+                this.needsNewline = false
             }
             this.currentRole = 'idle'
         }
@@ -111,21 +130,23 @@ export class SimplifiedDisplay {
 
         if (this.currentRole !== 'assistant') {
             if (this.currentRole !== 'idle' && this.enableRealtimeRender) {
-                println('')
+                this.output.println('')
             }
             this.currentRole = 'assistant'
         }
 
         this.assistantContent.push(content)
         if (this.enableRealtimeRender) {
-            print(this.theme.assisant.content(content))
+            this.output.print(this.theme.assisant.content(content))
+            this.needsNewline = true
         }
     }
 
     contentStop(): void {
         if (this.enableRealtimeRender) {
-            println('')
-            println('')
+            this.output.println('')
+            this.output.println('')
+            this.needsNewline = false
         }
         this.currentRole = 'idle'
     }
@@ -137,18 +158,8 @@ export class SimplifiedDisplay {
         _args: string,
     ): void {
         this.pendingToolName = funName
+        this.ensureNewline()
         this.spinner?.stop()
-        // if (this.enableRealtimeRender) {
-        //     const toolCallingColor = getSemanticColor(
-        //         this.semanticColors,
-        //         'toolCalling',
-        //     )
-        //     const message = this.color[toolCallingColor](
-        //         `${llmNotifyMessage.toolCalling} [${funName}]`,
-        //     )
-        //     this.spinner?.show(message)
-        //     this.spinner?.setColor(toolCallingColor)
-        // }
     }
 
     toolCallResult(result: string): void {
@@ -156,10 +167,12 @@ export class SimplifiedDisplay {
 
         if (this.currentRole !== 'tools') {
             if (this.currentRole !== 'idle' && this.enableRealtimeRender) {
-                println('')
+                this.output.println('')
+                this.needsNewline = false
             }
             this.currentRole = 'tools'
         }
+
         const res = this.parseToolResult(result)
         const isSuccess = res ? !res.isError : false
 
@@ -173,19 +186,21 @@ export class SimplifiedDisplay {
                     : this.color.red
                 const statusSymbol = isSuccess ? '✓' : '✗'
 
-                println(
+                this.output.println(
                     textColor(`[${this.pendingToolName}] `) +
                         statusColor(statusSymbol) +
                         toolResultColor(
                             this.subResultContent(res as CallToolResult),
                         ),
                 )
+                this.needsNewline = false
             }
 
             this.pendingToolName = null
         }
 
         if (this.enableRealtimeRender) {
+            this.ensureNewline()
             const renderColor = getSemanticColor(
                 this.semanticColors,
                 'rendering',
@@ -216,6 +231,7 @@ export class SimplifiedDisplay {
     }
 
     change(type: LLMNotifyMessageType): void {
+        this.ensureNewline()
         this.spinner?.start()
         this.spinner?.show(this.notice(type))
         this.spinner?.setColor(getSemanticColor(this.semanticColors, type))

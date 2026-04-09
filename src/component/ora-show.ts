@@ -2,12 +2,11 @@ import { sleep } from 'bun'
 import type { Color, Ora } from 'ora'
 import ora from 'ora'
 import spinners from 'unicode-animations'
-import type { SpinnerName, TerminalColorName } from './theme/theme-type'
+import type { SpinnerName } from './theme/theme-type'
 
 export class OraShow {
     private spinner: Ora
     private isStop: boolean = true
-    private color: Color
 
     constructor(
         initMessage: string,
