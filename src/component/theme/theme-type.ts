@@ -1,4 +1,5 @@
 import type { ChalkInstance } from 'chalk'
+import type { Color } from 'ora'
 
 export type TerminalColorName =
     | 'black'
@@ -39,14 +40,36 @@ export type SemanticColorType =
     | 'rendering'
     | 'error'
     | 'completed'
+    | 'toolCalling'
 
-export type ThemeSemanticColors = Record<SemanticColorType, TerminalColorName>
+export type ThemeSemanticColors = Record<SemanticColorType, Color>
+
+export type SpinnerName =
+    | 'braille'
+    | 'braillewave'
+    | 'dna'
+    | 'scan'
+    | 'rain'
+    | 'scanline'
+    | 'pulse'
+    | 'snake'
+    | 'sparkle'
+    | 'cascade'
+    | 'columns'
+    | 'orbit'
+    | 'breathe'
+    | 'waverows'
+    | 'checkerboard'
+    | 'helix'
+    | 'fillsweep'
+    | 'diagswipe'
 
 export type ColorScheme = {
     name: string
     color: Record<TerminalColorName, string>
     theme: ChatBoxTheme
     semantic?: ThemeSemanticColors
+    spinner?: SpinnerName
 }
 
 export type ChalkColor = [

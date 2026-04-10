@@ -267,7 +267,7 @@ class ToolsCallNode extends Node<AskShare> {
                     },
                 )
                 .on('tool_calls.function.arguments.delta', () => {
-                    handler.onStateChange('analyzing')
+                    handler.onStateChange('toolCalling')
                 })
                 .on(
                     'tool_calls.function.arguments.done',

@@ -1,6 +1,7 @@
 import type {
     ChatBoxTheme,
     ColorScheme,
+    SpinnerName,
     TerminalColorName,
     ThemeSemanticColors,
 } from './theme-type'
@@ -129,6 +130,7 @@ const generateSemanticColors = (): ThemeSemanticColors => {
         rendering: 'blue',
         error: 'red',
         completed: 'green',
+        toolCalling: 'yellow',
     }
 }
 
@@ -142,6 +144,7 @@ const colorScheme: ColorScheme[] = [
         color: generateTerminalColor(rosePine),
         theme: generateTheme(rosePine),
         semantic: generateSemanticColors(),
+        spinner: 'cascade' as SpinnerName,
     },
     {
         name: 'Rose Pine Moon',
@@ -150,6 +153,7 @@ const colorScheme: ColorScheme[] = [
         },
         theme: generateTheme(rosePineMoon),
         semantic: generateSemanticColors(),
+        spinner: 'cascade' as SpinnerName,
     },
     {
         name: 'Rose Pine Dawn',
@@ -160,6 +164,7 @@ const colorScheme: ColorScheme[] = [
         },
         theme: generateTheme(rosePineDawn),
         semantic: generateSemanticColors(),
+        spinner: 'cascade' as SpinnerName,
     },
 ]
 

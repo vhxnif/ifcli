@@ -1,3 +1,4 @@
+import type { Color } from 'ora'
 import type {
     TerminalColorName,
     ThemeSemanticColors,
@@ -11,32 +12,36 @@ export type LLMNotifyMessageType =
     | 'rendering'
     | 'error'
     | 'completed'
+    | 'toolCalling'
 
 const llmNotifyMessage: Record<LLMNotifyMessageType, string> = {
-    waiting: 'Booting cognitive engine...',
-    analyzing: 'Parsing input streams...',
-    thinking: 'Orchestrating neural processes...',
-    rendering: 'Assembling response framework...',
-    error: 'System protocol violation',
-    completed: 'Cognitive cycle complete',
+    waiting: 'Thinking...',
+    analyzing: 'Analyzing...',
+    thinking: 'Thinking...',
+    rendering: 'Responding...',
+    error: 'Error',
+    completed: 'Done',
+    toolCalling: 'Calling tool...',
 }
 
 const defaultSemanticColors: ThemeSemanticColors = {
-    waiting: 'cyan',
+    waiting: 'blue',
     analyzing: 'yellow',
-    thinking: 'magenta',
+    thinking: 'cyan',
     rendering: 'blue',
     error: 'red',
     completed: 'green',
+    toolCalling: 'magenta',
 }
 
 const llmNotifyMessageColor: Record<LLMNotifyMessageType, TerminalColorName> = {
-    waiting: 'cyan',
+    waiting: 'blue',
     analyzing: 'yellow',
-    thinking: 'magenta',
+    thinking: 'cyan',
     rendering: 'blue',
     error: 'red',
     completed: 'green',
+    toolCalling: 'magenta',
 }
 
 const message = (role: LLMRole, content: string): LLMMessage => {
@@ -60,7 +65,7 @@ const assistant = (content: string): LLMMessage => {
 const getSemanticColor = (
     semanticColors: ThemeSemanticColors | undefined,
     type: LLMNotifyMessageType,
-): TerminalColorName => {
+): Color => {
     return semanticColors?.[type] ?? defaultSemanticColors[type]
 }
 

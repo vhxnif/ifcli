@@ -8,6 +8,7 @@ export type LLMState =
     | 'rendering'
     | 'error'
     | 'completed'
+    | 'toolCalling'
 
 export interface LLMOutputHandler {
     onContentChunk(content: string): void

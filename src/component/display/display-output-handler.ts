@@ -6,6 +6,7 @@ import { SimplifiedDisplay } from '../simplified-display'
 import type {
     ChalkChatBoxTheme,
     ChalkTerminalColor,
+    SpinnerName,
     ThemeSemanticColors,
 } from '../theme/theme-type'
 
@@ -15,6 +16,7 @@ export type DisplayOutputHandlerOptions = {
     semanticColors: ThemeSemanticColors
     enableSpinner?: boolean
     textShowRender?: boolean
+    spinnerName?: SpinnerName
 }
 
 export class DisplayOutputHandler implements LLMOutputHandler {
@@ -27,6 +29,7 @@ export class DisplayOutputHandler implements LLMOutputHandler {
             semanticColors,
             enableSpinner = true,
             textShowRender = true,
+            spinnerName,
         } = options
         this.display = new SimplifiedDisplay({
             color,
@@ -34,6 +37,7 @@ export class DisplayOutputHandler implements LLMOutputHandler {
             semanticColors,
             enableSpinner,
             enableRealtimeRender: textShowRender,
+            spinnerName,
         })
     }
 

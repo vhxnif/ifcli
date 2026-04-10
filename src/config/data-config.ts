@@ -12,7 +12,7 @@ export class DataPathConfig {
     private get configPath(): string | undefined {
         const platformConfigPath = this.platformConfigPath
         const appName = this.appName
-        const appConfig = `${platformConfigPath}${path.sep}${appName}`
+        const appConfig = path.join(platformConfigPath!, appName)
         try {
             accessSync(platformConfigPath, constants.F_OK)
         } catch (_err: any) {
@@ -32,22 +32,28 @@ export class DataPathConfig {
         if (!['win32', 'linux', 'darwin'].includes(platform)) {
             throw Error(`${platform} not supported.`)
         }
-        let pt = env('APPDATA')!
+
         if (['linux', 'darwin'].includes(platform)) {
-            pt = `${env('HOME')}${path.sep}.config`
+            return path.join(env('HOME')!, '.config')
         }
-        return pt
+        return env('APPDATA')!.split(path.sep)!.join(path.posix.sep)
     }
     get database(): string {
-        return `${this.configPath}${path.sep}${this.appName}_${APP_VERSION}.sqlite`
+        return path.join(
+            this.configPath!,
+            `${this.appName}_${APP_VERSION}.sqlite`,
+        )
     }
 
     get setting(): string {
-        return `${this.configPath}${path.sep}${this.appName}.json`
+        return path.join(this.configPath!, `${this.appName}.json`)
     }
 
     get schema(): string {
-        return `${this.configPath}${path.sep}${this.appName}-settings-schema.json`
+        return path.join(
+            this.configPath!,
+            `${this.appName}-settings-schema.json`,
+        )
     }
 }
 
