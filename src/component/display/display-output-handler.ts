@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import type { LLMOutputHandler, LLMState } from '../../llm/llm-output-handler'
-import type { LLMResultChunk } from '../../llm/llm-types'
 import { SimplifiedDisplay } from '../simplified-display'
 import type {
     ChalkChatBoxTheme,
@@ -57,13 +56,8 @@ export class DisplayOutputHandler implements LLMOutputHandler {
         this.display.stopThink()
     }
 
-    onToolCall(
-        server: string,
-        version: string,
-        name: string,
-        args: string,
-    ): void {
-        this.display.toolCall(server, version, name, args)
+    onToolCall(name: string): void {
+        this.display.toolCall(name)
     }
 
     onToolResult(result: string): void {
@@ -76,9 +70,5 @@ export class DisplayOutputHandler implements LLMOutputHandler {
 
     onError(_error: Error): void {
         this.display.error()
-    }
-
-    getResult(): LLMResultChunk {
-        return this.display.result()
     }
 }

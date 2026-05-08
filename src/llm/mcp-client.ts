@@ -14,10 +14,15 @@ import {
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js'
-import type { RunnableToolFunction } from 'openai/lib/RunnableFunction.mjs'
-import { println, uuid } from '../util/common-utils'
+import type { ChatCompletionTool } from 'openai/resources'
+import { println } from '../util/common-utils'
 
 export type MCPConnectType = 'http' | 'sse' | 'stdio'
+
+export type ToolDef = {
+    def: ChatCompletionTool
+    call: (args: any) => Promise<any>
+}
 
 export interface MCPConfig {
     name: string
@@ -136,32 +141,21 @@ export default class MCPClient {
         }
         return await this.listTools().then((res) =>
             res.tools.map((t) => {
-                const nameId = uuid()
-                const f = {
-                    type: 'function',
-                    function: {
-                        name: nameId,
-                        description: t.description,
-                        parameters: {
-                            ...t.inputSchema,
-                        },
-                        function: async (args: any) => {
-                            try {
-                                return await this.callTool(t.name, args)
-                            } catch (err: any) {
-                                return err
-                            }
-                        },
-                        parse: JSON.parse,
-                    },
-                } as RunnableToolFunction<any>
                 return {
-                    id: nameId,
-                    mcpServer: this.name,
-                    mcpVersion: this.version,
-                    funName: t.name,
-                    f: f,
-                }
+                    def: {
+                        type: 'function',
+                        function: {
+                            name: `${this.name}_${this.version}_${t.name}`,
+                            description: t.description,
+                            parameters: {
+                                ...t.inputSchema,
+                            },
+                        },
+                    },
+                    call: async (args: any) => {
+                        return await this.callTool(t.name, args)
+                    },
+                } as ToolDef
             }),
         )
     }

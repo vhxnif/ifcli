@@ -315,7 +315,7 @@ export class DBClient implements IDBClient {
                     withReasoning ? '' : "and role != 'reasoning'"
                 } and pair_key in (
                     select pair_key from chat_message group by pair_key order by max(action_time) desc limit ?
-                ) order by action_time desc
+                ) order by action_time
                 `,
             )
             .as(ChatMessage)
@@ -329,13 +329,13 @@ export class DBClient implements IDBClient {
         this.db.transaction(() => {
             messages
                 .filter((it) => !isEmpty(it.role) && !isEmpty(it.content))
-                .map((it) => [
+                .map((it, idx) => [
                     uuid(),
                     it.topicId,
                     it.role,
                     it.content,
                     it.pairKey,
-                    unixnow(),
+                    unixnow() + idx,
                 ])
                 .forEach((it) => {
                     statement.run(...it)
