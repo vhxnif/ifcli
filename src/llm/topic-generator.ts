@@ -34,7 +34,7 @@ export async function generateTopicName(
             max_tokens: 50,
             temperature: 0.3,
         })
-
+        console.log(`topic response ${JSON.stringify(response)}`)
         const topic = response.choices[0]?.message.content?.trim()
         if (topic && topic.length > 0) {
             return topic
