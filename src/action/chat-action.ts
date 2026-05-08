@@ -11,7 +11,6 @@ import {
 } from '../app-context'
 import { DisplayOutputHandler } from '../component/display/display-output-handler'
 import { simpleShow } from '../component/simple-show'
-import { SimplifiedDisplay } from '../component/simplified-display'
 import type { GeneralSetting, Setting } from '../config/app-setting'
 import { promptMessage } from '../config/prompt-message'
 import { askFlow } from '../llm/ask-flow'
@@ -168,7 +167,6 @@ export class ChatAct implements IChatAct {
             mcps: this.mcps,
             userContent: content,
             outputHandler,
-            noStream,
             newTopic,
             topicModel: client.topicModel,
         })
@@ -328,46 +326,58 @@ export class ChatAct implements IChatAct {
         ]
         const colExpInfo = (role: string, content: string) =>
             expInfo.push({ role, content })
-        const { reasoning, toolsCall, assistant } = this.partMessageByRole(msgs)
-        const display = new SimplifiedDisplay({
+
+        const display = new DisplayOutputHandler({
             color: terminalColor,
             theme: chalkTheme,
             semanticColors: semanticColors,
             enableSpinner: false,
+            textShowRender: true,
             spinnerName: spinnerName,
         })
-        this.historyReasoningPrint(reasoning, display, colExpInfo)
-        this.historyToolsCallPrint(toolsCall, display, colExpInfo)
-        this.historyAssistantPrint(assistant, display, colExpInfo)
+
+        msgs.sort((a, b) => Number(a.actionTime - b.actionTime)).forEach(
+            (it) => {
+                if (it.role === 'reasoning') {
+                    this.historyReasoningPrint(it.content, display, colExpInfo)
+                }
+                if (it.role === 'assistant') {
+                    this.historyAssistantPrint(it.content, display, colExpInfo)
+                }
+                if (it.role === 'toolscall') {
+                    this.historyToolsCallPrint(it.content, display, colExpInfo)
+                }
+            },
+        )
         return value
     }
 
     private historyAssistantPrint(
         assistant: string,
-        display: SimplifiedDisplay,
+        display: DisplayOutputHandler,
         f: (role: string, content: string) => void,
     ): void {
-        display.contentShow(assistant)
-        display.contentStop()
+        display.onContentChunk(assistant)
+        display.onContentComplete()
         f('assistant', assistant)
     }
 
     private historyReasoningPrint(
         reasoning: string,
-        display: SimplifiedDisplay,
+        display: DisplayOutputHandler,
         f: (role: string, content: string) => void,
     ): void {
         if (!reasoning) {
             return
         }
-        display.think(reasoning)
-        display.stopThink()
+        display.onReasoningChunk(reasoning)
+        display.onReasoningComplete()
         f('reasoning', reasoning)
     }
 
     private historyToolsCallPrint(
         toolsCall: string,
-        display: SimplifiedDisplay,
+        display: DisplayOutputHandler,
         f: (role: string, content: string) => void,
     ): void {
         if (!toolsCall) {
@@ -375,15 +385,14 @@ export class ChatAct implements IChatAct {
         }
         const res = this.parseToolsCall(toolsCall)
         if (typeof res === 'string') {
-            display.think(res)
-            display.stopThink()
+            display.onReasoningChunk(res)
+            display.onReasoningComplete()
             f('toolsCall', toolsCall)
             return
         }
         res.forEach((it) => {
-            const { mcpServer, mcpVersion, toolName, args, response } = it
-            display.toolCall(mcpServer, mcpVersion, toolName, args)
-            display.toolCallResult(response)
+            display.onToolCall(it.function.name)
+            display.onToolResult(it.result)
         })
     }
 
@@ -398,42 +407,13 @@ export class ChatAct implements IChatAct {
         }, [] as Choice<string>[])
     }
 
-    private partMessageByRole(msgs: ChatMessage[] | undefined): {
-        assistant: string
-        reasoning: string
-        toolsCall: string
-    } {
-        if (!msgs) {
-            return {
-                assistant: '',
-                reasoning: '',
-                toolsCall: '',
-            }
-        }
-        return {
-            assistant: this.findRoleMessage('assistant')(msgs) ?? '',
-            reasoning: this.findRoleMessage('reasoning')(msgs) ?? '',
-            toolsCall: this.findRoleMessage('toolscall')(msgs) ?? '',
-        }
-    }
-
     private findRoleMessage = (role: string) => (arr: ChatMessage[]) => {
         return arr.find((it) => it.role === role)?.content
     }
 
     private parseToolsCall(toolsCall: string) {
         try {
-            const itemStr: string[] = JSON.parse(toolsCall)
-            return itemStr.map((it) => {
-                const i: {
-                    mcpServer: string
-                    mcpVersion: string
-                    toolName: string
-                    args: string
-                    response: string
-                } = JSON.parse(it)
-                return i
-            })
+            return JSON.parse(toolsCall) as { function: any; result: any }[]
         } catch (_err: unknown) {
             return toolsCall
         }

@@ -31,10 +31,8 @@ export async function generateTopicName(
                     content: `Summarize this into a topic: ${truncatedContent}`,
                 },
             ],
-            max_tokens: 50,
             temperature: 0.3,
         })
-
         const topic = response.choices[0]?.message.content?.trim()
         if (topic && topic.length > 0) {
             return topic

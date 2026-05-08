@@ -1,7 +1,6 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import chalk from 'chalk'
 import type { Color } from 'ora'
-import type { LLMResultChunk } from '../llm/llm-types'
 import {
     getSemanticColor,
     type LLMNotifyMessageType,
@@ -30,10 +29,6 @@ export class SimplifiedDisplay {
     private spinner?: OraShow
     private enableRealtimeRender: boolean
     private output: OutputFn
-
-    private reasoningContent: string[] = []
-    private assistantContent: string[] = []
-    private toolsContent: string[] = []
 
     private pendingToolName: string | null = null
     private currentRole: 'idle' | 'reasoning' | 'assistant' | 'tools' = 'idle'
@@ -101,7 +96,6 @@ export class SimplifiedDisplay {
             this.currentRole = 'reasoning'
         }
 
-        this.reasoningContent.push(reasoning)
         if (this.enableRealtimeRender) {
             this.output.print(this.theme.reasoner.content(reasoning))
             this.needsNewline = true
@@ -109,7 +103,7 @@ export class SimplifiedDisplay {
     }
 
     stopThink(): void {
-        if (this.reasoningContent.length > 0 && !this.hasReasoningStopped) {
+        if (!this.hasReasoningStopped) {
             this.hasReasoningStopped = true
             if (this.enableRealtimeRender) {
                 this.output.println('')
@@ -135,7 +129,6 @@ export class SimplifiedDisplay {
             this.currentRole = 'assistant'
         }
 
-        this.assistantContent.push(content)
         if (this.enableRealtimeRender) {
             this.output.print(this.theme.assisant.content(content))
             this.needsNewline = true
@@ -151,20 +144,13 @@ export class SimplifiedDisplay {
         this.currentRole = 'idle'
     }
 
-    toolCall(
-        _mcpServer: string,
-        _mcpVersion: string,
-        funName: string,
-        _args: string,
-    ): void {
+    toolCall(funName: string): void {
         this.pendingToolName = funName
         this.ensureNewline()
         this.spinner?.stop()
     }
 
     toolCallResult(result: string): void {
-        this.toolsContent.push(result)
-
         if (this.currentRole !== 'tools') {
             if (this.currentRole !== 'idle' && this.enableRealtimeRender) {
                 this.output.println('')
@@ -239,13 +225,5 @@ export class SimplifiedDisplay {
 
     error(): void {
         this.spinner?.fail(this.notice('error'))
-    }
-
-    result(): LLMResultChunk {
-        return {
-            tools: this.toolsContent,
-            assistant: this.assistantContent,
-            reasoning: this.reasoningContent,
-        }
     }
 }
