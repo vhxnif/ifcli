@@ -21,6 +21,7 @@ export type MCPConnectType = 'http' | 'sse' | 'stdio'
 
 export type ToolDef = {
     def: ChatCompletionTool
+    group: string
     call: (args: any) => Promise<any>
 }
 
@@ -152,6 +153,7 @@ export default class MCPClient {
                             },
                         },
                     },
+                    group: `${this.name}_${this.version}`,
                     call: async (args: any) => {
                         return await this.callTool(t.name, args)
                     },

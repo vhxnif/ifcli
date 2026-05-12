@@ -168,6 +168,7 @@ export class ChatAct implements IChatAct {
             userContent: content,
             outputHandler,
             newTopic,
+            noStream,
             topicModel: client.topicModel,
         })
     }
