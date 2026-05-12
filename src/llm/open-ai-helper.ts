@@ -251,14 +251,32 @@ async function streamTools(
             const f = toolCall.function
             const args = JSON.parse(f.arguments)
             callback({ type: 'toolcall', value: f })
-            const result = await tools
-                .find(
+
+            const toolCallResult = async () => {
+                const t = tools.find(
                     (it) =>
                         (it.def as ChatCompletionFunctionTool).function.name ===
                         f.name,
                 )
-                ?.call(args)
-            const resultJson = JSON.stringify(result)
+                if (t) {
+                    try {
+                        return await t.call(args)
+                    } catch (e: unknown) {
+                        const errMsg =
+                            e instanceof Error ? e.message : String(e)
+                        return `Tool "${f.name}" execution failed: ${errMsg}`
+                    }
+                }
+                const available = tools
+                    .map(
+                        (it) =>
+                            (it.def as ChatCompletionFunctionTool).function
+                                .name,
+                    )
+                    .join(', ')
+                return `Tool "${f.name}" not found. Available: [${available}]`
+            }
+            const resultJson = JSON.stringify(await toolCallResult())
             callback({ type: 'toolcall_result', value: resultJson })
             const newMessage = {
                 tool_call_id: toolCall.id,
