@@ -1,145 +1,57 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type OpenAI from 'openai'
-import type {
-    ChatCompletionChunk,
-    ChatCompletionFunctionTool,
-    ChatCompletionMessage,
-    ChatCompletionMessageParam,
-} from 'openai/resources'
+import type { ChatCompletionMessageParam } from 'openai/resources'
 import { Flow, Node } from 'pocketflow'
 import type { GeneralSetting } from '../config/app-setting'
 import type { ChatInfo, MessageContent } from '../store/store-types'
-import { isEmpty, println, uuid } from '../util/common-utils'
+import { isEmpty, println } from '../util/common-utils'
 import type { LLMOutputHandler } from './llm-output-handler'
 import type { LLMMessage, LLMParam, LLMToolsCallParam } from './llm-types'
 import { assistant, system, user } from './llm-utils'
 import type MCPClient from './mcp-client'
 import type { ToolDef } from './mcp-client'
 import {
+    type StreamEvent,
+    stream,
+    streamTools,
+    toolsGroup,
+    toStoreMessage,
+} from './open-ai-helper'
+import {
     generateTempTopicName,
     generateTopicName,
     isTempTopicName,
 } from './topic-generator'
 
-function messageReducer(
-    previous: ChatCompletionMessage,
-    item: ChatCompletionChunk,
-): ChatCompletionMessage {
-    const reduce = (acc: any, delta: MyDelta) => {
-        acc = { ...acc }
-        for (const [key, value] of Object.entries(delta)) {
-            if (acc[key] === undefined || acc[key] === null) {
-                acc[key] = value
-                //  OpenAI.Chat.Completions.ChatCompletionMessageToolCall does not have a key, .index
-                if (Array.isArray(acc[key])) {
-                    for (const arr of acc[key]) {
-                        delete arr.index
-                    }
-                }
-            } else if (
-                typeof acc[key] === 'string' &&
-                typeof value === 'string'
-            ) {
-                acc[key] += value
-            } else if (
-                typeof acc[key] === 'number' &&
-                typeof value === 'number'
-            ) {
-                acc[key] = value
-            } else if (Array.isArray(acc[key]) && Array.isArray(value)) {
-                const accArray = acc[key]
-                for (let i = 0; i < value.length; i++) {
-                    const { index, ...chunkTool } = value[i]
-                    if (index - accArray.length > 1) {
-                        throw new Error(
-                            `Error: An array has an empty value when tool_calls are constructed. tool_calls: ${accArray}; tool: ${value}`,
-                        )
-                    }
-                    accArray[index] = reduce(accArray[index], chunkTool)
-                }
-            } else if (
-                typeof acc[key] === 'object' &&
-                typeof value === 'object'
-            ) {
-                acc[key] = reduce(acc[key], value)
-            }
+function eventHandler(
+    handler: LLMOutputHandler,
+    noStream: boolean,
+    { type, value }: StreamEvent,
+) {
+    if (type === 'delta_reasoning') {
+        handler.onReasoningChunk(value)
+    }
+    if (type === 'delta_content') {
+        handler.onContentChunk(value)
+    }
+    if (type === 'message_done') {
+        handler.onContentComplete()
+    }
+    if (type === 'reasoning' || type === 'content') {
+        if (noStream) {
+            println(value)
         }
-        return acc
     }
-    const choice = item.choices[0]
-    if (!choice) {
-        // chunk contains information about usage and token counts
-        return previous
+    if (type === 'toolcall') {
+        handler.onToolCall(value.name)
     }
-    return reduce(previous, choice.delta) as ChatCompletionMessage
+    if (type === 'toolcall_result') {
+        handler.onToolResult(value)
+    }
 }
 
 type MessageParam = ChatCompletionMessageParam & {
     reasoning_content: string
-}
-
-function toStoreMessage(
-    topicId: string,
-    msgs: MessageParam[],
-): MessageContent[] {
-    const pairKey = uuid()
-
-    return msgs
-        .filter((it) => it.role !== 'tool')
-        .flatMap((it) => {
-            if (it.role === 'user') {
-                return [
-                    {
-                        topicId,
-                        role: 'user',
-                        content: it.content as string,
-                        pairKey,
-                    },
-                ] as MessageContent[]
-            }
-            if (it.role === 'assistant') {
-                const arr: MessageContent[] = []
-                if (it.reasoning_content) {
-                    arr.push({
-                        topicId,
-                        role: 'reasoning',
-                        content: it.reasoning_content,
-                        pairKey,
-                    })
-                }
-                if (it.content) {
-                    arr.push({
-                        topicId,
-                        role: 'assistant',
-                        content: it.content as string,
-                        pairKey,
-                    })
-                }
-                if (it.tool_calls) {
-                    const tools = it.tool_calls
-                    arr.push({
-                        topicId,
-                        role: 'toolscall',
-                        content: JSON.stringify(
-                            tools.map((t) => {
-                                const f = t as ChatCompletionFunctionTool
-                                return {
-                                    function: f.function,
-                                    result: msgs.find(
-                                        (m) =>
-                                            m.role === 'tool' &&
-                                            m.tool_call_id === t.id,
-                                    )?.content,
-                                }
-                            }),
-                        ),
-                        pairKey,
-                    })
-                }
-                return arr
-            }
-            return []
-        })
 }
 
 export type AskShare = LLMParam & {
@@ -299,7 +211,9 @@ class ToolsNode extends Node<AskShare> {
             })
             .flat()
 
-        shared.tools = tools.length > 0 ? tools : undefined
+        if (tools.length > 0) {
+            shared.tools = toolsGroup(tools)
+        }
     }
 
     override async execFallback(
@@ -346,32 +260,11 @@ class StreamCallNode extends Node<AskShare> {
         const handler = outputHandler!
         try {
             const msgs = messages.map((it) => it as ChatCompletionMessageParam)
-            const stream = await this.client.chat.completions.create({
-                messages: msgs,
-                model,
-                temperature,
-                stream: true,
-            })
-            let message = {} as ChatCompletionMessage
-            for await (const chunk of stream) {
-                const delta = chunk.choices[0]?.delta as MyDelta
-                const reasoning =
-                    delta.reasoning || delta.reasoning_content || ''
-                const content = delta.content || ''
-                if (reasoning) {
-                    handler.onReasoningChunk(reasoning)
-                }
-                if (content) {
-                    handler.onContentChunk(content)
-                }
-                message = messageReducer(message, chunk)
-            }
-            handler.onContentComplete()
-            msgs.push(message)
-            if (noStream) {
-                println(message.content)
-            }
-            return msgs as MessageParam[]
+            return await stream(
+                this.client,
+                { messages: msgs, model, temperature },
+                (e: StreamEvent) => eventHandler(handler, noStream, e),
+            )
         } catch (e: unknown) {
             handler.onError(e instanceof Error ? e : new Error(String(e)))
             throw e
@@ -386,11 +279,6 @@ class StreamCallNode extends Node<AskShare> {
         shared.resultMessage = toStoreMessage(shared.topicId!, execRes)
         return void 0
     }
-}
-
-type MyDelta = OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta & {
-    reasoning_content?: string
-    reasoning?: string
 }
 
 class StreamToolsCallNode extends Node<AskShare> {
@@ -409,63 +297,22 @@ class StreamToolsCallNode extends Node<AskShare> {
         const { model, temperature, tools, messages, outputHandler, noStream } =
             prepRes
         const handler = outputHandler!
-        const msgs = messages.map((it) => it as ChatCompletionMessageParam)
-        while (true) {
-            const stream = await this.client.chat.completions.create({
-                model,
-                messages: msgs,
-                temperature,
-                tools: tools.map((it) => it.def),
-                stream: true,
-            })
-            let message = {} as ChatCompletionMessage
-            for await (const chunk of stream) {
-                const delta = chunk.choices[0]?.delta as MyDelta
-                const reasoning =
-                    delta?.reasoning || delta?.reasoning_content || ''
-                const content = delta?.content || ''
-                if (reasoning) {
-                    handler.onReasoningChunk(reasoning)
-                }
-                if (content) {
-                    handler.onContentChunk(content)
-                }
-                message = messageReducer(message, chunk)
-            }
-            handler.onContentComplete()
-            msgs.push(message)
-            if (!message.tool_calls) {
-                if (noStream) {
-                    println(message.content)
-                }
-                return msgs as MessageParam[]
-            }
-            for (const toolCall of message.tool_calls) {
-                if (toolCall.type !== 'function') {
-                    throw new Error(
-                        `Unexpected tool call type: ${toolCall.type}`,
-                    )
-                }
-                const f = toolCall.function
-                const args = JSON.parse(f.arguments)
-                handler.onToolCall(f.name)
-                const result = await tools
-                    .find(
-                        (it) =>
-                            (it.def as ChatCompletionFunctionTool).function
-                                .name === f.name,
-                    )
-                    ?.call(args)
-                const resultJson = JSON.stringify(result)
-                handler.onToolResult(resultJson)
-                const newMessage = {
-                    tool_call_id: toolCall.id,
-                    role: 'tool' as const,
-                    name: toolCall.function.name,
-                    content: resultJson,
-                }
-                msgs.push(newMessage)
-            }
+        try {
+            return await streamTools(
+                this.client,
+                {
+                    messages: messages.map(
+                        (it) => it as ChatCompletionMessageParam,
+                    ),
+                    model,
+                    temperature,
+                    tools,
+                },
+                (e: StreamEvent) => eventHandler(handler, noStream, e),
+            )
+        } catch (e: unknown) {
+            handler.onError(e instanceof Error ? e : new Error(String(e)))
+            throw e
         }
     }
 
@@ -474,16 +321,22 @@ class StreamToolsCallNode extends Node<AskShare> {
         prepRes: LLMToolsCallParam,
         execRes: MessageParam[],
     ): Promise<string | undefined> {
-        shared.resultMessage = toStoreMessage(shared.topicId!, execRes)
-        await Promise.allSettled(prepRes.mcps.map((it) => it.close()))
-        return undefined
+        if (execRes && execRes.length > 0) {
+            shared.resultMessage = toStoreMessage(shared.topicId!, execRes)
+        }
+        if (prepRes.mcps) {
+            await Promise.allSettled(prepRes.mcps.map((it) => it.close()))
+        }
+        return void 0
     }
 
     override async execFallback(
         prepRes: LLMToolsCallParam,
         _error: Error,
     ): Promise<void> {
-        await Promise.allSettled(prepRes.mcps.map((it) => it.close()))
+        if (prepRes.mcps) {
+            await Promise.allSettled(prepRes.mcps.map((it) => it.close()))
+        }
     }
 }
 

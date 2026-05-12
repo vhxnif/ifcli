@@ -21,6 +21,7 @@ export type MCPConnectType = 'http' | 'sse' | 'stdio'
 
 export type ToolDef = {
     def: ChatCompletionTool
+    group: string
     call: (args: any) => Promise<any>
 }
 
@@ -145,13 +146,14 @@ export default class MCPClient {
                     def: {
                         type: 'function',
                         function: {
-                            name: `${this.name}_${this.version}_${t.name}`,
+                            name: `${t.name}`,
                             description: t.description,
                             parameters: {
                                 ...t.inputSchema,
                             },
                         },
                     },
+                    group: `${this.name}_${this.version}`,
                     call: async (args: any) => {
                         return await this.callTool(t.name, args)
                     },
