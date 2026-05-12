@@ -371,10 +371,10 @@ function toolsGroup(tools: ToolDef[]) {
 }
 
 export {
-    type StreamEvent,
     messageReducer,
+    type StreamEvent,
     stream,
     streamTools,
-    toStoreMessage,
     toolsGroup,
+    toStoreMessage,
 }
