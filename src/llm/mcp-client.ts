@@ -146,7 +146,7 @@ export default class MCPClient {
                     def: {
                         type: 'function',
                         function: {
-                            name: `${this.name}_${this.version}_${t.name}`,
+                            name: `${t.name}`,
                             description: t.description,
                             parameters: {
                                 ...t.inputSchema,
