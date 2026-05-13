@@ -37,7 +37,7 @@ function eventHandler(
     if (type === 'message_done') {
         handler.onContentComplete()
     }
-    if (type === 'reasoning' || type === 'content') {
+    if (type === 'content') {
         if (noStream) {
             println(value)
         }
