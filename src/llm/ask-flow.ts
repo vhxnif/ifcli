@@ -9,14 +9,14 @@ import type { LLMOutputHandler } from './llm-output-handler'
 import type { LLMMessage, LLMParam, LLMToolsCallParam } from './llm-types'
 import { assistant, system, user } from './llm-utils'
 import type MCPClient from './mcp-client'
-import type { ToolDef } from './mcp-client'
 import {
     type StreamEvent,
     stream,
     streamTools,
-    toolsGroup,
     toStoreMessage,
 } from './open-ai-helper'
+import type { ToolDef } from './tool'
+import { toolsGroup } from './tool'
 import {
     generateTempTopicName,
     generateTopicName,
