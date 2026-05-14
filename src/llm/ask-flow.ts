@@ -43,7 +43,12 @@ function eventHandler(
         }
     }
     if (type === 'toolcall') {
-        handler.onToolCall(value.name)
+        const name = value.name
+        if (name === 'call_group_tool') {
+            handler.onToolCall(value.args.tool_name)
+        } else {
+            handler.onToolCall(name)
+        }
     }
     if (type === 'toolcall_result') {
         handler.onToolResult(value)

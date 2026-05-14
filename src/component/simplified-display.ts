@@ -94,7 +94,6 @@ export class SimplifiedDisplay {
     idle() {
         if (this.enableRealtimeRender) {
             this.newLine()
-
             this.spinner?.start(this.color.green('reasoning...'))
         }
     }
@@ -114,15 +113,16 @@ export class SimplifiedDisplay {
     }
 
     toolPrepare(): void {
+        if (this.currentRole !== 'tools') {
+            this.currentRole = 'tools'
+            this.newLine()
+        }
         if (this.enableRealtimeRender) {
             this.spinner?.start(this.color.magenta('prepare...'))
         }
     }
 
     toolCall(funName: string): void {
-        if (this.currentRole !== 'tools') {
-            this.currentRole = 'tools'
-        }
         this.pendingToolName = funName
         if (this.enableRealtimeRender) {
             const name = this.theme.tools.title(`[${this.pendingToolName}]`)
@@ -146,7 +146,7 @@ export class SimplifiedDisplay {
                     : this.color.red
                 const statusSymbol = isSuccess ? '✓' : '✗'
 
-                this.output.println(
+                this.output.print(
                     textColor(`[${this.pendingToolName}] `) +
                         statusColor(statusSymbol) +
                         toolResultColor(
