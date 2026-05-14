@@ -115,8 +115,9 @@ function toolsParse(customTools: CustomTool[]) {
     const buildCommand = (args: any, command: string[]) =>
         command
             .map((it) => {
-                if (it.startsWith('$')) {
-                    return args[it.replace('$', '')]
+                const key = it.match(/^\$\{([^}]+)\}$/)?.[1]
+                if (key) {
+                    return args[key]
                 }
                 return it
             })
@@ -126,13 +127,8 @@ function toolsParse(customTools: CustomTool[]) {
             def,
             group,
             call: async (args: any) => {
-                try {
-                    const cmd = buildCommand(args, command)
-                    return await $`${{ raw: cmd }}`.text()
-                } catch (e: unknown) {
-                    console.log(e)
-                    throw e
-                }
+                const cmd = buildCommand(args, command)
+                return await $`${{ raw: cmd }}`.text()
             },
         } as ToolDef
     })

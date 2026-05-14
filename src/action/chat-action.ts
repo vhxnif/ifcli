@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import path from 'node:path'
 import { stringWidth } from 'bun'
+import type { ChatCompletionFunctionTool } from 'openai/resources'
 import writeXlsxFile, { type Schema } from 'write-excel-file/node'
 import {
     chalkTheme,
@@ -20,7 +21,6 @@ import { OpenAiClient } from '../llm/open-ai-client'
 import type { CustomTool } from '../llm/tool'
 import type {
     Chat,
-    ChatInfo,
     ChatMessage,
     ChatPresetMessage,
     ChatPrompt,
@@ -55,7 +55,6 @@ import {
 import { env, terminal } from '../util/platform-utils'
 import { statusFormat } from '../util/ui-format'
 import type { AskContent, IChatAct } from './action-types'
-import type { ChatCompletionFunctionTool } from 'openai/resources'
 
 export class ChatAct implements IChatAct {
     private generalSetting: GeneralSetting
@@ -369,7 +368,6 @@ export class ChatAct implements IChatAct {
         f: (role: string, content: string) => void,
     ): void {
         display.onContentChunk(assistant)
-        display.onContentComplete()
         f('assistant', assistant)
     }
 
@@ -382,7 +380,6 @@ export class ChatAct implements IChatAct {
             return
         }
         display.onReasoningChunk(reasoning)
-        display.onReasoningComplete()
         f('reasoning', reasoning)
     }
 
@@ -397,7 +394,6 @@ export class ChatAct implements IChatAct {
         const res = this.parseToolsCall(toolsCall)
         if (typeof res === 'string') {
             display.onReasoningChunk(res)
-            display.onReasoningComplete()
             f('toolsCall', toolsCall)
             return
         }
@@ -627,8 +623,8 @@ export class ChatAct implements IChatAct {
     private showPrompt(pt: string): void {
         const { assisant } = chalkTheme
         const { title, content } = assisant
-        console.log(title.bold('Prompt'))
-        console.log(content(pt))
+        println(title.bold('Prompt'))
+        println(content(pt))
     }
 
     async tools(): Promise<void> {

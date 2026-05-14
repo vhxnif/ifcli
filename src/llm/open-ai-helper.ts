@@ -259,7 +259,6 @@ async function streamTools(
             const f = toolCall.function
             const args = JSON.parse(f.arguments)
             callback({ type: 'toolcall', value: { name: f.name, args: args } })
-
             const toolCallResult = async () => {
                 const t = tools.find((it) => it.def.function.name === f.name)
                 if (t) {
