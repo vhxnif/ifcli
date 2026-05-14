@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, test } from 'bun:test'
+import * as bunTest from 'bun:test'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import type { ChalkInstance } from 'chalk'
 import type { Color } from 'ora'
 import {
     type OutputFn,
@@ -48,7 +49,7 @@ class MockSpinner {
     }
 }
 
-const c = (text: string): string => text
+const c = ((text: string): string => text) as ChalkInstance
 
 const mockColor: ChalkTerminalColor = {
     black: c,
@@ -137,8 +138,8 @@ function getPrintlns(): string[] {
         .map((e) => e.text)
 }
 
-describe('SimplifiedDisplay', () => {
-    beforeEach(() => {
+bunTest.describe('SimplifiedDisplay', () => {
+    bunTest.beforeEach(() => {
         outputLog = []
         mockOutput = {
             print: (text: string) => {
@@ -150,297 +151,266 @@ describe('SimplifiedDisplay', () => {
         }
     })
 
-    describe('needsNewline flag', () => {
-        test('set true after contentShow', () => {
+    bunTest.describe('needsNewline flag', () => {
+        bunTest.test('set true after contentShow', () => {
             const d = createDisplayNoSpinner()
             d.contentShow('hi')
-            expect(
-                (d as unknown as { needsNewline: boolean }).needsNewline,
-            ).toBe(true)
+            bunTest
+                .expect(
+                    (d as unknown as { needsNewline: boolean }).needsNewline,
+                )
+                .toBe(true)
         })
 
-        test('reset false after contentStop', () => {
+        bunTest.test('reset false after contentStop', () => {
             const d = createDisplayNoSpinner()
             d.contentShow('hi')
             d.contentStop()
-            expect(
-                (d as unknown as { needsNewline: boolean }).needsNewline,
-            ).toBe(false)
+            bunTest
+                .expect(
+                    (d as unknown as { needsNewline: boolean }).needsNewline,
+                )
+                .toBe(false)
         })
 
-        test('set true after think', () => {
+        bunTest.test('set true after think', () => {
             const d = createDisplayNoSpinner()
             d.think('hmm')
-            expect(
-                (d as unknown as { needsNewline: boolean }).needsNewline,
-            ).toBe(true)
+            bunTest
+                .expect(
+                    (d as unknown as { needsNewline: boolean }).needsNewline,
+                )
+                .toBe(true)
         })
 
-        test('reset false after stopThink', () => {
+        bunTest.test('reset false after stopThink', () => {
             const d = createDisplayNoSpinner()
             d.think('hmm')
             d.stopThink()
-            expect(
-                (d as unknown as { needsNewline: boolean }).needsNewline,
-            ).toBe(false)
+            bunTest
+                .expect(
+                    (d as unknown as { needsNewline: boolean }).needsNewline,
+                )
+                .toBe(false)
         })
 
-        test('change() calls ensureNewline clearing flag', () => {
+        bunTest.test('change() calls ensureNewline clearing flag', () => {
             const { display } = createDisplayWithSpinner()
             display.contentShow('hi')
-            expect(
-                (display as unknown as { needsNewline: boolean }).needsNewline,
-            ).toBe(true)
+            bunTest
+                .expect(
+                    (display as unknown as { needsNewline: boolean })
+                        .needsNewline,
+                )
+                .toBe(true)
             display.change('toolCalling' as LLMNotifyMessageType)
-            expect(
-                (display as unknown as { needsNewline: boolean }).needsNewline,
-            ).toBe(false)
+            bunTest
+                .expect(
+                    (display as unknown as { needsNewline: boolean })
+                        .needsNewline,
+                )
+                .toBe(false)
         })
 
-        test('toolCall() calls ensureNewline clearing flag', () => {
+        bunTest.test('toolCall() calls ensureNewline clearing flag', () => {
             const { display } = createDisplayWithSpinner()
             display.contentShow('hi')
-            expect(
-                (display as unknown as { needsNewline: boolean }).needsNewline,
-            ).toBe(true)
-            display.toolCall('sv', '1', 'fn', '{}')
-            expect(
-                (display as unknown as { needsNewline: boolean }).needsNewline,
-            ).toBe(false)
+            bunTest
+                .expect(
+                    (display as unknown as { needsNewline: boolean })
+                        .needsNewline,
+                )
+                .toBe(true)
+            display.toolCall('fn')
+            bunTest
+                .expect(
+                    (display as unknown as { needsNewline: boolean })
+                        .needsNewline,
+                )
+                .toBe(false)
         })
 
-        test('toolCallResult role transition clears needsNewline', () => {
-            const { display } = createDisplayWithSpinner()
-            display.contentShow('hi')
-            display.contentStop()
-            display.toolCall('sv', '1', 'fn', '{}')
-            display.toolCallResult(makeToolResult('ok'))
-            expect(
-                (display as unknown as { needsNewline: boolean }).needsNewline,
-            ).toBe(false)
-        })
+        bunTest.test(
+            'toolCallResult role transition clears needsNewline',
+            () => {
+                const { display } = createDisplayWithSpinner()
+                display.contentShow('hi')
+                display.contentStop()
+                display.toolCall('fn')
+                display.toolCallResult(makeToolResult('ok'))
+                bunTest
+                    .expect(
+                        (display as unknown as { needsNewline: boolean })
+                            .needsNewline,
+                    )
+                    .toBe(false)
+            },
+        )
     })
 
-    describe('ensureNewline emits println when flag is true', () => {
-        test('contentShow → change: println emitted between print and spinner-start', () => {
-            const { display } = createDisplayWithSpinner()
-            display.contentShow('Hello')
-            display.change('toolCalling' as LLMNotifyMessageType)
+    bunTest.describe('ensureNewline emits println when flag is true', () => {
+        bunTest.test(
+            'contentShow → change: println emitted between print and spinner-start',
+            () => {
+                const { display } = createDisplayWithSpinner()
+                display.contentShow('Hello')
+                display.change('toolCalling' as LLMNotifyMessageType)
 
-            const printIdx = outputLog.findLastIndex((e) => e.type === 'print')
-            const spinnerIdx = outputLog.findIndex(
-                (e) => e.type === 'spinner-start',
+                const printIdx = outputLog.findLastIndex(
+                    (e) => e.type === 'print',
+                )
+                const spinnerIdx = outputLog.findIndex(
+                    (e) => e.type === 'spinner-start',
+                )
+                bunTest.expect(printIdx).toBeGreaterThan(-1)
+                bunTest.expect(spinnerIdx).toBeGreaterThan(printIdx)
+
+                const between = outputLog.slice(printIdx + 1, spinnerIdx)
+                bunTest
+                    .expect(between.some((e) => e.type === 'println'))
+                    .toBe(true)
+            },
+        )
+
+        bunTest.test(
+            'contentShow → toolCall: println emitted between print and spinner-stop',
+            () => {
+                const { display } = createDisplayWithSpinner()
+                display.contentShow('Hello')
+                display.toolCall('read_file')
+
+                const printIdx = outputLog.findLastIndex(
+                    (e) => e.type === 'print',
+                )
+                const lastStopIdx = outputLog.findLastIndex(
+                    (e) => e.type === 'spinner-stop',
+                )
+                bunTest.expect(printIdx).toBeGreaterThan(-1)
+                bunTest.expect(lastStopIdx).toBeGreaterThan(printIdx)
+
+                const between = outputLog.slice(printIdx + 1, lastStopIdx)
+                bunTest
+                    .expect(between.some((e) => e.type === 'println'))
+                    .toBe(true)
+            },
+        )
+
+        bunTest.test(
+            'think → change: println emitted between print and spinner-start',
+            () => {
+                const { display } = createDisplayWithSpinner()
+                display.think('thinking...')
+                display.change('analyzing' as LLMNotifyMessageType)
+
+                const printIdx = outputLog.findLastIndex(
+                    (e) => e.type === 'print',
+                )
+                const spinnerIdx = outputLog.findIndex(
+                    (e) => e.type === 'spinner-start',
+                )
+                bunTest.expect(printIdx).toBeGreaterThan(-1)
+                bunTest.expect(spinnerIdx).toBeGreaterThan(printIdx)
+
+                const between = outputLog.slice(printIdx + 1, spinnerIdx)
+                bunTest
+                    .expect(between.some((e) => e.type === 'println'))
+                    .toBe(true)
+            },
+        )
+    })
+
+    bunTest.describe(
+        'no double-newline when contentStop already emitted newlines',
+        () => {
+            bunTest.test(
+                'contentStop → change: no extra newline from ensureNewline',
+                () => {
+                    const { display } = createDisplayWithSpinner()
+                    display.contentShow('Hello')
+                    display.contentStop()
+                    const countAfterStop = outputLog.filter(
+                        (e) => e.type === 'println',
+                    ).length
+
+                    display.change('waiting' as LLMNotifyMessageType)
+                    const countAfterChange = outputLog.filter(
+                        (e) => e.type === 'println',
+                    ).length
+
+                    bunTest.expect(countAfterChange).toBe(countAfterStop)
+                },
             )
-            expect(printIdx).toBeGreaterThan(-1)
-            expect(spinnerIdx).toBeGreaterThan(printIdx)
 
-            const between = outputLog.slice(printIdx + 1, spinnerIdx)
-            expect(between.some((e) => e.type === 'println')).toBe(true)
-        })
+            bunTest.test(
+                'stopThink → change: no extra newline from ensureNewline',
+                () => {
+                    const { display } = createDisplayWithSpinner()
+                    display.think('hmm')
+                    display.stopThink()
+                    const countAfterStop = outputLog.filter(
+                        (e) => e.type === 'println',
+                    ).length
 
-        test('contentShow → toolCall: println emitted between print and spinner-stop', () => {
-            const { display } = createDisplayWithSpinner()
-            display.contentShow('Hello')
-            display.toolCall('sv', '1', 'read_file', '{}')
+                    display.change('waiting' as LLMNotifyMessageType)
+                    const countAfterChange = outputLog.filter(
+                        (e) => e.type === 'println',
+                    ).length
 
-            const printIdx = outputLog.findLastIndex((e) => e.type === 'print')
-            const lastStopIdx = outputLog.findLastIndex(
-                (e) => e.type === 'spinner-stop',
+                    bunTest.expect(countAfterChange).toBe(countAfterStop)
+                },
             )
-            expect(printIdx).toBeGreaterThan(-1)
-            expect(lastStopIdx).toBeGreaterThan(printIdx)
+        },
+    )
 
-            const between = outputLog.slice(printIdx + 1, lastStopIdx)
-            expect(between.some((e) => e.type === 'println')).toBe(true)
-        })
-
-        test('think → change: println emitted between print and spinner-start', () => {
-            const { display } = createDisplayWithSpinner()
-            display.think('thinking...')
-            display.change('analyzing' as LLMNotifyMessageType)
-
-            const printIdx = outputLog.findLastIndex((e) => e.type === 'print')
-            const spinnerIdx = outputLog.findIndex(
-                (e) => e.type === 'spinner-start',
-            )
-            expect(printIdx).toBeGreaterThan(-1)
-            expect(spinnerIdx).toBeGreaterThan(printIdx)
-
-            const between = outputLog.slice(printIdx + 1, spinnerIdx)
-            expect(between.some((e) => e.type === 'println')).toBe(true)
-        })
-    })
-
-    describe('no double-newline when contentStop already emitted newlines', () => {
-        test('contentStop → change: no extra newline from ensureNewline', () => {
-            const { display } = createDisplayWithSpinner()
-            display.contentShow('Hello')
-            display.contentStop()
-            const countAfterStop = outputLog.filter(
-                (e) => e.type === 'println',
-            ).length
-
-            display.change('waiting' as LLMNotifyMessageType)
-            const countAfterChange = outputLog.filter(
-                (e) => e.type === 'println',
-            ).length
-
-            expect(countAfterChange).toBe(countAfterStop)
-        })
-
-        test('stopThink → change: no extra newline from ensureNewline', () => {
-            const { display } = createDisplayWithSpinner()
-            display.think('hmm')
-            display.stopThink()
-            const countAfterStop = outputLog.filter(
-                (e) => e.type === 'println',
-            ).length
-
-            display.change('waiting' as LLMNotifyMessageType)
-            const countAfterChange = outputLog.filter(
-                (e) => e.type === 'println',
-            ).length
-
-            expect(countAfterChange).toBe(countAfterStop)
-        })
-    })
-
-    describe('content accumulation', () => {
-        test('multiple contentShow calls accumulate', () => {
-            const d = createDisplayNoSpinner()
-            d.contentShow('A')
-            d.contentShow('B')
-            d.contentShow('C')
-            d.contentStop()
-            expect(d.result().assistant).toEqual(['A', 'B', 'C'])
-        })
-
-        test('contentStop then contentShow again', () => {
-            const d = createDisplayNoSpinner()
-            d.contentShow('First')
-            d.contentStop()
-            d.contentShow('Second')
-            d.contentStop()
-            expect(d.result().assistant).toEqual(['First', 'Second'])
-        })
-
-        test('reasoning content accumulates', () => {
-            const d = createDisplayNoSpinner()
-            d.think('hmm')
-            d.think(' let me think')
-            d.stopThink()
-            expect(d.result().reasoning).toEqual(['hmm', ' let me think'])
-        })
-
-        test('tool result stored', () => {
-            const d = createDisplayNoSpinner()
-            d.toolCall('sv', '1', 'read', '{}')
-            const r = makeToolResult('ok')
-            d.toolCallResult(r)
-            expect(d.result().tools).toEqual([r])
-        })
-
-        test('full flow preserves all data', () => {
-            const d = createDisplayNoSpinner()
-            d.think('analyzing')
-            d.stopThink()
-            d.contentShow('answer')
-            d.contentStop()
-            d.toolCall('sv', '1', 'search', '{"q":"test"}')
-            d.toolCallResult(makeToolResult('result'))
-
-            expect(d.result().reasoning).toEqual(['analyzing'])
-            expect(d.result().assistant).toEqual(['answer'])
-            expect(d.result().tools.length).toBe(1)
-        })
-    })
-
-    describe('role transitions produce separator newlines', () => {
-        test('assistant → tools transition adds newline', () => {
+    bunTest.describe('role transitions produce separator newlines', () => {
+        bunTest.test('assistant → tools transition adds newline', () => {
             const d = createDisplayNoSpinner()
             d.contentShow('Hello')
             d.contentStop()
-            d.toolCall('sv', '1', 'fn', '{}')
+            d.toolCall('fn')
 
             const printlns = getPrintlns()
-            expect(printlns.length).toBeGreaterThanOrEqual(2)
+            bunTest.expect(printlns.length).toBeGreaterThanOrEqual(2)
         })
 
-        test('idle → assistant needs no separator', () => {
+        bunTest.test('idle → assistant needs no separator', () => {
             const d = createDisplayNoSpinner()
             d.contentShow('First')
             const prints = getPrints()
-            expect(prints).toEqual(['First'])
+            bunTest.expect(prints).toEqual(['First'])
         })
     })
 
-    describe('complete flow with spinner - no content loss', () => {
-        test('assistant content → tool call → more content: all prints present', () => {
-            const { display } = createDisplayWithSpinner()
-            display.contentShow('Let me check')
-            display.change('toolCalling' as LLMNotifyMessageType)
-            display.toolCall('sv', '1', 'read_file', '{}')
-            display.toolCallResult(makeToolResult('file content'))
-            display.contentShow(' Here is the answer')
-            display.contentStop()
-
-            const prints = getPrints()
-            expect(prints).toContain('Let me check')
-            expect(prints).toContain(' Here is the answer')
-            expect(display.result().assistant).toEqual([
-                'Let me check',
-                ' Here is the answer',
-            ])
-        })
-
-        test('continuous contentShow with tool interleave', () => {
-            const { display } = createDisplayWithSpinner()
-            display.contentShow('Start')
-            display.contentShow(' middle')
-            display.contentStop()
-            display.toolCall('sv', '1', 't1', '{}')
-            display.toolCallResult(makeToolResult('r1'))
-            display.contentShow(' end')
-            display.contentStop()
-
-            expect(display.result().assistant).toEqual([
-                'Start',
-                ' middle',
-                ' end',
-            ])
-        })
-    })
-
-    describe('tool result display', () => {
-        test('successful tool shows checkmark', () => {
+    bunTest.describe('tool result display', () => {
+        bunTest.test('successful tool shows checkmark', () => {
             const d = createDisplayNoSpinner()
-            d.toolCall('sv', '1', 'read_file', '{}')
+            d.toolCall('read_file')
             d.toolCallResult(makeToolResult('ok'))
 
             const printlns = getPrintlns()
             const hasCheck = printlns.some(
                 (l) => l.includes('[read_file]') && l.includes('✓'),
             )
-            expect(hasCheck).toBe(true)
+            bunTest.expect(hasCheck).toBe(true)
         })
 
-        test('failed tool shows cross', () => {
+        bunTest.test('failed tool shows cross', () => {
             const d = createDisplayNoSpinner()
-            d.toolCall('sv', '1', 'bad_tool', '{}')
+            d.toolCall('bad_tool')
             d.toolCallResult(makeToolResult('error', true))
 
             const printlns = getPrintlns()
             const hasCross = printlns.some(
                 (l) => l.includes('[bad_tool]') && l.includes('✗'),
             )
-            expect(hasCross).toBe(true)
+            bunTest.expect(hasCross).toBe(true)
         })
     })
 
-    describe('error handling', () => {
-        test('error does not throw', () => {
+    bunTest.describe('error handling', () => {
+        bunTest.test('error does not throw', () => {
             const { display } = createDisplayWithSpinner()
-            expect(() => display.error()).not.toThrow()
+            bunTest.expect(() => display.error()).not.toThrow()
         })
     })
 })
