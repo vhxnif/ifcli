@@ -87,6 +87,7 @@ export class Act implements IAct {
             model: async (n) => await this.chatAct.modifyModel(n),
             context: (n) => this.chatAct.modifyWithContext(n),
             mcp: async (n) => await this.chatAct.modifyWithMCP(n),
+            tools: async (n) => await this.chatAct.modifyCustomTools(n),
             scenario: async (n) => await this.chatAct.modifyScenario(n),
             show: (n) => this.chatAct.printChatConfig(n),
         } as ConfigAct

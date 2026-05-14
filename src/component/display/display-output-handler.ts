@@ -39,21 +39,20 @@ export class DisplayOutputHandler implements LLMOutputHandler {
             spinnerName,
         })
     }
+    stop(): void {
+        this.display.stop()
+    }
 
     onContentChunk(content: string): void {
         this.display.contentShow(content)
-    }
-
-    onContentComplete(): void {
-        this.display.contentStop()
     }
 
     onReasoningChunk(reasoning: string): void {
         this.display.think(reasoning)
     }
 
-    onReasoningComplete(): void {
-        this.display.stopThink()
+    onToolCallChunk() {
+        this.display.toolPrepare()
     }
 
     onToolCall(name: string): void {

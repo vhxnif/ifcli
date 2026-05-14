@@ -1,17 +1,14 @@
 import { $ } from 'bun'
-import type {
-    ChatCompletionFunctionTool,
-    ChatCompletionTool,
-} from 'openai/resources'
+import type { ChatCompletionFunctionTool } from 'openai/resources'
 
 type CustomTool = {
-    def: ChatCompletionTool
+    def: ChatCompletionFunctionTool
     group: string
     command: string[]
 }
 
 type ToolDef = {
-    def: ChatCompletionTool
+    def: ChatCompletionFunctionTool
     group: string
     call: (args: any) => Promise<any>
 }
@@ -102,8 +99,7 @@ function toolsGroup(tools: ToolDef[]) {
                     .find(
                         (it) =>
                             it.group === args.group_name &&
-                            (it.def as ChatCompletionFunctionTool).function
-                                .name === args.tool_name,
+                            it.def.function.name === args.tool_name,
                     )
                     ?.call(args.args)
                 return (

@@ -29,12 +29,8 @@ export class SimplifiedDisplay {
     private spinner?: OraShow
     private enableRealtimeRender: boolean
     private output: OutputFn
-
     private pendingToolName: string | null = null
     private currentRole: 'idle' | 'reasoning' | 'assistant' | 'tools' = 'idle'
-    private needsNewline: boolean = false
-
-    private hasReasoningStopped: boolean = false
 
     constructor({
         color,
@@ -77,10 +73,9 @@ export class SimplifiedDisplay {
         return chalk[colorName](llmNotifyMessage[type])
     }
 
-    private ensureNewline(): void {
-        if (this.needsNewline && this.enableRealtimeRender) {
+    private newLine() {
+        if (this.enableRealtimeRender) {
             this.output.println('')
-            this.needsNewline = false
         }
     }
 
@@ -88,32 +83,19 @@ export class SimplifiedDisplay {
         if (this.enableRealtimeRender) {
             this.spinner?.stop()
         }
-
         if (this.currentRole !== 'reasoning') {
-            if (this.currentRole !== 'idle' && this.enableRealtimeRender) {
-                this.output.println('')
-            }
             this.currentRole = 'reasoning'
         }
-
         if (this.enableRealtimeRender) {
             this.output.print(this.theme.reasoner.content(reasoning))
-            this.needsNewline = true
         }
     }
 
-    stopThink(): void {
-        if (!this.hasReasoningStopped) {
-            this.hasReasoningStopped = true
-            if (this.enableRealtimeRender) {
-                this.output.println('')
-                this.output.println('')
-                this.needsNewline = false
-            }
-            this.currentRole = 'idle'
-        }
+    idle() {
         if (this.enableRealtimeRender) {
-            this.spinner?.start()
+            this.newLine()
+
+            this.spinner?.start(this.color.green('reasoning...'))
         }
     }
 
@@ -121,47 +103,39 @@ export class SimplifiedDisplay {
         if (this.enableRealtimeRender) {
             this.spinner?.stop()
         }
-
         if (this.currentRole !== 'assistant') {
-            if (this.currentRole !== 'idle' && this.enableRealtimeRender) {
-                this.output.println('')
-            }
             this.currentRole = 'assistant'
+            this.newLine()
+            this.newLine()
         }
-
         if (this.enableRealtimeRender) {
             this.output.print(this.theme.assisant.content(content))
-            this.needsNewline = true
         }
     }
 
-    contentStop(): void {
+    toolPrepare(): void {
         if (this.enableRealtimeRender) {
-            this.output.println('')
-            this.output.println('')
-            this.needsNewline = false
+            this.spinner?.start(this.color.magenta('prepare...'))
         }
-        this.currentRole = 'idle'
     }
 
     toolCall(funName: string): void {
+        if (this.currentRole !== 'tools') {
+            this.currentRole = 'tools'
+        }
         this.pendingToolName = funName
-        this.ensureNewline()
-        this.spinner?.stop()
+        if (this.enableRealtimeRender) {
+            const name = this.theme.tools.title(`[${this.pendingToolName}]`)
+            this.spinner?.show(name)
+        }
     }
 
     toolCallResult(result: string): void {
-        if (this.currentRole !== 'tools') {
-            if (this.currentRole !== 'idle' && this.enableRealtimeRender) {
-                this.output.println('')
-                this.needsNewline = false
-            }
-            this.currentRole = 'tools'
+        if (this.enableRealtimeRender) {
+            this.spinner?.stop()
         }
-
         const res = this.parseToolResult(result)
         const isSuccess = res ? !res.isError : false
-
         if (this.pendingToolName) {
             if (this.enableRealtimeRender) {
                 this.spinner?.stop()
@@ -179,20 +153,9 @@ export class SimplifiedDisplay {
                             this.subResultContent(res as CallToolResult),
                         ),
                 )
-                this.needsNewline = false
             }
-
             this.pendingToolName = null
-        }
-
-        if (this.enableRealtimeRender) {
-            this.ensureNewline()
-            const renderColor = getSemanticColor(
-                this.semanticColors,
-                'rendering',
-            )
-            this.spinner?.setColor(renderColor)
-            this.spinner?.start(this.notice('rendering'))
+            this.idle()
         }
     }
 
@@ -217,7 +180,6 @@ export class SimplifiedDisplay {
     }
 
     change(type: LLMNotifyMessageType): void {
-        this.ensureNewline()
         this.spinner?.start()
         this.spinner?.show(this.notice(type))
         this.spinner?.setColor(getSemanticColor(this.semanticColors, type))
@@ -225,5 +187,9 @@ export class SimplifiedDisplay {
 
     error(): void {
         this.spinner?.fail(this.notice('error'))
+    }
+
+    stop(): void {
+        this.spinner?.stop()
     }
 }

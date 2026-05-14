@@ -20,12 +20,14 @@ import { OpenAiClient } from '../llm/open-ai-client'
 import type { CustomTool } from '../llm/tool'
 import type {
     Chat,
+    ChatInfo,
     ChatMessage,
     ChatPresetMessage,
     ChatPrompt,
     ChatTopic,
     CmdHistory,
     ConfigExt,
+    CustomToolKey,
     ExportMessage,
     IStore,
     MCPServerKey,
@@ -53,6 +55,7 @@ import {
 import { env, terminal } from '../util/platform-utils'
 import { statusFormat } from '../util/ui-format'
 import type { AskContent, IChatAct } from './action-types'
+import type { ChatCompletionFunctionTool } from 'openai/resources'
 
 export class ChatAct implements IChatAct {
     private generalSetting: GeneralSetting
@@ -444,10 +447,51 @@ export class ChatAct implements IChatAct {
         this.store.chat.get(chatName).config.moidfyContext()
     }
 
+    async modifyCustomTools(chatName?: string): Promise<void> {
+        const { configExt } = this.store.chat.get(chatName)
+        const { value: ext } = configExt
+        const items = await checkbox({
+            message: 'Select Custom Tools:',
+            choices: this.customToolsChoices(ext),
+            theme: checkboxThemeStyle(terminalColor),
+        })
+        ext.customTools = items
+        configExt.update(ext)
+    }
+
+    private customToolsChoices(ext: ConfigExt) {
+        const key = ({ name, group }: CustomToolKey) => `${name}(${group})`
+        const simple = (t: CustomTool) => {
+            const { def, group } = t
+            return {
+                name: (def as ChatCompletionFunctionTool).function.name,
+                group,
+            }
+        }
+        const isChecked = (t: CustomTool) => {
+            const { customTools } = ext
+            if (isEmpty(customTools)) {
+                return false
+            }
+            const item = customTools.find((it) => key(simple(t)) === key(it))
+            return item !== void 0
+        }
+        const choices = this.customTools.map((it) => {
+            const s = simple(it)
+            return {
+                name: key(s),
+                value: s,
+                checked: isChecked(it),
+            }
+        })
+        if (isEmpty(choices)) {
+            throw Error(promptMessage.customToolsMissing)
+        }
+        return choices
+    }
+
     async modifyWithMCP(chatName?: string): Promise<void> {
-        const chat = this.store.chat.get(chatName)
-        const config = chat.config
-        const configExt = chat.configExt
+        const { config, configExt } = this.store.chat.get(chatName)
         const { value: ext } = configExt
         const items = await checkbox({
             message: 'Select MCP Server:',

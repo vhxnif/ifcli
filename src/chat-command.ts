@@ -175,24 +175,32 @@ program
     .option('-c, --context', 'enable/disable context memory', false)
     .option('-z, --context-size <number>', 'set context window size')
     .option('-p, --mcp', 'enable/disable MCP tools', false)
+    .option('-t, --tools', 'enable/disable custom tools', false)
     .option('-s, --scenario', 'select conversation scenario')
-    .action(async ({ contextSize, model, context, mcp, scenario }, cmd) => {
-        const name = cmd.parent?.opts().force as string
-        const cf = act.chat.config
-        await matchRun(
-            [
+    .action(
+        async ({ contextSize, model, context, mcp, tools, scenario }, cmd) => {
+            const name = cmd.parent?.opts().force as string
+            const cf = act.chat.config
+            await matchRun(
                 [
-                    contextSize,
-                    () => cf.contextSize(parseIntNumber(contextSize, 10), name),
+                    [
+                        contextSize,
+                        () =>
+                            cf.contextSize(
+                                parseIntNumber(contextSize, 10),
+                                name,
+                            ),
+                    ],
+                    [model, () => cf.model(name)],
+                    [context, () => cf.context(name)],
+                    [mcp, () => cf.mcp(name)],
+                    [tools, () => cf.tools(name)],
+                    [scenario, () => cf.scenario(name)],
                 ],
-                [model, () => cf.model(name)],
-                [context, () => cf.context(name)],
-                [mcp, () => cf.mcp(name)],
-                [scenario, () => cf.scenario(name)],
-            ],
-            () => cf.show(name),
-        )
-    })
+                () => cf.show(name),
+            )
+        },
+    )
 
 program
     .command('export')

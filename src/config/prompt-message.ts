@@ -24,6 +24,8 @@ export const promptMessage = {
         'Error parsing configuration file. Please check the configuration format.',
     mcpMissing:
         'No MCP servers are configured or enabled. Please configure MCP servers first.',
+    customToolsMissing:
+        'No custom Tools  are configured. Please configure custom tools first.',
     userPreset: '<user message content>',
     assistantPreset: '<assistant message content>',
     onlyOneTopic: 'Only one topic is available.',

@@ -13,7 +13,6 @@ export class OraShow {
         spinnerName: SpinnerName = 'helix',
         color: Color = 'magenta',
     ) {
-        this.color = color
         const { frames, interval } = spinners[spinnerName]
         this.spinner = ora({
             text: initMessage,

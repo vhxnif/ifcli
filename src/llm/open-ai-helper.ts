@@ -26,11 +26,13 @@ type StreamEvent = {
     type:
         | 'delta_reasoning'
         | 'delta_content'
+        | 'delta_tools'
         | 'message_done'
         | 'content'
         | 'reasoning'
         | 'toolcall'
         | 'toolcall_result'
+        | 'all_done'
     value: string | any
 }
 
@@ -192,6 +194,7 @@ async function stream(
     if (content) {
         callback({ type: 'content', value: content })
     }
+    callback({ type: 'all_done', value: content })
     return msgs as MessageParam[]
 }
 
@@ -224,11 +227,15 @@ async function streamTools(
             const delta = chunk.choices[0]?.delta as DSDelta
             const reasoning = delta?.reasoning || delta?.reasoning_content || ''
             const content = delta?.content || ''
+            const toolCalls = delta?.tool_calls
             if (reasoning) {
                 callback({ type: 'delta_reasoning', value: reasoning })
             }
             if (content) {
                 callback({ type: 'delta_content', value: content })
+            }
+            if (toolCalls) {
+                callback({ type: 'delta_tools', value: content })
             }
             message = messageReducer(message, chunk)
         }
@@ -242,6 +249,7 @@ async function streamTools(
             if (content) {
                 callback({ type: 'content', value: content })
             }
+            callback({ type: 'all_done', value: content })
             return msgs as MessageParam[]
         }
         for (const toolCall of message.tool_calls) {
@@ -253,11 +261,7 @@ async function streamTools(
             callback({ type: 'toolcall', value: f })
 
             const toolCallResult = async () => {
-                const t = tools.find(
-                    (it) =>
-                        (it.def as ChatCompletionFunctionTool).function.name ===
-                        f.name,
-                )
+                const t = tools.find((it) => it.def.function.name === f.name)
                 if (t) {
                     try {
                         return await t.call(args)
@@ -268,11 +272,7 @@ async function streamTools(
                     }
                 }
                 const available = tools
-                    .map(
-                        (it) =>
-                            (it.def as ChatCompletionFunctionTool).function
-                                .name,
-                    )
+                    .map((it) => it.def.function.name)
                     .join(', ')
                 return `Tool "${f.name}" not found. Available: [${available}]`
             }

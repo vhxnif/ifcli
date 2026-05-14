@@ -34,8 +34,8 @@ function eventHandler(
     if (type === 'delta_content') {
         handler.onContentChunk(value)
     }
-    if (type === 'message_done') {
-        handler.onContentComplete()
+    if (type === 'delta_tools') {
+        handler.onToolCallChunk()
     }
     if (type === 'content') {
         if (noStream) {
@@ -47,6 +47,9 @@ function eventHandler(
     }
     if (type === 'toolcall_result') {
         handler.onToolResult(value)
+    }
+    if (type === 'all_done') {
+        handler.stop()
     }
 }
 
@@ -168,10 +171,27 @@ class ToolsNode extends Node<AskShare> {
 
     override async prep(shared: AskShare): Promise<void> {
         const mcpTools = await this.mcpTools(shared)
-        const cusTools = toolsParse(this.customTools)
+        const cusTools = toolsParse(this.filterActiveCustomTools(shared))
         if (mcpTools.length > 0 || cusTools.length > 0) {
             shared.tools = toolsGroup([...mcpTools, ...cusTools])
         }
+    }
+
+    private filterActiveCustomTools(shared: AskShare) {
+        const { customTools } = shared.chat.configExt.value
+        if (isEmpty(customTools)) {
+            return []
+        }
+        const f = (t: CustomTool) => {
+            const { def, group } = t
+            const name = def.function.name
+            const one = customTools.find(
+                (it) => it.name === name && it.group === group,
+            )
+            return one !== void 0
+        }
+
+        return this.customTools.filter((it) => f(it))
     }
 
     private async mcpTools(shared: AskShare) {

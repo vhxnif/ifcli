@@ -18,6 +18,7 @@ export interface IChatAct {
     modifySystemPrompt: (prompt: string, chatName?: string) => void
     modifyWithContext: (chatName?: string) => void
     modifyWithMCP: (chatName?: string) => Promise<void>
+    modifyCustomTools: (chatName?: string) => Promise<void>
     modifyScenario: (chatName?: string) => Promise<void>
     publishPrompt: (chatName?: string) => Promise<void>
     selectPrompt: (name: string, chatName?: string) => Promise<void>
@@ -74,6 +75,7 @@ export type ConfigAct = {
     model: (chatName?: string) => Promise<void>
     context: (chatName?: string) => void
     mcp: (chatName?: string) => Promise<void>
+    tools: (chatName?: string) => Promise<void>
     scenario: (chatName?: string) => Promise<void>
     show: (chatName?: string) => void
 }

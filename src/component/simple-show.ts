@@ -59,7 +59,7 @@ class SimpleShow {
             withContext,
             contextLimit,
         } = config
-        const { mcpServers } = ext
+        const { mcpServers, customTools } = ext
 
         println(format.keyValue('Name', chatName, color))
         println(format.keyValue('Provider', llmType, color))
@@ -83,11 +83,20 @@ class SimpleShow {
         if (isEmpty(mcpServers)) {
             println(format.keyValue('MCP', this.no(color), color))
         } else {
-            println(color.cyan.bold('\nMCP Servers:'))
+            println(format.keyValue('MCP', this.yes(color), color))
             mcpServers.forEach((it) => {
                 println(
                     `  ${color.white('•')} ${color.cyan(`${it.name}@${it.version}`)}`,
                 )
+            })
+        }
+        if (isEmpty(customTools)) {
+            println(format.keyValue('Tools', this.no(color), color))
+        } else {
+            println(format.keyValue('Tools', this.yes(color), color))
+            customTools.forEach(({ name, group }) => {
+                println(color.cyan.bold(`  ${group}:`))
+                println(`    ${color.white('•')} ${color.cyan(`${name}`)}`)
             })
         }
     }
