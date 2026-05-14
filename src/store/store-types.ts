@@ -109,8 +109,14 @@ export type MCPServerKey = {
     version: string
 }
 
+export type CustomToolKey = {
+    name: string
+    group: string
+}
+
 export type ConfigExt = {
     mcpServers: MCPServerKey[]
+    customTools: CustomToolKey[]
 }
 
 export type RunSql = () => void

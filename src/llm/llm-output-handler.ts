@@ -11,11 +11,11 @@ export type LLMState =
 
 export interface LLMOutputHandler {
     onContentChunk(content: string): void
-    onContentComplete(): void
     onReasoningChunk(reasoning: string): void
-    onReasoningComplete(): void
+    onToolCallChunk(): void
     onToolCall(name: string): void
     onToolResult(result: string): void
     onStateChange(state: LLMState): void
     onError(error: Error): void
+    stop(): void
 }

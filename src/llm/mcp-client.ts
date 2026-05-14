@@ -14,16 +14,10 @@ import {
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js'
-import type { ChatCompletionTool } from 'openai/resources'
 import { println } from '../util/common-utils'
+import type { ToolDef } from './tool'
 
 export type MCPConnectType = 'http' | 'sse' | 'stdio'
-
-export type ToolDef = {
-    def: ChatCompletionTool
-    group: string
-    call: (args: any) => Promise<any>
-}
 
 export interface MCPConfig {
     name: string

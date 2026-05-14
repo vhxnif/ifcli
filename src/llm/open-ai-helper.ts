@@ -7,7 +7,7 @@ import type {
 } from 'openai/resources'
 import type { MessageContent } from '../store/store-types'
 import { uuid } from '../util/common-utils'
-import type { ToolDef } from './mcp-client'
+import type { ToolDef } from './tool'
 
 type DSDelta = OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta & {
     reasoning_content?: string
@@ -26,11 +26,13 @@ type StreamEvent = {
     type:
         | 'delta_reasoning'
         | 'delta_content'
+        | 'delta_tools'
         | 'message_done'
         | 'content'
         | 'reasoning'
         | 'toolcall'
         | 'toolcall_result'
+        | 'all_done'
     value: string | any
 }
 
@@ -192,6 +194,7 @@ async function stream(
     if (content) {
         callback({ type: 'content', value: content })
     }
+    callback({ type: 'all_done', value: content })
     return msgs as MessageParam[]
 }
 
@@ -224,11 +227,15 @@ async function streamTools(
             const delta = chunk.choices[0]?.delta as DSDelta
             const reasoning = delta?.reasoning || delta?.reasoning_content || ''
             const content = delta?.content || ''
+            const toolCalls = delta?.tool_calls
             if (reasoning) {
                 callback({ type: 'delta_reasoning', value: reasoning })
             }
             if (content) {
                 callback({ type: 'delta_content', value: content })
+            }
+            if (toolCalls) {
+                callback({ type: 'delta_tools', value: content })
             }
             message = messageReducer(message, chunk)
         }
@@ -242,6 +249,7 @@ async function streamTools(
             if (content) {
                 callback({ type: 'content', value: content })
             }
+            callback({ type: 'all_done', value: content })
             return msgs as MessageParam[]
         }
         for (const toolCall of message.tool_calls) {
@@ -250,14 +258,9 @@ async function streamTools(
             }
             const f = toolCall.function
             const args = JSON.parse(f.arguments)
-            callback({ type: 'toolcall', value: f })
-
+            callback({ type: 'toolcall', value: { name: f.name, args: args } })
             const toolCallResult = async () => {
-                const t = tools.find(
-                    (it) =>
-                        (it.def as ChatCompletionFunctionTool).function.name ===
-                        f.name,
-                )
+                const t = tools.find((it) => it.def.function.name === f.name)
                 if (t) {
                     try {
                         return await t.call(args)
@@ -268,11 +271,7 @@ async function streamTools(
                     }
                 }
                 const available = tools
-                    .map(
-                        (it) =>
-                            (it.def as ChatCompletionFunctionTool).function
-                                .name,
-                    )
+                    .map((it) => it.def.function.name)
                     .join(', ')
                 return `Tool "${f.name}" not found. Available: [${available}]`
             }
@@ -289,110 +288,4 @@ async function streamTools(
     }
 }
 
-function toolsGroup(tools: ToolDef[]) {
-    const groups = [...new Set(tools.map((it) => it.group))]
-    return [
-        {
-            def: {
-                type: 'function',
-                function: {
-                    name: 'list_available_tool_groups',
-                    description:
-                        'List all available tool categories (groups). Call this FIRST to discover what capabilities exist before exploring individual tools. Each group represents a distinct set of related tools.',
-                    parameters: {
-                        type: 'object',
-                        properties: {},
-                    },
-                },
-            },
-            group: 'base',
-            call: async (_: any) => {
-                return groups
-            },
-        },
-        {
-            def: {
-                type: 'function',
-                function: {
-                    name: 'list_available_tools',
-                    description:
-                        'List all tools and their full definitions within a specific group. Call this AFTER list_available_tool_groups to inspect the tools in a chosen category before invoking one.',
-                    parameters: {
-                        type: 'object',
-                        properties: {
-                            group_name: {
-                                type: 'string',
-                                enum: groups,
-                                description:
-                                    'The name of the tool group to inspect (obtained from list_available_tool_groups)',
-                            },
-                        },
-                        required: ['group_name'],
-                    },
-                },
-            },
-            group: 'base',
-            call: async (args: any) => {
-                return tools
-                    .filter((it) => it.group === args.group_name)
-                    .map((it) => it.def)
-            },
-        },
-        {
-            def: {
-                type: 'function',
-                function: {
-                    name: 'call_group_tool',
-                    description:
-                        'Execute a specific tool from a given group. Use this AFTER identifying the tool via list_available_tools to actually invoke it with the required arguments.',
-                    parameters: {
-                        type: 'object',
-                        properties: {
-                            group_name: {
-                                type: 'string',
-                                description:
-                                    'The name of the group containing the tool to call',
-                                enum: groups,
-                            },
-                            tool_name: {
-                                type: 'string',
-                                description:
-                                    'The name of the tool to invoke (as listed by list_available_tools)',
-                            },
-                            args: {
-                                type: 'object',
-                                description:
-                                    'The arguments to pass to the tool, matching the input schema defined by the tool',
-                            },
-                        },
-                        required: ['group_name', 'tool_name'],
-                    },
-                },
-            },
-            group: 'base',
-            call: async (args: any) => {
-                const result = await tools
-                    .find(
-                        (it) =>
-                            it.group === args.group_name &&
-                            (it.def as ChatCompletionFunctionTool).function
-                                .name === args.tool_name,
-                    )
-                    ?.call(args.args)
-                return (
-                    result ??
-                    `tool ${args.tool_name} not found or returned no result`
-                )
-            },
-        },
-    ] as ToolDef[]
-}
-
-export {
-    messageReducer,
-    type StreamEvent,
-    stream,
-    streamTools,
-    toolsGroup,
-    toStoreMessage,
-}
+export { messageReducer, type StreamEvent, stream, streamTools, toStoreMessage }

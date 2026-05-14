@@ -1,7 +1,7 @@
 import type OpenAI from 'openai'
 import type { LLMOutputHandler } from './llm-output-handler'
 import type MCPClient from './mcp-client'
-import type { ToolDef } from './mcp-client'
+import type { ToolDef } from './tool'
 
 export type LLMRole = 'system' | 'user' | 'assistant' | 'tool'
 export type LLMMessage = {
@@ -24,7 +24,6 @@ export type LLMParam = {
     theme?: string
     newTopic?: boolean
     outputHandler?: LLMOutputHandler
-    topicNamePromise?: Promise<string>
 }
 
 export type LLMResultChunk = {

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-
 import path from 'node:path'
 import { stringWidth } from 'bun'
+import type { ChatCompletionFunctionTool } from 'openai/resources'
 import writeXlsxFile, { type Schema } from 'write-excel-file/node'
 import {
     chalkTheme,
@@ -18,6 +18,7 @@ import { temperature } from '../llm/llm-constant'
 import type { ILLMClient } from '../llm/llm-types'
 import MCPClient from '../llm/mcp-client'
 import { OpenAiClient } from '../llm/open-ai-client'
+import type { CustomTool } from '../llm/tool'
 import type {
     Chat,
     ChatMessage,
@@ -26,6 +27,7 @@ import type {
     ChatTopic,
     CmdHistory,
     ConfigExt,
+    CustomToolKey,
     ExportMessage,
     IStore,
     MCPServerKey,
@@ -59,9 +61,15 @@ export class ChatAct implements IChatAct {
     private clientMap: Map<string, ILLMClient> = new Map()
     private mcps: MCPClient[]
     private store: IStore
+    private readonly customTools: CustomTool[]
 
-    constructor(chatStore: IStore, setting: Setting) {
+    constructor({
+        chatStore,
+        setting,
+        customTools,
+    }: { chatStore: IStore; setting: Setting; customTools: CustomTool[] }) {
         this.store = chatStore
+        this.customTools = customTools
         const { generalSetting, mcpServers, llmSettings } = setting
         this.generalSetting = generalSetting
         this.mcps = mcpServers
@@ -167,6 +175,7 @@ export class ChatAct implements IChatAct {
             mcps: this.mcps,
             userContent: content,
             outputHandler,
+            customTools: this.customTools,
             newTopic,
             noStream,
             topicModel: client.topicModel,
@@ -359,7 +368,6 @@ export class ChatAct implements IChatAct {
         f: (role: string, content: string) => void,
     ): void {
         display.onContentChunk(assistant)
-        display.onContentComplete()
         f('assistant', assistant)
     }
 
@@ -372,7 +380,6 @@ export class ChatAct implements IChatAct {
             return
         }
         display.onReasoningChunk(reasoning)
-        display.onReasoningComplete()
         f('reasoning', reasoning)
     }
 
@@ -387,7 +394,6 @@ export class ChatAct implements IChatAct {
         const res = this.parseToolsCall(toolsCall)
         if (typeof res === 'string') {
             display.onReasoningChunk(res)
-            display.onReasoningComplete()
             f('toolsCall', toolsCall)
             return
         }
@@ -437,10 +443,51 @@ export class ChatAct implements IChatAct {
         this.store.chat.get(chatName).config.moidfyContext()
     }
 
+    async modifyCustomTools(chatName?: string): Promise<void> {
+        const { configExt } = this.store.chat.get(chatName)
+        const { value: ext } = configExt
+        const items = await checkbox({
+            message: 'Select Custom Tools:',
+            choices: this.customToolsChoices(ext),
+            theme: checkboxThemeStyle(terminalColor),
+        })
+        ext.customTools = items
+        configExt.update(ext)
+    }
+
+    private customToolsChoices(ext: ConfigExt) {
+        const key = ({ name, group }: CustomToolKey) => `${name}(${group})`
+        const simple = (t: CustomTool) => {
+            const { def, group } = t
+            return {
+                name: (def as ChatCompletionFunctionTool).function.name,
+                group,
+            }
+        }
+        const isChecked = (t: CustomTool) => {
+            const { customTools } = ext
+            if (isEmpty(customTools)) {
+                return false
+            }
+            const item = customTools.find((it) => key(simple(t)) === key(it))
+            return item !== void 0
+        }
+        const choices = this.customTools.map((it) => {
+            const s = simple(it)
+            return {
+                name: key(s),
+                value: s,
+                checked: isChecked(it),
+            }
+        })
+        if (isEmpty(choices)) {
+            throw Error(promptMessage.customToolsMissing)
+        }
+        return choices
+    }
+
     async modifyWithMCP(chatName?: string): Promise<void> {
-        const chat = this.store.chat.get(chatName)
-        const config = chat.config
-        const configExt = chat.configExt
+        const { config, configExt } = this.store.chat.get(chatName)
         const { value: ext } = configExt
         const items = await checkbox({
             message: 'Select MCP Server:',
@@ -576,8 +623,8 @@ export class ChatAct implements IChatAct {
     private showPrompt(pt: string): void {
         const { assisant } = chalkTheme
         const { title, content } = assisant
-        console.log(title.bold('Prompt'))
-        console.log(content(pt))
+        println(title.bold('Prompt'))
+        println(content(pt))
     }
 
     async tools(): Promise<void> {

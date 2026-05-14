@@ -1,4 +1,5 @@
 import type { Setting } from '../config/app-setting'
+import type { CustomTool } from '../llm/tool'
 import type { IStore } from '../store/store-types'
 import type {
     AppConfigAct,
@@ -24,8 +25,12 @@ export class Act implements IAct {
     private readonly chatAct: IChatAct
     private readonly settingAct: ISettingAct
 
-    constructor(store: IStore, setting: Setting) {
-        this.chatAct = new ChatAct(store, setting)
+    constructor({
+        store,
+        setting,
+        customTools,
+    }: { store: IStore; setting: Setting; customTools: CustomTool[] }) {
+        this.chatAct = new ChatAct({ chatStore: store, setting, customTools })
         this.settingAct = new SettingAct()
     }
 
@@ -82,6 +87,7 @@ export class Act implements IAct {
             model: async (n) => await this.chatAct.modifyModel(n),
             context: (n) => this.chatAct.modifyWithContext(n),
             mcp: async (n) => await this.chatAct.modifyWithMCP(n),
+            tools: async (n) => await this.chatAct.modifyCustomTools(n),
             scenario: async (n) => await this.chatAct.modifyScenario(n),
             show: (n) => this.chatAct.printChatConfig(n),
         } as ConfigAct

@@ -1,5 +1,6 @@
 import { version } from '../../package.json'
 import type { MCPConfig } from '../llm/mcp-client'
+import type { CustomTool } from '../llm/tool'
 import { dataPath } from './data-config'
 import schemaContent from './ifcli-settings-schema.json'
 
@@ -76,4 +77,13 @@ export const appSetting = async (): Promise<Setting> => {
 
 export const appSettingCover = async (json: string): Promise<void> => {
     await Bun.file(dataPath.setting).write(json)
+}
+
+export const customTools = async () => {
+    const f = Bun.file(dataPath.customTools)
+    if (!(await f.exists())) {
+        return []
+    }
+    const toolsdef = await f.text()
+    return JSON.parse(toolsdef) as CustomTool[]
 }
