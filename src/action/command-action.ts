@@ -1,4 +1,5 @@
 import type { Setting } from '../config/app-setting'
+import type { CustomTool } from '../llm/tool'
 import type { IStore } from '../store/store-types'
 import type {
     AppConfigAct,
@@ -24,8 +25,12 @@ export class Act implements IAct {
     private readonly chatAct: IChatAct
     private readonly settingAct: ISettingAct
 
-    constructor(store: IStore, setting: Setting) {
-        this.chatAct = new ChatAct(store, setting)
+    constructor({
+        store,
+        setting,
+        customTools,
+    }: { store: IStore; setting: Setting; customTools: CustomTool[] }) {
+        this.chatAct = new ChatAct({ chatStore: store, setting, customTools })
         this.settingAct = new SettingAct()
     }
 

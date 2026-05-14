@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-
 import path from 'node:path'
 import { stringWidth } from 'bun'
 import writeXlsxFile, { type Schema } from 'write-excel-file/node'
@@ -18,6 +17,7 @@ import { temperature } from '../llm/llm-constant'
 import type { ILLMClient } from '../llm/llm-types'
 import MCPClient from '../llm/mcp-client'
 import { OpenAiClient } from '../llm/open-ai-client'
+import type { CustomTool } from '../llm/tool'
 import type {
     Chat,
     ChatMessage,
@@ -59,9 +59,15 @@ export class ChatAct implements IChatAct {
     private clientMap: Map<string, ILLMClient> = new Map()
     private mcps: MCPClient[]
     private store: IStore
+    private readonly customTools: CustomTool[]
 
-    constructor(chatStore: IStore, setting: Setting) {
+    constructor({
+        chatStore,
+        setting,
+        customTools,
+    }: { chatStore: IStore; setting: Setting; customTools: CustomTool[] }) {
         this.store = chatStore
+        this.customTools = customTools
         const { generalSetting, mcpServers, llmSettings } = setting
         this.generalSetting = generalSetting
         this.mcps = mcpServers
@@ -167,6 +173,7 @@ export class ChatAct implements IChatAct {
             mcps: this.mcps,
             userContent: content,
             outputHandler,
+            customTools: this.customTools,
             newTopic,
             noStream,
             topicModel: client.topicModel,

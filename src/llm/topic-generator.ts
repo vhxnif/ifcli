@@ -14,6 +14,7 @@ export async function generateTopicName(
     userContent: string,
     client: OpenAI,
     model: string,
+    callback: (s: string) => void,
 ): Promise<string> {
     const truncatedContent = userContent.slice(0, 500)
 
@@ -35,10 +36,11 @@ export async function generateTopicName(
         })
         const topic = response.choices[0]?.message.content?.trim()
         if (topic && topic.length > 0) {
-            return topic
+            const t = topic
                 .replace(/["\n\r]/g, ' ')
                 .trim()
                 .slice(0, 50)
+            callback(t)
         }
     } catch {
         // Failed to generate topic name

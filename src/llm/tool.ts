@@ -1,7 +1,14 @@
+import { $ } from 'bun'
 import type {
     ChatCompletionFunctionTool,
     ChatCompletionTool,
 } from 'openai/resources'
+
+type CustomTool = {
+    def: ChatCompletionTool
+    group: string
+    command: string[]
+}
 
 type ToolDef = {
     def: ChatCompletionTool
@@ -108,7 +115,31 @@ function toolsGroup(tools: ToolDef[]) {
     ] as ToolDef[]
 }
 
-// todo cli tools
-//
+function toolsParse(customTools: CustomTool[]) {
+    const buildCommand = (args: any, command: string[]) =>
+        command
+            .map((it) => {
+                if (it.startsWith('$')) {
+                    return args[it.replace('$', '')]
+                }
+                return it
+            })
+            .join(' ')
+    return customTools.map(({ def, group, command }) => {
+        return {
+            def,
+            group,
+            call: async (args: any) => {
+                try {
+                    const cmd = buildCommand(args, command)
+                    return await $`${{ raw: cmd }}`.text()
+                } catch (e: unknown) {
+                    console.log(e)
+                    throw e
+                }
+            },
+        } as ToolDef
+    })
+}
 
-export { type ToolDef, toolsGroup }
+export { type CustomTool, type ToolDef, toolsGroup, toolsParse }

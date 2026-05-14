@@ -15,8 +15,8 @@ import {
     streamTools,
     toStoreMessage,
 } from './open-ai-helper'
-import type { ToolDef } from './tool'
-import { toolsGroup } from './tool'
+import type { CustomTool, ToolDef } from './tool'
+import { toolsGroup, toolsParse } from './tool'
 import {
     generateTempTopicName,
     generateTopicName,
@@ -129,10 +129,11 @@ class ContextNode extends Node<AskShare> {
         }
 
         if (needGenerateTopic) {
-            shared.topicNamePromise = generateTopicName(
+            generateTopicName(
                 seedContent,
                 this.client,
                 shared.topicModel || shared.model,
+                (s) => chat.topic.update(shared.topicId!, s),
             )
         }
 
@@ -157,22 +158,32 @@ class UserNode extends Node<AskShare> {
 
 class ToolsNode extends Node<AskShare> {
     private readonly mcps: MCPClient[]
+    private readonly customTools: CustomTool[]
 
-    constructor(mcps: MCPClient[]) {
+    constructor(mcps: MCPClient[], customTools: CustomTool[]) {
         super()
         this.mcps = mcps
+        this.customTools = customTools
     }
 
     override async prep(shared: AskShare): Promise<void> {
+        const mcpTools = await this.mcpTools(shared)
+        const cusTools = toolsParse(this.customTools)
+        if (mcpTools.length > 0 || cusTools.length > 0) {
+            shared.tools = toolsGroup([...mcpTools, ...cusTools])
+        }
+    }
+
+    private async mcpTools(shared: AskShare) {
         if (isEmpty(this.mcps)) {
-            return
+            return []
         }
         if (!shared.withMCP) {
-            return
+            return []
         }
         const { mcpServers } = shared.chat.configExt.value
         if (isEmpty(mcpServers)) {
-            return
+            return []
         }
         const filterActiveMCPServer = (m: MCPClient) => {
             const one = mcpServers.find(
@@ -182,24 +193,30 @@ class ToolsNode extends Node<AskShare> {
         }
         const mcps = this.mcps.filter(filterActiveMCPServer)
         if (isEmpty(mcps)) {
-            return
+            return []
         }
         shared.mcps = mcps
-
         const results = await Promise.allSettled(
             mcps.map(async (it) => {
-                await it.connect()
-                if (!it.isConnected) {
-                    const err = it.connectionErr
-                    throw new Error(
-                        `MCP ${it.name}/${it.version} connection failed: ${err?.message ?? 'unknown error'}`,
-                    )
+                try {
+                    await it.connect()
+                    if (!it.isConnected) {
+                        const err = it.connectionErr
+                        throw new Error(
+                            `MCP ${it.name}/${it.version} connection failed: ${err?.message ?? 'unknown error'}`,
+                        )
+                    }
+                    return await it.tools()
+                } catch (e: unknown) {
+                    println(e)
+                    try {
+                        await it.close()
+                    } catch (_: unknown) {}
+                    return []
                 }
-                return await it.tools()
             }),
         )
-
-        const tools = results
+        return results
             .flatMap((result) => {
                 if (result.status === 'fulfilled') {
                     return result.value
@@ -210,20 +227,12 @@ class ToolsNode extends Node<AskShare> {
                 return []
             })
             .flat()
-
-        if (tools.length > 0) {
-            shared.tools = toolsGroup(tools)
-        }
     }
 
     override async execFallback(
         _prepRes: unknown,
         _error: Error,
-    ): Promise<void> {
-        if (this.mcps) {
-            await Promise.allSettled(this.mcps.map((it) => it.close()))
-        }
-    }
+    ): Promise<void> {}
 }
 
 class AiRouterNode extends Node<AskShare> {
@@ -342,22 +351,11 @@ class StreamToolsCallNode extends Node<AskShare> {
 
 class StoreNode extends Node<AskShare> {
     override async prep(shared: AskShare): Promise<void> {
-        const { chat, resultMessage, topicId, topicNamePromise } = shared
+        const { chat, resultMessage } = shared
         if (!resultMessage) {
             return
         }
         chat.topic.message.save(resultMessage)
-
-        if (topicNamePromise) {
-            try {
-                const resolvedTopicName = await topicNamePromise
-                if (resolvedTopicName) {
-                    chat.topic.update(topicId!, resolvedTopicName)
-                }
-            } catch {
-                // Failed to generate topic name, will retry on next message
-            }
-        }
     }
 }
 
@@ -368,6 +366,7 @@ const askFlow = async ({
     mcps,
     generalSetting,
     outputHandler,
+    customTools,
     noStream,
     newTopic,
     topicModel,
@@ -379,6 +378,7 @@ const askFlow = async ({
     generalSetting: GeneralSetting
     noStream: boolean
     outputHandler: LLMOutputHandler
+    customTools: CustomTool[]
     newTopic?: boolean
     topicModel?: string
 }) => {
@@ -406,7 +406,7 @@ const askFlow = async ({
     const preset = new PresetNode()
     const context = new ContextNode(client)
     const userNode = new UserNode()
-    const tools = new ToolsNode(mcps)
+    const tools = new ToolsNode(mcps, customTools)
     const router = new AiRouterNode()
 
     const storeChat = new StoreNode()
