@@ -43,6 +43,15 @@ program
     })
 
 program
+    .command('tools')
+    .alias('ts')
+    .description('manage custom tools')
+    .option('-m, --modify', 'edit custom tools configuration')
+    .action(async ({ modify }) => {
+        await matchRun([[modify, act.setting.tools.edit]])
+    })
+
+program
     .command('prompt')
     .alias('pt')
     .description('manage system prompts library')

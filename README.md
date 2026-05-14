@@ -60,6 +60,7 @@ Options:
 Commands:
   config|cf [options]  manage application configuration
   mcp [options]        manage MCP (Model Context Protocol) servers
+  tools [options]      manage custom tools configuration
   prompt|pt [options]  manage system prompts library
   help [command]       display help for command
 ```
@@ -245,50 +246,53 @@ Custom tools allow you to define CLI commands as callable AI tools. Tools are de
 ### Tool Definition Format
 
 ```json
-[
-    {
-        "def": {
-            "type": "function",
-            "function": {
-                "name": "get_weather",
-                "description": "Get current weather for a city",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "city": {
-                            "type": "string",
-                            "description": "City name"
-                        }
-                    },
-                    "required": ["city"]
+{
+    "$schema": "./ifcli-custom-tools-schema.json",
+    "tools": [
+        {
+            "def": {
+                "type": "function",
+                "function": {
+                    "name": "get_weather",
+                    "description": "Get current weather for a city",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "city": {
+                                "type": "string",
+                                "description": "City name"
+                            }
+                        },
+                        "required": ["city"]
+                    }
                 }
-            }
+            },
+            "group": "weather",
+            "command": ["curl", "wttr.in/${city}?format=3"]
         },
-        "group": "weather",
-        "command": ["curl", "wttr.in/${city}?format=3"]
-    },
-    {
-        "def": {
-            "type": "function",
-            "function": {
-                "name": "calc",
-                "description": "Evaluate a mathematical expression",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "expr": {
-                            "type": "string",
-                            "description": "Math expression to evaluate"
-                        }
-                    },
-                    "required": ["expr"]
+        {
+            "def": {
+                "type": "function",
+                "function": {
+                    "name": "calc",
+                    "description": "Evaluate a mathematical expression",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "expr": {
+                                "type": "string",
+                                "description": "Math expression to evaluate"
+                            }
+                        },
+                        "required": ["expr"]
+                    }
                 }
-            }
-        },
-        "group": "math",
-        "command": ["bash", "-c", "echo $((${expr}))"]
-    }
-]
+            },
+            "group": "math",
+            "command": ["bash", "-c", "echo $((${expr}))"]
+        }
+    ]
+}
 ```
 
 | Field   | Type     | Required | Description |
@@ -300,11 +304,11 @@ Custom tools allow you to define CLI commands as callable AI tools. Tools are de
 ### Usage
 
 ```bash
+# Edit custom tools configuration (with schema validation in IDE)
+ist tools -m
+
 # Select custom tools for the current chat session
 ict cf -t
-
-# Enable all or specific custom tools for a chat
-# Use the checkbox UI to select which tools to enable
 ```
 
 The AI model first discovers available tool groups, then inspects individual tools, and finally invokes them — a three-step discovery process managed automatically by the built-in `list_available_tool_groups`, `list_available_tools`, and `call_group_tool` functions.

@@ -44,6 +44,7 @@ export interface IChatAct {
 export interface ISettingAct {
     modify: () => Promise<void>
     theme: () => Promise<void>
+    editCustomTools: () => Promise<void>
 }
 
 export type AskAct = {
@@ -120,9 +121,14 @@ export type AppPromptAct = {
     delete: (name?: string) => Promise<void>
 }
 
+export type AppToolsAct = {
+    edit: () => Promise<void>
+}
+
 export type SettingCmdAct = {
     config: AppConfigAct
     mcp: AppMCPAct
+    tools: AppToolsAct
     prompt: AppPromptAct
 }
 

@@ -1,0 +1,114 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "ifcli Custom Tools",
+    "description": "ifcli 自定义工具配置文件 Schema",
+    "type": "object",
+    "properties": {
+        "$schema": {
+            "type": "string",
+            "description": "JSON Schema 文件路径，用于 IDE 自动补全和校验"
+        },
+        "tools": {
+            "type": "array",
+            "description": "自定义工具定义列表",
+            "items": {
+                "type": "object",
+                "description": "自定义工具定义",
+                "properties": {
+                    "def": {
+                        "type": "object",
+                        "description": "OpenAI function tool 定义",
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "const": "function",
+                                "description": "工具类型"
+                            },
+                            "function": {
+                                "type": "object",
+                                "description": "工具函数定义",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "description": "工具名称（唯一标识）"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "description": "工具描述，AI 会根据此描述决定何时调用该工具"
+                                    },
+                                    "parameters": {
+                                        "type": "object",
+                                        "description": "工具参数 JSON Schema。使用 ${paramName} 在 command 中引用参数",
+                                        "properties": {
+                                            "type": {
+                                                "type": "string",
+                                                "const": "object"
+                                            },
+                                            "properties": {
+                                                "type": "object",
+                                                "additionalProperties": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "type": {
+                                                            "type": "string",
+                                                            "description": "参数类型",
+                                                            "enum": [
+                                                                "string",
+                                                                "number",
+                                                                "boolean",
+                                                                "array",
+                                                                "object"
+                                                            ]
+                                                        },
+                                                        "description": {
+                                                            "type": "string",
+                                                            "description": "参数描述"
+                                                        },
+                                                        "enum": {
+                                                            "type": "array",
+                                                            "description": "参数可选值列表"
+                                                        }
+                                                    },
+                                                    "required": ["type"]
+                                                }
+                                            },
+                                            "required": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "description": "必填参数列表"
+                                            }
+                                        },
+                                        "required": ["type", "properties"]
+                                    }
+                                },
+                                "required": ["name", "description"]
+                            }
+                        },
+                        "required": ["type", "function"]
+                    },
+                    "group": {
+                        "type": "string",
+                        "description": "工具分组名称，用于分类管理和按组启用/禁用"
+                    },
+                    "command": {
+                        "type": "array",
+                        "description": "要执行的 CLI 命令数组。使用 ${paramName} 语法引用工具参数",
+                        "items": {
+                            "type": "string"
+                        },
+                        "examples": [
+                            ["curl", "wttr.in/${city}"],
+                            ["python3", "-c", "print(${expr})"]
+                        ]
+                    }
+                },
+                "required": ["def", "group", "command"],
+                "additionalProperties": false
+            }
+        }
+    },
+    "required": ["tools"],
+    "additionalProperties": false
+}

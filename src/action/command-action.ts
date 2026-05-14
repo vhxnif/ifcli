@@ -6,6 +6,7 @@ import type {
     AppMCPAct,
     AppMCPToolsAct,
     AppPromptAct,
+    AppToolsAct,
     AskAct,
     ChatCmdAct,
     ConfigAct,
@@ -107,6 +108,7 @@ export class Act implements IAct {
         return {
             config: this.appConfigAct(),
             mcp: this.appMCPAct(),
+            tools: this.appToolsAct(),
             prompt: this.appPromptAct(),
         } as SettingCmdAct
     }
@@ -125,6 +127,12 @@ export class Act implements IAct {
                 test: async () => await this.chatAct.testTool(),
             } as AppMCPToolsAct,
         } as AppMCPAct
+    }
+
+    private appToolsAct(): AppToolsAct {
+        return {
+            edit: async () => await this.settingAct.editCustomTools(),
+        } as AppToolsAct
     }
 
     private appPromptAct(): AppPromptAct {
