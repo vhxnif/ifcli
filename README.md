@@ -8,6 +8,7 @@ Chat with AI via Command Line Interface.
 -   Preset message support
 -   Chat history management and viewing
 -   MCP (Model Context Protocol) tools support
+-   Custom tools — define CLI commands as callable AI tools
 -   Flexible usage patterns with `alias` commands
 -   Environment variable support for secure configuration (backward compatible with direct configuration)
 
@@ -59,6 +60,7 @@ Options:
 Commands:
   config|cf [options]  manage application configuration
   mcp [options]        manage MCP (Model Context Protocol) servers
+  tools [options]      manage custom tools configuration
   prompt|pt [options]  manage system prompts library
   help [command]       display help for command
 ```
@@ -83,15 +85,16 @@ Options:
   -a, --attachment <file>      attach text file content to message
   -h, --help                   display help for command
 
-Commands:
-  new <string>                 create a new chat session
-  history|hs [options]         view chat conversation history
-  remove|rm                    delete a chat session
-  switch|st [options] [name]   switch between chat sessions or topics
-  prompt|pt [options]          manage system prompts
-  preset|ps [options]          manage preset message templates
-  config|cf [options]          configure chat settings
-  export|exp [options] [path]  export chat conversations
+  Commands:
+    new <string>                 create a new chat session
+    history|hs [options]         view chat conversation history
+    remove|rm                    delete a chat session
+    switch|st [options] [name]   switch between chat sessions or topics
+    prompt|pt [options]          manage system prompts
+    preset|ps [options]          manage preset message templates
+    config|cf [options]          configure chat settings
+      -t, --tools                enable/disable custom tools
+    export|exp [options] [path]  export chat conversations
 ```
 
 ## Application Settings
@@ -235,6 +238,80 @@ This allows you to securely store sensitive information like API keys in environ
 - (default): Capture stderr silently, preventing log mixing with CLI output
 - `ignore`: Discard all stderr output from MCP server
 - `inherit`: Pass stderr output to parent process (may mix with CLI output)
+
+## Custom Tools
+
+Custom tools allow you to define CLI commands as callable AI tools. Tools are defined in `ifcli-custom-tools.json` in the data directory and can be selected per chat session.
+
+### Tool Definition Format
+
+```json
+{
+    "$schema": "./ifcli-custom-tools-schema.json",
+    "tools": [
+        {
+            "def": {
+                "type": "function",
+                "function": {
+                    "name": "get_weather",
+                    "description": "Get current weather for a city",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "city": {
+                                "type": "string",
+                                "description": "City name"
+                            }
+                        },
+                        "required": ["city"]
+                    }
+                }
+            },
+            "group": "weather",
+            "command": ["curl", "wttr.in/${city}?format=3"]
+        },
+        {
+            "def": {
+                "type": "function",
+                "function": {
+                    "name": "calc",
+                    "description": "Evaluate a mathematical expression",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "expr": {
+                                "type": "string",
+                                "description": "Math expression to evaluate"
+                            }
+                        },
+                        "required": ["expr"]
+                    }
+                }
+            },
+            "group": "math",
+            "command": ["bash", "-c", "echo $((${expr}))"]
+        }
+    ]
+}
+```
+
+| Field   | Type     | Required | Description |
+| :------ | :------- | :------- | :---------- |
+| def     | object   | true     | OpenAI function tool definition (name, description, parameters) |
+| group   | string   | true     | Tool category group for organization and selection |
+| command | string[] | true     | CLI command array; use `${paramName}` for argument interpolation |
+
+### Usage
+
+```bash
+# Edit custom tools configuration (with schema validation in IDE)
+ist tools -m
+
+# Select custom tools for the current chat session
+ict cf -t
+```
+
+The AI model first discovers available tool groups, then inspects individual tools, and finally invokes them — a three-step discovery process managed automatically by the built-in `list_available_tool_groups`, `list_available_tools`, and `call_group_tool` functions.
 
 ## Usage Tips
 

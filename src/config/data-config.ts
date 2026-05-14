@@ -59,6 +59,13 @@ export class DataPathConfig {
     get customTools(): string {
         return path.join(this.configPath!, `${this.appName}-custom-tools.json`)
     }
+
+    get customToolsSchema(): string {
+        return path.join(
+            this.configPath!,
+            `${this.appName}-custom-tools-schema.json`,
+        )
+    }
 }
 
 export const dataPath = new DataPathConfig()

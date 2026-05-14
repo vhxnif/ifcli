@@ -2,6 +2,7 @@ import { version } from '../../package.json'
 import type { MCPConfig } from '../llm/mcp-client'
 import type { CustomTool } from '../llm/tool'
 import { dataPath } from './data-config'
+import customToolsSchemaContent from './ifcli-custom-tools-schema.json'
 import schemaContent from './ifcli-settings-schema.json'
 
 export type LLMSetting = {
@@ -68,6 +69,11 @@ export const initAppSetting = async (): Promise<void> => {
     if (!schemaExt) {
         await sf.write(JSON.stringify(schemaContent, null, 2))
     }
+    const ctsf = Bun.file(dataPath.customToolsSchema)
+    const ctSchemaExt = await ctsf.exists()
+    if (!ctSchemaExt) {
+        await ctsf.write(JSON.stringify(customToolsSchemaContent, null, 2))
+    }
 }
 
 export const appSetting = async (): Promise<Setting> => {
@@ -85,5 +91,6 @@ export const customTools = async () => {
         return []
     }
     const toolsdef = await f.text()
-    return JSON.parse(toolsdef) as CustomTool[]
+    const parsed = JSON.parse(toolsdef)
+    return ((parsed as { tools: CustomTool[] }).tools ?? parsed) as CustomTool[]
 }

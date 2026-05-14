@@ -60,4 +60,31 @@ export class SettingAct implements ISettingAct {
         }
         await appSettingCover(fmtText)
     }
+
+    async editCustomTools(): Promise<void> {
+        const f = Bun.file(dataPath.customTools)
+        let sourceObj: Record<string, unknown>
+        if (await f.exists()) {
+            const raw = JSON.parse(await f.text())
+            sourceObj = Array.isArray(raw) ? { tools: raw } : raw
+        } else {
+            sourceObj = { tools: [] }
+        }
+        const sourceText = jsonformat(JSON.stringify(sourceObj))
+        const schemaPath = dataPath.customToolsSchema.startsWith('/')
+            ? `file://${dataPath.customToolsSchema}`
+            : `file:///${dataPath.customToolsSchema}`
+        const contentWithSchema = injectSchema(sourceText, schemaPath)
+        const text = await editor(contentWithSchema, 'json')
+        if (!text) {
+            return
+        }
+        const parsed = JSON.parse(text) as Record<string, unknown>
+        delete parsed.$schema
+        const fmtText = jsonformat(JSON.stringify(parsed))
+        if (isTextSame(sourceText, fmtText)) {
+            throw Error(promptMessage.noEdit)
+        }
+        await f.write(fmtText)
+    }
 }
