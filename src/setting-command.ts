@@ -1,9 +1,12 @@
 #!/usr/bin/env bun
+import chalk from 'chalk'
 import { Command } from '@commander-js/extra-typings'
-import { act, terminalColor } from './app-context'
+import { chatService, setting, terminalColor } from './app-context'
 import { commanderHelpConfiguration } from './component/theme/color-scheme'
+import { appSettingCover, type Setting } from './config/app-setting'
 import { APP_VERSION } from './config/app-setting'
-import { matchRun, print } from './util/common-utils'
+import { editor, matchRun, print, println } from './util/common-utils'
+import { select } from './util/inquirer-utils'
 
 const program = new Command().configureHelp(
     commanderHelpConfiguration(terminalColor),
@@ -15,72 +18,133 @@ program
     .description('Manage application settings and configuration')
     .version(`${APP_VERSION}`)
 
+// ── config ──
+
 program
     .command('config')
     .alias('cf')
     .description('manage application configuration')
-    .option('-m, --modify', 'edit application settings')
+    .option('-m, --modify', 'edit application settings JSON')
     .option('-t, --theme', 'change color theme')
-    .action(async ({ modify, theme }) => {
-        const cf = act.setting.config
-        await matchRun([
-            [modify, cf.modify],
-            [theme, cf.theme],
-        ])
+    .option('-s, --thinking-level <level>', 'set default thinking level')
+    .action(async ({ modify, theme, thinkingLevel }) => {
+        if (modify) {
+            const currentJson = JSON.stringify(setting, null, 2)
+            const newJson = await editor(currentJson)
+            if (newJson && newJson !== currentJson) {
+                await appSettingCover(newJson)
+                println(terminalColor.green('Settings updated. Restart to apply.'))
+            }
+            return
+        }
+
+        if (theme) {
+            const themes = [
+                'Tokyo Night', 'Tokyo Night Day', 'Tokyo Night Moon', 'Tokyo Night Storm',
+                'Rose Pine', 'Rose Pine Moon', 'Rose Pine Dawn',
+                'Catppuccin Latte', 'Catppuccin Frappe', 'Catppuccin Macchiato', 'Catppuccin Mocha',
+            ]
+            const choice = await select({
+                message: 'Select theme:',
+                choices: themes.map(t => ({ name: t, value: t })),
+            })
+            const updated = { ...setting, generalSetting: { ...setting.generalSetting, theme: choice } }
+            await appSettingCover(JSON.stringify(updated, null, 2))
+            println(terminalColor.green(`Theme changed to: ${choice}. Restart to apply.`))
+            return
+        }
+
+        if (thinkingLevel) {
+            const levels = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
+            if (!levels.includes(thinkingLevel)) {
+                println(terminalColor.red(`Invalid thinking level. Valid: ${levels.join(', ')}`))
+                return
+            }
+            println(terminalColor.green(`Thinking level: ${thinkingLevel}`))
+            // 注意：thinking level 是 per-session 设置，不是全局设置
+            println(chalk.gray('Use: ict cf -f <session-id> -t <level> to set per session'))
+            return
+        }
+
+        // 默认：显示当前配置
+        println(chalk.bold('Current Configuration:'))
+        println(`  Theme: ${setting.generalSetting.theme}`)
+        println(`  AutoName: ${setting.session?.autoName?.enabled ? 'enabled' : 'disabled'}`)
+        println(`  Compaction: ${setting.compaction?.enabled ? 'enabled' : 'disabled'}`)
+        if (setting.compaction?.enabled) {
+            println(`    Trigger: ${setting.compaction.triggerRatio * 100}% of context window`)
+            println(`    Keep recent: ${setting.compaction.keepRecentRatio * 100}%`)
+        }
     })
+
+// ── mcp ──
 
 program
     .command('mcp')
-    .description('manage MCP (Model Context Protocol) servers')
+    .description('manage MCP servers')
     .option('-l, --list', 'list configured MCP servers')
-    .option('-t, --test', 'test MCP server connectivity')
-    .action(async ({ list, test }) => {
-        const tools = act.setting.mcp.tools
-        await matchRun([
-            [list, tools.list],
-            [test, tools.test],
-        ])
+    .action(async ({ list }) => {
+        if (list) {
+            const servers = setting.mcpServers ?? []
+            if (servers.length === 0) {
+                println(terminalColor.yellow('No MCP servers configured.'))
+                return
+            }
+            for (const s of servers) {
+                const status = s.enable ? terminalColor.green('✓') : chalk.gray('✗')
+                println(`${status} ${s.name}@${s.version} (${s.type})`)
+            }
+            return
+        }
+        // 默认：显示配置建议
+        println(chalk.bold('MCP Configuration:'))
+        println('  Edit settings JSON to configure MCP servers.')
+        println('  Use: ist cf -m to open editor.')
     })
+
+// ── tools ──
 
 program
     .command('tools')
     .alias('ts')
     .description('manage custom tools')
-    .option('-m, --modify', 'edit custom tools configuration')
-    .action(async ({ modify }) => {
-        await matchRun([[modify, act.setting.tools.edit]])
+    .option('-l, --list', 'list custom tools')
+    .action(async ({ list: listOpt }) => {
+        if (listOpt) {
+            const tools = setting.customTools ?? []
+            if (tools.length === 0) {
+                println(terminalColor.yellow('No custom tools configured.'))
+                return
+            }
+            for (const t of tools) {
+                println(`${terminalColor.cyan(t.def.function.name)} [${t.tags.join(', ')}]`)
+                println(`  ${t.def.function.description}`)
+            }
+            return
+        }
+        println(chalk.bold('Custom Tools:'))
+        println('  Edit settings JSON to configure custom tools.')
+        println('  Use: ist cf -m to open editor.')
     })
+
+// ── prompt ──
 
 program
     .command('prompt')
     .alias('pt')
-    .description('manage system prompts library')
-    .option('-l, --list [name]', 'list prompts (optionally filter by name)')
+    .description('manage system prompts')
     .option('-e, --export', 'export prompts to files')
     .option('-i, --import <file>', 'import prompt from file')
-    .option('-d, --delete [name]', 'delete prompt (optionally specify name)')
-    .action(async ({ list, export: exp, import: imp, delete: del }) => {
-        const pt = act.setting.prompt
-        const listRun = async () => {
-            if (typeof list === 'string') {
-                await pt.list(list)
-                return
-            }
-            await pt.list()
+    .action(async ({ export: exp, import: imp }) => {
+        if (exp) {
+            println(terminalColor.yellow('Export not yet implemented in new architecture.'))
+            return
         }
-        const deleteRun = async () => {
-            if (typeof del === 'string') {
-                await pt.delete(del)
-                return
-            }
-            await pt.delete()
+        if (imp) {
+            println(terminalColor.yellow('Import not yet implemented in new architecture.'))
+            return
         }
-        await matchRun([
-            [list, listRun],
-            [del, deleteRun],
-            [exp, pt.export],
-            [imp, async () => await pt.import(imp!)],
-        ])
+        println(chalk.bold('Prompt management will be available in a future update.'))
     })
 
 program.parseAsync().catch((e: unknown) => {

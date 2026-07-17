@@ -6,12 +6,6 @@ const allowedThemes: string[] = (
     }
 ).properties.theme.enum
 
-const requiredLlmFields: string[] = (
-    schemaContent.properties!.llmSettings as {
-        items: { required: string[] }
-    }
-).items.required
-
 const mcpServerTypes: string[] = (
     schemaContent.properties!.mcpServers as {
         items: {
@@ -48,6 +42,7 @@ type ValidationResult = {
 const validateSetting = (obj: Record<string, unknown>): ValidationResult => {
     const errors: string[] = []
 
+    // generalSetting
     if (!obj.generalSetting || typeof obj.generalSetting !== 'object') {
         errors.push('缺少 generalSetting 或类型错误')
     } else {
@@ -55,56 +50,63 @@ const validateSetting = (obj: Record<string, unknown>): ValidationResult => {
         if (typeof gs.theme !== 'string') {
             errors.push('generalSetting.theme 必须是字符串')
         } else if (!allowedThemes.includes(gs.theme)) {
-            errors.push(
-                `generalSetting.theme "${gs.theme}" 无效，可选值: ${allowedThemes.join(', ')}`,
-            )
+            errors.push(`generalSetting.theme "${gs.theme}" 无效，可选值: ${allowedThemes.join(', ')}`)
         }
     }
 
-    if (!Array.isArray(obj.llmSettings)) {
-        errors.push('缺少 llmSettings 或类型错误')
+    // session
+    if (!obj.session || typeof obj.session !== 'object') {
+        errors.push('缺少 session 配置')
     } else {
-        for (const [i, item] of (
-            obj.llmSettings as Record<string, unknown>[]
-        ).entries()) {
-            for (const field of requiredLlmFields) {
-                if (!(field in item)) {
-                    errors.push(`llmSettings[${i}] 缺少必填字段: ${field}`)
-                }
+        const s = obj.session as Record<string, unknown>
+        const an = s.autoName as Record<string, unknown> | undefined
+        if (!an || typeof an !== 'object') {
+            errors.push('session.autoName 配置缺失')
+        } else {
+            if (typeof an.enabled !== 'boolean') {
+                errors.push('session.autoName.enabled 必须是 boolean')
             }
-            if (
-                typeof item.models !== 'undefined' &&
-                !Array.isArray(item.models)
-            ) {
-                errors.push(`llmSettings[${i}].models 必须是数组`)
+            if (typeof an.model !== 'string' || !an.model.includes('/')) {
+                errors.push('session.autoName.model 必须是 provider/modelId 格式')
             }
         }
     }
 
-    if (!Array.isArray(obj.mcpServers)) {
-        errors.push('缺少 mcpServers 或类型错误')
+    // compaction
+    if (!obj.compaction || typeof obj.compaction !== 'object') {
+        errors.push('缺少 compaction 配置')
     } else {
-        for (const [i, item] of (
-            obj.mcpServers as Record<string, unknown>[]
-        ).entries()) {
-            if (
-                typeof item.type !== 'string' ||
-                !mcpServerTypes.includes(item.type)
-            ) {
-                errors.push(
-                    `mcpServers[${i}].type 无效，可选值: ${mcpServerTypes.join(', ')}`,
-                )
-                continue
-            }
-            const requiredFields = mcpRequiredByType[item.type] ?? []
-            for (const field of requiredFields) {
-                if (!(field in item)) {
-                    errors.push(
-                        `mcpServers[${i}] 缺少必填字段: ${field} (type: ${item.type})`,
-                    )
+        const c = obj.compaction as Record<string, unknown>
+        if (typeof c.enabled !== 'boolean') errors.push('compaction.enabled 必须是 boolean')
+        if (typeof c.triggerRatio !== 'number' || c.triggerRatio <= 0 || c.triggerRatio > 1)
+            errors.push('compaction.triggerRatio 必须是 0~1 之间的数值')
+        if (typeof c.keepRecentRatio !== 'number' || c.keepRecentRatio <= 0 || c.keepRecentRatio >= 1)
+            errors.push('compaction.keepRecentRatio 必须是 0~1 之间（不含端点）的数值')
+    }
+
+    // mcpServers (optional)
+    if (obj.mcpServers !== undefined) {
+        if (!Array.isArray(obj.mcpServers)) {
+            errors.push('mcpServers 必须是数组')
+        } else {
+            for (const [i, item] of (obj.mcpServers as Record<string, unknown>[]).entries()) {
+                if (typeof item.type !== 'string' || !mcpServerTypes.includes(item.type)) {
+                    errors.push(`mcpServers[${i}].type 无效，可选值: ${mcpServerTypes.join(', ')}`)
+                    continue
+                }
+                const requiredFields = mcpRequiredByType[item.type] ?? []
+                for (const field of requiredFields) {
+                    if (!(field in item)) {
+                        errors.push(`mcpServers[${i}] 缺少必填字段: ${field} (type: ${item.type})`)
+                    }
                 }
             }
         }
+    }
+
+    // customTools (optional)
+    if (obj.customTools !== undefined && !Array.isArray(obj.customTools)) {
+        errors.push('customTools 必须是数组')
     }
 
     return { valid: errors.length === 0, errors }

@@ -1,27 +1,55 @@
 import { version } from '../../package.json'
 import type { MCPConfig } from '../llm/mcp-client'
-import type { CustomTool } from '../llm/tool'
 import { dataPath } from './data-config'
-import customToolsSchemaContent from './ifcli-custom-tools-schema.json'
-import schemaContent from './ifcli-settings-schema.json'
+import settingsSchemaContent from './ifcli-settings-schema.json'
 
-export type LLMSetting = {
-    name: string
-    baseUrl: string
-    apiKey: string
-    models: string[]
-    topicModel?: string
-}
+// ── 精简后的功能配置类型 ──
 
 export type GeneralSetting = {
     theme: string
 }
 
+export type AutoNameConfig = {
+    enabled: boolean
+    /** provider/modelId 格式，如 "openai/gpt-4o-mini" */
+    model: string
+}
+
+export type SessionConfig = {
+    autoName: AutoNameConfig
+}
+
+export type CompactionConfig = {
+    enabled: boolean
+    /** 当 estimatedTokens >= model.contextWindow * triggerRatio 时触发 */
+    triggerRatio: number
+    /** 保留最近 model.contextWindow * keepRecentRatio 的原文 */
+    keepRecentRatio: number
+}
+
+/** 自定义工具：group 改为 tags（数组，支持多个标签） */
+export type CustomToolDef = {
+    def: {
+        type: 'function'
+        function: {
+            name: string
+            description: string
+            parameters: Record<string, unknown>
+        }
+    }
+    tags: string[]
+    command: string[]
+}
+
 export type Setting = {
     generalSetting: GeneralSetting
+    session: SessionConfig
+    compaction: CompactionConfig
     mcpServers: MCPConfig[]
-    llmSettings: LLMSetting[]
+    customTools?: CustomToolDef[]
 }
+
+// ── 默认配置 ──
 
 export const APP_VERSION = version
 
@@ -29,50 +57,39 @@ const defaultGeneralSetting: GeneralSetting = {
     theme: 'Tokyo Night',
 }
 
-export const defaultLLMSettings: LLMSetting[] = [
-    {
-        name: 'deepseek',
-        baseUrl: 'https://api.deepseek.com',
-        apiKey: '',
-        models: ['deepseek-chat', 'deepseek-reasoner'],
-        topicModel: 'deepseek-chat',
+const defaultSessionConfig: SessionConfig = {
+    autoName: {
+        enabled: true,
+        model: 'openai/gpt-4o-mini',
     },
-    {
-        name: 'ollama',
-        baseUrl: 'http://localhost:11434/v1/',
-        apiKey: '',
-        models: [],
-    },
-    {
-        name: 'openai',
-        baseUrl: 'https://api.openai.com/v1',
-        apiKey: '',
-        models: ['gpt-4o'],
-        topicModel: 'gpt-4o-mini',
-    },
-]
+}
+
+const defaultCompaction: CompactionConfig = {
+    enabled: true,
+    triggerRatio: 0.8,
+    keepRecentRatio: 0.3,
+}
+
+// ── 初始化 & 读写 ──
 
 export const initAppSetting = async (): Promise<void> => {
     const f = Bun.file(dataPath.setting)
-    const ext = await f.exists()
-    if (!ext) {
+    const exists = await f.exists()
+    if (!exists) {
         const defSetting = {
             $schema: './ifcli-settings-schema.json',
             generalSetting: defaultGeneralSetting,
-            llmSettings: defaultLLMSettings,
+            session: defaultSessionConfig,
+            compaction: defaultCompaction,
             mcpServers: [],
+            customTools: [],
         }
-        f.write(JSON.stringify(defSetting, null, 2))
+        await f.write(JSON.stringify(defSetting, null, 2))
     }
+    // 写 schema 文件（供 IDE 补全）
     const sf = Bun.file(dataPath.schema)
-    const schemaExt = await sf.exists()
-    if (!schemaExt) {
-        await sf.write(JSON.stringify(schemaContent, null, 2))
-    }
-    const ctsf = Bun.file(dataPath.customToolsSchema)
-    const ctSchemaExt = await ctsf.exists()
-    if (!ctSchemaExt) {
-        await ctsf.write(JSON.stringify(customToolsSchemaContent, null, 2))
+    if (!(await sf.exists())) {
+        await sf.write(JSON.stringify(settingsSchemaContent, null, 2))
     }
 }
 
@@ -85,12 +102,12 @@ export const appSettingCover = async (json: string): Promise<void> => {
     await Bun.file(dataPath.setting).write(json)
 }
 
-export const customTools = async () => {
+export const customTools = async (): Promise<CustomToolDef[]> => {
     const f = Bun.file(dataPath.customTools)
     if (!(await f.exists())) {
         return []
     }
     const toolsdef = await f.text()
     const parsed = JSON.parse(toolsdef)
-    return ((parsed as { tools: CustomTool[] }).tools ?? parsed) as CustomTool[]
+    return ((parsed as { tools: CustomToolDef[] }).tools ?? parsed) as CustomToolDef[]
 }

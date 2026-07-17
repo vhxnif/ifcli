@@ -10,6 +10,7 @@ export type TerminalColorName =
     | 'magenta'
     | 'cyan'
     | 'white'
+    | 'gray'
     | 'blackBright'
     | 'redBright'
     | 'greenBright'
@@ -20,6 +21,7 @@ export type TerminalColorName =
     | 'whiteBright'
 
 export type TerminalColor = Record<TerminalColorName, string>
+
 export type ChalkTerminalColor = Record<TerminalColorName, ChalkInstance>
 
 export type ChatBoxPart = 'title' | 'bolder' | 'content'

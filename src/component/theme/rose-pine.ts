@@ -119,6 +119,7 @@ const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
         magentaBright: iris,
         cyanBright: rose,
         whiteBright: base,
+        gray: '#888888',
     }
 }
 

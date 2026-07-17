@@ -15,7 +15,13 @@ import {
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js'
 import { println } from '../util/common-utils'
-import type { ToolDef } from './tool'
+
+// ponytail: ToolDef 原在 tool.ts，现内联定义
+type ToolDef = {
+    def: { type: string; function: { name: string; description: string; parameters: Record<string, unknown> } }
+    group: string
+    call: (args: unknown) => Promise<unknown>
+}
 
 export type MCPConnectType = 'http' | 'sse' | 'stdio'
 

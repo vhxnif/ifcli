@@ -3,7 +3,7 @@
 import { accessSync, constants, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { env, platform } from '../util/platform-utils'
-import { APP_VERSION } from './app-setting'
+import { version as APP_VERSION } from '../../package.json'
 
 export class DataPathConfig {
     private get appName(): string {

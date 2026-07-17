@@ -197,6 +197,7 @@ const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
         magentaBright: mauve,
         cyanBright: sky,
         whiteBright: text,
+        gray: '#888888',
     }
 }
 
@@ -208,7 +209,7 @@ const generateSemanticColors = (): ThemeSemanticColors => {
         rendering: 'blue',
         error: 'red',
         completed: 'green',
-        toolCalling: 'magentaBright',
+        toolCalling: 'magenta',
     }
 }
 const latte = scheme['Catppuccin Latte']
@@ -223,6 +224,7 @@ const colorScheme: ColorScheme[] = [
             ...generateTerminalColor(latte),
             white: latte.base,
             whiteBright: latte.base,
+            gray: '#888888',
             black: latte.text,
             blackBright: latte.overlay2,
         },
