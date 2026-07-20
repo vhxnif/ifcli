@@ -54,10 +54,23 @@ export class SessionManager {
                 model TEXT NOT NULL DEFAULT '',
                 thinking_level TEXT NOT NULL DEFAULT 'off',
                 system_prompt TEXT NOT NULL DEFAULT '',
+                active_mcps TEXT NOT NULL DEFAULT '[]',
+                active_custom_tags TEXT NOT NULL DEFAULT '[]',
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL
             )
         `)
+        // 旧表迁移：添加工具启用列
+        for (const col of [
+            'active_mcps TEXT NOT NULL DEFAULT "[]"',
+            'active_custom_tags TEXT NOT NULL DEFAULT "[]"',
+        ]) {
+            try {
+                this.db.run(`ALTER TABLE session ADD COLUMN ${col}`)
+            } catch {
+                // 列已存在，忽略
+            }
+        }
         this.db.run(`
             CREATE TABLE IF NOT EXISTS session_entry (
                 id TEXT PRIMARY KEY,
@@ -109,9 +122,9 @@ export class SessionManager {
         // 使用 INSERT OR REPLACE 以防 SqliteSessionStorage 已先行插入了默认行
         this.db
             .prepare(
-                `INSERT OR REPLACE INTO session (id, name, model, thinking_level, system_prompt, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT OR REPLACE INTO session (id, name, model, thinking_level, system_prompt, active_mcps, active_custom_tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             )
-            .run(id, name, model, thinkingLevel, '', now, now)
+            .run(id, name, model, thinkingLevel, '', '[]', '[]', now, now)
         return {
             id,
             name,

@@ -109,6 +109,10 @@ export class ChatService {
         // 从 Pi Models 注册表解析真实 Model 对象
         const model = this.resolveModel(modelStr)
 
+        // 按 session 配置启用工具
+        this.toolRegistry.setActiveMcps(meta.activeMcps)
+        this.toolRegistry.setActiveCustomTools(meta.activeCustomTags)
+
         // 构建 tools
         const tools = await this.toolRegistry.buildActiveTools()
 

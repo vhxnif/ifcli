@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS session (
     model TEXT NOT NULL DEFAULT '',
     thinking_level TEXT NOT NULL DEFAULT 'off',
     system_prompt TEXT NOT NULL DEFAULT '',
+    active_mcps TEXT NOT NULL DEFAULT '[]',
+    active_custom_tags TEXT NOT NULL DEFAULT '[]',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
 );
@@ -76,6 +78,17 @@ export class SqliteSessionStorage implements SessionStorage {
             .filter(Boolean)) {
             this.db.run(stmt)
         }
+        // 旧表迁移：添加工具启用列
+        for (const col of [
+            'active_mcps TEXT NOT NULL DEFAULT "[]"',
+            'active_custom_tags TEXT NOT NULL DEFAULT "[]"',
+        ]) {
+            try {
+                this.db.run(`ALTER TABLE session ADD COLUMN ${col}`)
+            } catch {
+                // 列已存在，忽略
+            }
+        }
     }
 
     // ── Metadata ──
@@ -83,10 +96,20 @@ export class SqliteSessionStorage implements SessionStorage {
     async getMetadata(): Promise<SessionMeta> {
         const row = this.db
             .query(
-                `SELECT name, model, thinking_level as thinkingLevel, system_prompt as systemPrompt, created_at as createdAt, updated_at as updatedAt
+                `SELECT name, model, thinking_level as thinkingLevel, system_prompt as systemPrompt, active_mcps as activeMcps, active_custom_tags as activeCustomTags, created_at as createdAt, updated_at as updatedAt
                  FROM session WHERE id = ?`,
             )
             .get(this.sessionId) as Record<string, unknown> | undefined
+
+        const parseArr = (raw: unknown): string[] => {
+            if (typeof raw !== 'string' || raw === '') return []
+            try {
+                const parsed = JSON.parse(raw)
+                return Array.isArray(parsed) ? parsed : []
+            } catch {
+                return []
+            }
+        }
 
         // 如果行不存在（session 尚未 create），返回默认值
         return {
@@ -94,6 +117,8 @@ export class SqliteSessionStorage implements SessionStorage {
             model: (row?.model as string) || '',
             thinkingLevel: (row?.thinkingLevel as ThinkingLevel) || 'off',
             systemPrompt: (row?.systemPrompt as string) || '',
+            activeMcps: parseArr(row?.activeMcps),
+            activeCustomTags: parseArr(row?.activeCustomTags),
             createdAt: (row?.createdAt as number) || Date.now(),
             updatedAt: (row?.updatedAt as number) || Date.now(),
         }
@@ -107,13 +132,16 @@ export class SqliteSessionStorage implements SessionStorage {
             thinkingLevel:
                 meta.thinkingLevel ?? existing.thinkingLevel ?? 'off',
             systemPrompt: meta.systemPrompt ?? existing.systemPrompt ?? '',
+            activeMcps: meta.activeMcps ?? existing.activeMcps,
+            activeCustomTags:
+                meta.activeCustomTags ?? existing.activeCustomTags,
             createdAt: meta.createdAt ?? existing.createdAt ?? Date.now(),
             updatedAt: Date.now(),
         }
 
         this.db
             .prepare(
-                `INSERT OR REPLACE INTO session (id, name, model, thinking_level, system_prompt, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT OR REPLACE INTO session (id, name, model, thinking_level, system_prompt, active_mcps, active_custom_tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             )
             .run(
                 this.sessionId,
@@ -121,6 +149,8 @@ export class SqliteSessionStorage implements SessionStorage {
                 merged.model,
                 merged.thinkingLevel,
                 merged.systemPrompt,
+                JSON.stringify(merged.activeMcps),
+                JSON.stringify(merged.activeCustomTags),
                 merged.createdAt,
                 merged.updatedAt,
             )

@@ -2,7 +2,7 @@
  * [INPUT]: 依赖 @earendil-works/pi-agent-core 的 AgentTool,
  *          依赖 ../llm/mcp-client 的 MCPClient,
  *          依赖 ../llm/pi-types 的 CustomToolDef
- * [OUTPUT]: ToolRegistry 类（buildActiveTools/listTools/closeAll），含 base 分组发现工具
+ * [OUTPUT]: ToolRegistry 类（buildActiveTools/listTools/closeAll），含可选的分组发现工具
  * [POS]: src/llm/ 的工具注册层，替代旧 tool.ts，被 chat-service 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -16,6 +16,15 @@ import type { CustomToolDef } from './pi-types'
 export interface ToolRegistryConfig {
     mcps: MCPClient[]
     customTools: CustomToolDef[]
+    /** 超过此数量时只注入发现工具，否则直接注入原始 schema */
+    toolDiscoveryThreshold?: number
+}
+
+interface ToolGroup {
+    id: string
+    name: string
+    type: 'mcp' | 'custom'
+    tools: { name: string; description: string }[]
 }
 
 // ── 注册表 ──
@@ -25,10 +34,12 @@ export class ToolRegistry {
     private customTools: CustomToolDef[]
     private activeMcpNames: Set<string> = new Set()
     private activeCustomNames: Set<string> = new Set()
+    private toolDiscoveryThreshold: number
 
     constructor(config: ToolRegistryConfig) {
         this.mcps = config.mcps
         this.customTools = config.customTools
+        this.toolDiscoveryThreshold = config.toolDiscoveryThreshold ?? 8
     }
 
     /** 设置活跃的 MCP 服务器 */
@@ -70,10 +81,8 @@ export class ToolRegistry {
 
     /** 构建当前活跃的 AgentTool 列表（用于注入 Agent） */
     async buildActiveTools(): Promise<AgentTool<any>[]> {
-        const tools: AgentTool<any>[] = []
-
-        // 添加 base 工具（分组发现）
-        tools.push(...this.baseDiscoveryTools())
+        const flatTools = new Map<string, AgentTool<any>>()
+        const groups: ToolGroup[] = []
 
         // MCP 工具
         for (const mcp of this.mcps) {
@@ -82,19 +91,29 @@ export class ToolRegistry {
                 await mcp.connect()
                 if (!mcp.isConnected) continue
                 const mcpTools = await mcp.tools()
+                if (mcpTools.length > 0) {
+                    groups.push({
+                        id: `mcp:${mcp.name}@${mcp.version}`,
+                        name: mcp.name,
+                        type: 'mcp',
+                        tools: mcpTools.map((t) => ({
+                            name: t.def.function.name,
+                            description: t.def.function.description ?? '',
+                        })),
+                    })
+                }
                 for (const mt of mcpTools) {
-                    tools.push({
-                        name: mt.def.function.name,
+                    const name = mt.def.function.name
+                    if (flatTools.has(name)) continue
+                    flatTools.set(name, {
+                        name,
                         description: mt.def.function.description ?? '',
                         parameters: mt.def.function.parameters as Record<
                             string,
                             unknown
                         >,
                         execute: async (args: unknown) => {
-                            const result = await mcp.callTool(
-                                mt.def.function.name,
-                                args,
-                            )
+                            const result = await mcp.callTool(name, args)
                             return JSON.stringify(result)
                         },
                     } as unknown as AgentTool<any>)
@@ -105,47 +124,98 @@ export class ToolRegistry {
         }
 
         // 自定义工具
+        const customGroupMap = new Map<string, ToolGroup>()
         for (const ct of this.customTools) {
-            if (!(ct.tags ?? []).some((t) => this.activeCustomNames.has(t)))
-                continue
+            const activeTags = (ct.tags ?? []).filter((t) =>
+                this.activeCustomNames.has(t),
+            )
+            if (activeTags.length === 0) continue
 
-            tools.push({
-                name: ct.def.function.name,
-                description: ct.def.function.description,
-                parameters: ct.def.function.parameters as Record<
-                    string,
-                    unknown
-                >,
-                execute: async (args: unknown) => {
-                    const cmd = ct.command
-                        .map((part) => {
-                            const m = part.match(/^\$\{([^}]+)\}$/)
-                            if (m && args && typeof args === 'object') {
-                                return String(
-                                    (args as Record<string, unknown>)[m[1]] ??
-                                        '',
-                                )
-                            }
-                            return part
+            const name = ct.def.function.name
+            if (!flatTools.has(name)) {
+                flatTools.set(name, {
+                    name,
+                    description: ct.def.function.description,
+                    parameters: ct.def.function.parameters as Record<
+                        string,
+                        unknown
+                    >,
+                    execute: async (args: unknown) => {
+                        const cmd = ct.command
+                            .map((part) => {
+                                const m = part.match(/^\$\{([^}]+)\}$/)
+                                if (m && args && typeof args === 'object') {
+                                    return String(
+                                        (args as Record<string, unknown>)[
+                                            m[1]
+                                        ] ?? '',
+                                    )
+                                }
+                                return part
+                            })
+                            .join(' ')
+
+                        const proc = Bun.spawn(['sh', '-c', cmd], {
+                            stdout: 'pipe',
+                            stderr: 'pipe',
                         })
-                        .join(' ')
+                        const output = await new Response(proc.stdout).text()
+                        const exitCode = await proc.exited
+                        if (exitCode !== 0) {
+                            const errText = await new Response(
+                                proc.stderr,
+                            ).text()
+                            return `Error (exit ${exitCode}): ${errText || output}`
+                        }
+                        return output
+                    },
+                } as unknown as AgentTool<any>)
+            }
 
-                    const proc = Bun.spawn(['sh', '-c', cmd], {
-                        stdout: 'pipe',
-                        stderr: 'pipe',
-                    })
-                    const output = await new Response(proc.stdout).text()
-                    const exitCode = await proc.exited
-                    if (exitCode !== 0) {
-                        const errText = await new Response(proc.stderr).text()
-                        return `Error (exit ${exitCode}): ${errText || output}`
+            for (const tag of activeTags) {
+                let group = customGroupMap.get(tag)
+                if (!group) {
+                    group = {
+                        id: `custom:${tag}`,
+                        name: tag,
+                        type: 'custom',
+                        tools: [],
                     }
-                    return output
-                },
-            } as unknown as AgentTool<any>)
+                    customGroupMap.set(tag, group)
+                    groups.push(group)
+                }
+                group.tools.push({
+                    name: ct.def.function.name,
+                    description: ct.def.function.description,
+                })
+            }
         }
 
-        return tools
+        if (flatTools.size > this.toolDiscoveryThreshold) {
+            return this.buildDiscoveryTools(groups)
+        }
+        return Array.from(flatTools.values())
+    }
+
+    /** 列出所有可启用的工具分组（MCP 服务器 / 自定义工具标签） */
+    availableGroups(): {
+        id: string
+        name: string
+        type: 'mcp' | 'custom'
+    }[] {
+        const groups: { id: string; name: string; type: 'mcp' | 'custom' }[] =
+            this.mcps.map((m) => ({
+                id: `mcp:${m.name}`,
+                name: m.name,
+                type: 'mcp',
+            }))
+        const tags = [
+            ...new Set(this.customTools.flatMap((ct) => ct.tags ?? [])),
+        ]
+        for (const tag of tags) {
+            groups.push({ id: `custom:${tag}`, name: tag, type: 'custom' })
+        }
+        return groups
     }
 
     /** 关闭所有 MCP 连接 */
@@ -155,40 +225,21 @@ export class ToolRegistry {
 
     // ── 私有 ──
 
-    /** base 工具：帮助模型发现分组和工具 */
-    private baseDiscoveryTools(): AgentTool<any>[] {
-        const mcps = this.mcps
-        const customTools = this.customTools
-
+    /** 发现工具：当活跃工具数超过阈值时注入，让模型按需拉取分组/工具 */
+    private buildDiscoveryTools(groups: ToolGroup[]): AgentTool<any>[] {
         return [
-            // list_available_tool_groups
             {
                 name: 'list_available_tool_groups',
                 description:
                     '列出所有可用的工具分类（MCP 服务器和自定义工具标签）',
                 parameters: { type: 'object', properties: {} },
                 execute: async () => {
-                    const groups = [
-                        ...mcps
-                            .filter((m) => this.activeMcpNames.has(m.name))
-                            .map((m) => `mcp:${m.name}@${m.version}`),
-                        ...[
-                            ...new Set(
-                                customTools
-                                    .filter((ct) =>
-                                        (ct.tags ?? []).some((t) =>
-                                            this.activeCustomNames.has(t),
-                                        ),
-                                    )
-                                    .flatMap((ct) => ct.tags ?? []),
-                            ),
-                        ].map((t) => `custom:${t}`),
-                    ]
-                    return groups.length > 0 ? groups : ['(no active tools)']
+                    return groups.length > 0
+                        ? groups.map((g) => g.id)
+                        : ['(no active tools)']
                 },
             } as unknown as AgentTool<any>,
 
-            // list_available_tools
             {
                 name: 'list_available_tools',
                 description: '列出指定分类下的所有工具',
@@ -205,29 +256,9 @@ export class ToolRegistry {
                 },
                 execute: async (args: any) => {
                     const groupName: string = args.group_name
-                    if (groupName.startsWith('mcp:')) {
-                        const mcpName = groupName.slice(4).split('@')[0]
-                        const mcp = mcps.find((m) => m.name === mcpName)
-                        if (!mcp) return `MCP "${mcpName}" not found`
-                        return (await mcp.tools()).map((t) => ({
-                            name: t.def.function.name,
-                            description: t.def.function.description ?? '',
-                        }))
-                    }
-                    if (groupName.startsWith('custom:')) {
-                        const tag = groupName.slice(7)
-                        return customTools
-                            .filter(
-                                (ct) =>
-                                    (ct.tags ?? []).includes(tag) &&
-                                    this.activeCustomNames.has(tag),
-                            )
-                            .map((ct) => ({
-                                name: ct.def.function.name,
-                                description: ct.def.function.description,
-                            }))
-                    }
-                    return `Unknown group: ${groupName}`
+                    const group = groups.find((g) => g.id === groupName)
+                    if (!group) return `Unknown group: ${groupName}`
+                    return group.tools
                 },
             } as unknown as AgentTool<any>,
         ]

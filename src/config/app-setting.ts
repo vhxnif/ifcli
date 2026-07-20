@@ -16,6 +16,8 @@ import settingsSchemaContent from './settings-schema.json'
 
 export type GeneralSetting = {
     theme: string
+    /** 工具数量超过此阈值时使用发现工具，否则直接注入原始 tool schema */
+    toolDiscoveryThreshold: number
 }
 
 export type AutoNameConfig = {
@@ -64,6 +66,7 @@ export const APP_VERSION = version
 
 const defaultGeneralSetting: GeneralSetting = {
     theme: 'Tokyo Night',
+    toolDiscoveryThreshold: 8,
 }
 
 const defaultSessionConfig: SessionConfig = {

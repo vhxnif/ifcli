@@ -73,6 +73,10 @@ export interface SessionMeta {
     thinkingLevel: ThinkingLevel
     /** 系统提示词 */
     systemPrompt: string
+    /** 当前 session 启用的 MCP 服务器名 */
+    activeMcps: string[]
+    /** 当前 session 启用的自定义工具标签 */
+    activeCustomTags: string[]
     createdAt: number
     updatedAt: number
 }

@@ -27,9 +27,15 @@
                         "Catppuccin Mocha"
                     ],
                     "default": "Tokyo Night"
+                },
+                "toolDiscoveryThreshold": {
+                    "type": "number",
+                    "minimum": 1,
+                    "default": 8,
+                    "description": "当前 session 启用的工具数超过此阈值时，只注入 list_available_tool_groups / list_available_tools 两个发现工具；否则直接注入所有工具 schema"
                 }
             },
-            "required": ["theme"],
+            "required": ["theme", "toolDiscoveryThreshold"],
             "additionalProperties": false
         },
         "session": {

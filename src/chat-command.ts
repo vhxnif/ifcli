@@ -10,7 +10,12 @@
 import { Command } from '@commander-js/extra-typings'
 import type { ThinkingLevel } from '@earendil-works/pi-agent-core'
 import chalk from 'chalk'
-import { availableModels, chatService, terminalColor } from './app-context'
+import {
+    availableModels,
+    chatService,
+    terminalColor,
+    toolRegistry,
+} from './app-context'
 import { commanderHelpConfiguration } from './component/theme/color-scheme'
 import { APP_VERSION } from './config/app-setting'
 import {
@@ -22,7 +27,7 @@ import {
     println,
     stdin,
 } from './util/common-utils'
-import { select } from './util/inquirer-utils'
+import { checkbox, checkboxThemeStyle, select } from './util/inquirer-utils'
 
 const getCurrentSessionId = (): string | undefined => {
     const sessions = chatService.listSessions()
@@ -207,7 +212,8 @@ program
         'set thinking level (off/minimal/low/medium/high/xhigh/max)',
     )
     .option('-p, --prompt', 'modify system prompt')
-    .action(async ({ model, thinking, prompt }, cmd) => {
+    .option('--tools', 'enable/disable tools for this session')
+    .action(async ({ model, thinking, prompt, tools }, cmd) => {
         const force =
             (cmd.parent?.opts()?.force as string | undefined) ||
             getCurrentSessionId()
@@ -277,13 +283,51 @@ program
             }
         }
 
-        if (!thinking && !model && !prompt) {
+        if (tools) {
+            const groups = toolRegistry.availableGroups()
+            if (groups.length === 0) {
+                println(
+                    terminalColor.yellow(
+                        'No tools available. Configure mcpServers/customTools in settings first.',
+                    ),
+                )
+                return
+            }
+            const active = new Set([
+                ...meta.activeMcps.map((n) => `mcp:${n}`),
+                ...meta.activeCustomTags.map((t) => `custom:${t}`),
+            ])
+            const choices = groups.map((g) => ({
+                name: `${g.type}: ${g.name}`,
+                value: g.id,
+                checked: active.has(g.id),
+            }))
+            const selected = await checkbox({
+                message: 'Select active tools for this session:',
+                choices,
+                theme: checkboxThemeStyle(terminalColor),
+            })
+            const activeMcps = selected
+                .filter((id) => id.startsWith('mcp:'))
+                .map((id) => id.slice(4))
+            const activeCustomTags = selected
+                .filter((id) => id.startsWith('custom:'))
+                .map((id) => id.slice(7))
+            await handle.updateMeta({ activeMcps, activeCustomTags })
+            println(terminalColor.green('Active tools updated.'))
+        }
+
+        if (!thinking && !model && !prompt && !tools) {
             // 显示当前配置
             println(chalk.bold('Session Configuration:'))
             println(`  Model: ${meta.model || '(not set)'}`)
             println(`  Thinking Level: ${meta.thinkingLevel}`)
             println(
                 `  System Prompt: ${meta.systemPrompt ? `${meta.systemPrompt.slice(0, 100)}...` : '(none)'}`,
+            )
+            println(`  Active MCPs: ${meta.activeMcps.join(', ') || '(none)'}`)
+            println(
+                `  Active Custom Tags: ${meta.activeCustomTags.join(', ') || '(none)'}`,
             )
         }
     })

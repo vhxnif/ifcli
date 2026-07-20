@@ -58,6 +58,7 @@ const sessionManager = new SessionManager(db)
 const toolRegistry = new ToolRegistry({
     mcps,
     customTools: setting.customTools ?? [],
+    toolDiscoveryThreshold: setting.generalSetting.toolDiscoveryThreshold,
 })
 
 // 主题
