@@ -1,6 +1,7 @@
 /**
  * [INPUT]: 依赖 chalk/ora 终端库，依赖 ../component/ora-show 的 OraShow，
- *          依赖 ../component/theme/theme-type 的 ChalkChatBoxTheme/ChalkTerminalColor/SpinnerName
+ *          依赖 ../component/theme/theme-type 的 ChalkChatBoxTheme/ChalkTerminalColor/SpinnerName，
+ *          依赖 ./pi-types 的 PiDisplayEvent
  * [OUTPUT]: PiDisplayHandler 类 + DEFAULT_PI_COLORS 色板 + PiColorRole/PiThemeColors 类型
  * [POS]: src/llm/ 的终端渲染层，替代旧 simplified-display.ts + display-output-handler.ts，被 chat-service 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -8,26 +9,27 @@
 
 import chalk from 'chalk'
 import type { Color } from 'ora'
-import { print, println } from '../util/common-utils'
 import { OraShow } from '../component/ora-show'
 import type {
     ChalkChatBoxTheme,
     ChalkTerminalColor,
     SpinnerName,
 } from '../component/theme/theme-type'
+import { print, println } from '../util/common-utils'
+import type { PiDisplayEvent } from './pi-types'
 
 // ── Pi 事件色板 ──
 
 export type PiColorRole =
-    | 'assistant'   // 助手回复正文
-    | 'thinking'    // thinking 内容
-    | 'tool'        // 工具名称/结果
-    | 'toolArgs'    // 工具参数
-    | 'done'        // 完成状态/用量
-    | 'error'       // 错误
-    | 'user'        // 用户输入回显
-    | 'system'      // 系统消息/compaction 标记
-    | 'compaction'  // compaction 提示
+    | 'assistant' // 助手回复正文
+    | 'thinking' // thinking 内容
+    | 'tool' // 工具名称/结果
+    | 'toolArgs' // 工具参数
+    | 'done' // 完成状态/用量
+    | 'error' // 错误
+    | 'user' // 用户输入回显
+    | 'system' // 系统消息/compaction 标记
+    | 'compaction' // compaction 提示
     | 'branchSummary' // 分支总结
 
 export type PiThemeColors = Record<PiColorRole, Color>
@@ -62,7 +64,6 @@ export class PiDisplayHandler {
     private theme: ChalkChatBoxTheme
     private piColors: PiThemeColors
     private spinner?: OraShow
-    private pendingToolName: string | null = null
     private currentMode: 'idle' | 'thinking' | 'assistant' | 'tool' = 'idle'
 
     constructor(options: PiDisplayOptions) {
@@ -110,43 +111,49 @@ export class PiDisplayHandler {
     /** toolcall_start: 工具调用开始 */
     onToolcallStart(name: string): void {
         this.transitionTo('tool')
-        this.pendingToolName = name
         this.spinner?.stop()
         println('')
         println(
             chalk[this.piColors.tool].bold(`[tool:${name}]`) +
-            chalk[this.piColors.toolArgs](' ...'),
+                chalk[this.piColors.toolArgs](' ...'),
         )
     }
 
     /** toolcall_delta: 工具参数流 */
-    onToolcallDelta(delta: string): void {
+    onToolcallDelta(_delta: string): void {
         // 工具参数在 toolcall_end 时统一展示
     }
 
     /** toolcall_end: 工具调用完成 */
     onToolcallEnd(name: string, result: string): void {
-        const truncated = result.length > 200
-            ? `${result.slice(0, 100)}...${result.slice(-100)}`
-            : result
+        const truncated =
+            result.length > 200
+                ? `${result.slice(0, 100)}...${result.slice(-100)}`
+                : result
         println(
             chalk[this.piColors.tool].bold(`[tool:${name}]`) +
-            ' → ' +
-            chalk[this.piColors.toolArgs](truncated),
+                ' → ' +
+                chalk[this.piColors.toolArgs](truncated),
         )
-        this.pendingToolName = null
         this.currentMode = 'idle'
     }
 
     /** done: 完成 */
-    onDone(usage?: { input: number; output: number; total: number }): void {
+    onDone(usage?: PiDisplayEvent['usage']): void {
         this.spinner?.stop()
         if (usage) {
-            println(
-                chalk[this.piColors.done](
-                    `✓ (in: ${usage.input}, out: ${usage.output}, total: ${usage.total})`,
-                ),
-            )
+            const parts = [
+                `in: ${usage.input}`,
+                `out: ${usage.output}`,
+                `total: ${usage.total}`,
+            ]
+            if (usage.cacheRead) parts.push(`cacheRead: ${usage.cacheRead}`)
+            if (usage.cacheWrite) parts.push(`cacheWrite: ${usage.cacheWrite}`)
+            if (usage.cacheWrite1h)
+                parts.push(`cacheWrite1h: ${usage.cacheWrite1h}`)
+            if (usage.reasoning) parts.push(`reasoning: ${usage.reasoning}`)
+            println('')
+            println(chalk[this.piColors.done](`✓ (${parts.join(', ')})`))
         }
         this.currentMode = 'idle'
     }
@@ -160,7 +167,10 @@ export class PiDisplayHandler {
     /** 用户消息回显（可由上层调用） */
     onUserInput(content: string): void {
         println('')
-        println(chalk[this.piColors.user].bold('▸ ') + chalk[this.piColors.user](content))
+        println(
+            chalk[this.piColors.user].bold('▸ ') +
+                chalk[this.piColors.user](content),
+        )
         println('')
     }
 

@@ -8,9 +8,9 @@
  */
 
 import type Database from 'bun:sqlite'
-import type { Context, Message } from '@earendil-works/pi-ai'
 import type { ThinkingLevel } from '@earendil-works/pi-agent-core'
 import { uuidv7 } from '@earendil-works/pi-agent-core'
+import type { Context, Message } from '@earendil-works/pi-ai'
 import type { SessionMeta } from '../llm/pi-types'
 import { SqliteSessionStorage } from './session-storage'
 
@@ -88,7 +88,7 @@ export class SessionManager {
                  FROM session ORDER BY updated_at DESC`,
             )
             .all() as Record<string, unknown>[]
-        return rows.map(r => ({
+        return rows.map((r) => ({
             id: r.id as string,
             name: (r.name as string) || '(unnamed)',
             model: r.model as string,
@@ -99,7 +99,11 @@ export class SessionManager {
     }
 
     /** 创建新 session */
-    create(name: string, model: string, thinkingLevel: ThinkingLevel = 'off'): SessionInfo {
+    create(
+        name: string,
+        model: string,
+        thinkingLevel: ThinkingLevel = 'off',
+    ): SessionInfo {
         const id = uuidv7()
         const now = Date.now()
         // 使用 INSERT OR REPLACE 以防 SqliteSessionStorage 已先行插入了默认行
@@ -108,7 +112,14 @@ export class SessionManager {
                 `INSERT OR REPLACE INTO session (id, name, model, thinking_level, system_prompt, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
             )
             .run(id, name, model, thinkingLevel, '', now, now)
-        return { id, name, model, thinkingLevel, createdAt: now, updatedAt: now }
+        return {
+            id,
+            name,
+            model,
+            thinkingLevel,
+            createdAt: now,
+            updatedAt: now,
+        }
     }
 
     /** 获取 session handle */
@@ -122,7 +133,7 @@ export class SessionManager {
             get info() {
                 return cachedInfo
                     ? Promise.resolve(cachedInfo)
-                    : SessionManager.readInfo(storage).then(i => {
+                    : SessionManager.readInfo(storage).then((i) => {
                           cachedInfo = i
                           return i
                       })
@@ -140,8 +151,13 @@ export class SessionManager {
                         }
                     }
                     // compaction / branch_summary 作为 system 消息注入
-                    if (entry.entryType === 'compaction' || entry.entryType === 'branch_summary') {
-                        const c = JSON.parse(entry.content) as { summary: string }
+                    if (
+                        entry.entryType === 'compaction' ||
+                        entry.entryType === 'branch_summary'
+                    ) {
+                        const c = JSON.parse(entry.content) as {
+                            summary: string
+                        }
                         if (c.summary) {
                             messages.push({
                                 role: 'user',
@@ -182,7 +198,9 @@ export class SessionManager {
 
     /** 删除 session */
     delete(id: string): void {
-        this.db.prepare('DELETE FROM session_entry WHERE session_id = ?').run(id)
+        this.db
+            .prepare('DELETE FROM session_entry WHERE session_id = ?')
+            .run(id)
         this.db.prepare('DELETE FROM session_leaf WHERE session_id = ?').run(id)
         this.db.prepare('DELETE FROM session WHERE id = ?').run(id)
     }
@@ -196,12 +214,17 @@ export class SessionManager {
         if (!meta.name || meta.name === '') {
             const entries = await handle.storage.getEntries()
             const firstUserMsg = entries.find(
-                e => e.entryType === 'message' && JSON.parse(e.content).role === 'user',
+                (e) =>
+                    e.entryType === 'message' &&
+                    JSON.parse(e.content).role === 'user',
             )
             if (firstUserMsg) {
                 try {
                     const msg = JSON.parse(firstUserMsg.content) as Message
-                    const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+                    const content =
+                        typeof msg.content === 'string'
+                            ? msg.content
+                            : JSON.stringify(msg.content)
                     const name = await nameFn(content, meta.model)
                     if (name) {
                         await handle.updateMeta({ name })
@@ -215,7 +238,9 @@ export class SessionManager {
 
     // ── 私有 ──
 
-    private static async readInfo(storage: SqliteSessionStorage): Promise<SessionInfo> {
+    private static async readInfo(
+        storage: SqliteSessionStorage,
+    ): Promise<SessionInfo> {
         const meta = await storage.getMetadata()
         return {
             id: '', // 由外层填充

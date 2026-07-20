@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 bun:sqlite 的 Database，依赖 @earendil-works/pi-agent-core 的 uuidv7，
+ * [INPUT]: 依赖 bun:sqlite 的 Database，依赖 @earendil-works/pi-agent-core 的 ThinkingLevel，
  *          依赖 ../llm/pi-types 的 SessionEntry/SessionEntryType/SessionMeta/SessionStorage
  * [OUTPUT]: SqliteSessionStorage 类（实现 SessionStorage 接口 — getMetadata/setMetadata/appendEntry/getPathToRoot 等）
  * [POS]: src/store/ 的 SQLite 存储实现，替代旧 db-client.ts + table-def.ts + store.ts + store-types.ts，被 session-manager 消费
@@ -7,14 +7,13 @@
  */
 
 import type Database from 'bun:sqlite'
-import { uuidv7 } from '@earendil-works/pi-agent-core'
+import type { ThinkingLevel } from '@earendil-works/pi-agent-core'
 import type {
     SessionEntry,
     SessionEntryType,
     SessionMeta,
     SessionStorage,
 } from '../llm/pi-types'
-import type { ThinkingLevel } from '@earendil-works/pi-agent-core'
 
 // ── SQL schema ──
 
@@ -72,7 +71,9 @@ export class SqliteSessionStorage implements SessionStorage {
     private ensureSchema(): void {
         this.db.run('PRAGMA journal_mode = WAL')
         this.db.run('PRAGMA foreign_keys = ON')
-        for (const stmt of SCHEMA.split(';').map(s => s.trim()).filter(Boolean)) {
+        for (const stmt of SCHEMA.split(';')
+            .map((s) => s.trim())
+            .filter(Boolean)) {
             this.db.run(stmt)
         }
     }
@@ -86,7 +87,7 @@ export class SqliteSessionStorage implements SessionStorage {
                  FROM session WHERE id = ?`,
             )
             .get(this.sessionId) as Record<string, unknown> | undefined
-        
+
         // 如果行不存在（session 尚未 create），返回默认值
         return {
             name: (row?.name as string) || '',
@@ -103,7 +104,8 @@ export class SqliteSessionStorage implements SessionStorage {
         const merged = {
             name: meta.name ?? existing.name ?? '',
             model: meta.model ?? existing.model ?? '',
-            thinkingLevel: meta.thinkingLevel ?? existing.thinkingLevel ?? 'off',
+            thinkingLevel:
+                meta.thinkingLevel ?? existing.thinkingLevel ?? 'off',
             systemPrompt: meta.systemPrompt ?? existing.systemPrompt ?? '',
             createdAt: meta.createdAt ?? existing.createdAt ?? Date.now(),
             updatedAt: Date.now(),
@@ -160,10 +162,12 @@ export class SqliteSessionStorage implements SessionStorage {
                  FROM session_entry WHERE session_id = ? ORDER BY "order"`,
             )
             .all(this.sessionId) as Record<string, unknown>[]
-        return rows.map(r => this.rowToEntry(r))
+        return rows.map((r) => this.rowToEntry(r))
     }
 
-    async appendEntry(entry: Omit<SessionEntry, 'order' | 'timestamp'>): Promise<string> {
+    async appendEntry(
+        entry: Omit<SessionEntry, 'order' | 'timestamp'>,
+    ): Promise<string> {
         const now = Date.now()
         // 获取同 parent 下的最大 order
         const maxOrder = this.db
@@ -177,7 +181,15 @@ export class SqliteSessionStorage implements SessionStorage {
             .prepare(
                 `INSERT INTO session_entry (id, session_id, parent_id, entry_type, content, "order", timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)`,
             )
-            .run(entry.id, this.sessionId, entry.parentId, entry.entryType, entry.content, order, now)
+            .run(
+                entry.id,
+                this.sessionId,
+                entry.parentId,
+                entry.entryType,
+                entry.content,
+                order,
+                now,
+            )
 
         // 设为 leaf
         await this.setLeafId(entry.id)
@@ -210,7 +222,7 @@ export class SqliteSessionStorage implements SessionStorage {
                  FROM session_entry WHERE session_id = ? AND entry_type = ? ORDER BY "order"`,
             )
             .all(this.sessionId, entryType) as Record<string, unknown>[]
-        return rows.map(r => this.rowToEntry(r))
+        return rows.map((r) => this.rowToEntry(r))
     }
 
     // ── 辅助 ──

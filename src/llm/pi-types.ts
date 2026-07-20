@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 @earendil-works/pi-ai 的 Message/Model/Context/Tool/AssistantMessage 类型,
  *          依赖 @earendil-works/pi-agent-core 的 AgentMessage/AgentTool/ThinkingLevel 类型
- * [OUTPUT]: 重导出 Pi 类型，定义 SessionEntry/SessionStorage/SessionMeta/ChatConfig/CustomToolDef/PiDisplayEvent
+ * [OUTPUT]: 重导出 Pi 类型，定义 SessionEntry/SessionStorage/SessionMeta/ChatConfig/CustomToolDef/PiDisplayEvent（含 usage 缓存字段）
  * [POS]: src/llm/ 的类型基石，被 agent-runner/pi-display-handler/tool-registry/session-storage/session-manager/chat-service 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  *
@@ -9,6 +9,11 @@
  * 替代旧的 llm-types.ts + store-types.ts。
  */
 
+import type {
+    AgentMessage,
+    AgentTool,
+    ThinkingLevel,
+} from '@earendil-works/pi-agent-core'
 import type {
     Api,
     AssistantMessage,
@@ -18,7 +23,6 @@ import type {
     SimpleStreamOptions,
     Tool,
 } from '@earendil-works/pi-ai'
-import type { AgentMessage, AgentTool, ThinkingLevel } from '@earendil-works/pi-agent-core'
 
 // ── 重导出 Pi 类型（方便其他模块使用） ──
 
@@ -82,7 +86,9 @@ export interface SessionStorage {
     setLeafId(entryId: string): Promise<void>
     getEntry(id: string): Promise<SessionEntry | undefined>
     getEntries(): Promise<SessionEntry[]>
-    appendEntry(entry: Omit<SessionEntry, 'order' | 'timestamp'>): Promise<string>
+    appendEntry(
+        entry: Omit<SessionEntry, 'order' | 'timestamp'>,
+    ): Promise<string>
     getPathToRoot(fromId?: string | null): Promise<SessionEntry[]>
     findEntries(entryType: SessionEntryType): Promise<SessionEntry[]>
 }
@@ -90,7 +96,7 @@ export interface SessionStorage {
 // ── ChatConfig（替代旧 ChatConfig，精简） ──
 
 export interface ChatConfig {
-    model: string           // "provider/modelId"
+    model: string // "provider/modelId"
     thinkingLevel: ThinkingLevel
     systemPrompt: string
     compactionEnabled: boolean
@@ -129,6 +135,14 @@ export interface PiDisplayEvent {
     content?: string
     toolName?: string
     toolResult?: string
-    usage?: { input: number; output: number; total: number }
+    usage?: {
+        input: number
+        output: number
+        total: number
+        cacheRead?: number
+        cacheWrite?: number
+        cacheWrite1h?: number
+        reasoning?: number
+    }
     error?: string
 }

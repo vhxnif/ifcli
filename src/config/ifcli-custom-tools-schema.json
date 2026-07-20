@@ -21,25 +21,54 @@
                             "function": {
                                 "type": "object",
                                 "properties": {
-                                    "name": { "type": "string", "description": "工具唯一名称" },
-                                    "description": { "type": "string", "description": "AI 根据此描述决定何时调用" },
+                                    "name": {
+                                        "type": "string",
+                                        "description": "工具唯一名称"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "description": "AI 根据此描述决定何时调用"
+                                    },
                                     "parameters": {
                                         "type": "object",
                                         "properties": {
-                                            "type": { "type": "string", "const": "object" },
+                                            "type": {
+                                                "type": "string",
+                                                "const": "object"
+                                            },
                                             "properties": {
                                                 "type": "object",
                                                 "additionalProperties": {
                                                     "type": "object",
                                                     "properties": {
-                                                        "type": { "type": "string", "enum": ["string", "number", "boolean", "array", "object"] },
-                                                        "description": { "type": "string" },
-                                                        "enum": { "type": "array", "items": { "type": "string" } }
+                                                        "type": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "string",
+                                                                "number",
+                                                                "boolean",
+                                                                "array",
+                                                                "object"
+                                                            ]
+                                                        },
+                                                        "description": {
+                                                            "type": "string"
+                                                        },
+                                                        "enum": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            }
+                                                        }
                                                     },
                                                     "required": ["type"]
                                                 }
                                             },
-                                            "required": { "type": "array", "items": { "type": "string" }, "description": "必填参数列表" }
+                                            "required": {
+                                                "type": "array",
+                                                "items": { "type": "string" },
+                                                "description": "必填参数列表"
+                                            }
                                         },
                                         "required": ["type", "properties"]
                                     }

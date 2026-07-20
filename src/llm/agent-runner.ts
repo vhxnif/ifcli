@@ -1,31 +1,21 @@
 /**
- * [INPUT]: 依赖 @earendil-works/pi-ai 的 streamSimple/Context/Model/Message/AssistantMessageEvent,
- *          依赖 @earendil-works/pi-agent-core 的 Agent/AgentEvent/AgentMessage/AgentTool/ThinkingLevel,
+ * [INPUT]: 依赖 @earendil-works/pi-ai 的 streamSimple/Model/Message，
+ *          依赖 @earendil-works/pi-agent-core 的 Agent/AgentEvent/AgentMessage/AgentTool/ThinkingLevel，
  *          依赖 ../llm/pi-types 的 PiDisplayEvent
- * [OUTPUT]: AgentRunner 类（run/abort/onDisplay），customToolToAgentTool 辅助
+ * [OUTPUT]: AgentRunner 类（run 使用 Agent.prompt + waitForIdle，abort/onDisplay，customToolToAgentTool 辅助）
  * [POS]: src/llm/ 的 agent 封装层，替代旧 ask-flow.ts + open-ai-helper.ts，被 chat-service 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
 import type {
-    AssistantMessage,
-    AssistantMessageEvent,
-    Context,
-    Message,
-    Model,
-    SimpleStreamOptions,
-    Tool,
-} from '@earendil-works/pi-ai'
-import { streamSimple } from '@earendil-works/pi-ai/compat'
-import type {
-    AgentContext,
     AgentEvent,
     AgentMessage,
-    AgentOptions,
     AgentTool,
     ThinkingLevel,
 } from '@earendil-works/pi-agent-core'
 import { Agent } from '@earendil-works/pi-agent-core'
+import type { AssistantMessage, Message, Model } from '@earendil-works/pi-ai'
+import { streamSimple } from '@earendil-works/pi-ai/compat'
 import type { PiDisplayEvent } from './pi-types'
 
 // ── 配置 ──
@@ -40,8 +30,6 @@ export interface AgentRunnerConfig {
         messages: AgentMessage[],
         signal?: AbortSignal,
     ) => Promise<AgentMessage[]>
-    /** 流选项 */
-    streamOptions?: SimpleStreamOptions
 }
 
 // ── AgentRunner ──
@@ -62,8 +50,12 @@ export class AgentRunner {
     }
 
     /** 执行一轮对话 */
-    async run(userContent: string, contextMessages: Message[]): Promise<Message[]> {
-        const { model, tools, systemPrompt, thinkingLevel, transformContext, streamOptions } = this.config
+    async run(
+        userContent: string,
+        contextMessages: Message[],
+    ): Promise<Message[]> {
+        const { model, tools, systemPrompt, thinkingLevel, transformContext } =
+            this.config
 
         const agent = new Agent({
             initialState: {
@@ -80,33 +72,21 @@ export class AgentRunner {
         this.agent = agent
 
         // 订阅 Pi Agent 事件 → 转换为 PiDisplayEvent
-        agent.subscribe(async (event, signal) => {
+        agent.subscribe(async (event, _signal) => {
             this.handleAgentEvent(event)
         })
 
-        // 通过 steer 发送用户消息
+        // 通过 prompt 启动对话（steer 仅入队，不会触发运行）
         const userMsg: AgentMessage = {
             role: 'user',
             content: userContent,
             timestamp: Date.now(),
         } as AgentMessage
 
-        return new Promise<Message[]>((resolve, reject) => {
-            const unsub = agent.subscribe(async (event) => {
-                if (event.type === 'agent_end') {
-                    unsub()
-                    resolve(event.messages as unknown as Message[])
-                }
-            })
+        await agent.prompt(userMsg)
+        await agent.waitForIdle()
 
-            // steer 是同步的，在 agent loop 中处理
-            try {
-                agent.steer(userMsg)
-            } catch (e: unknown) {
-                unsub()
-                reject(e)
-            }
-        })
+        return agent.state.messages as unknown as Message[]
     }
 
     /** 中止运行 */
@@ -138,6 +118,10 @@ export class AgentRunner {
                                 input: am.usage.input,
                                 output: am.usage.output,
                                 total: am.usage.totalTokens ?? 0,
+                                cacheRead: am.usage.cacheRead,
+                                cacheWrite: am.usage.cacheWrite,
+                                cacheWrite1h: am.usage.cacheWrite1h,
+                                reasoning: am.usage.reasoning,
                             },
                         })
                     }
@@ -159,37 +143,61 @@ export class AgentRunner {
     }
 
     /** 处理 AssistantMessageEvent（SSE 级别事件） */
-    private handleAssistantMessageEvent(event: import('@earendil-works/pi-ai').AssistantMessageEvent): void {
+    private handleAssistantMessageEvent(
+        event: import('@earendil-works/pi-ai').AssistantMessageEvent,
+    ): void {
         if (!this.displayCallback) return
 
         switch (event.type) {
             case 'text_delta':
-                this.displayCallback({ type: 'text_delta', content: event.delta })
+                this.displayCallback({
+                    type: 'text_delta',
+                    content: event.delta,
+                })
                 break
             case 'text_end':
-                this.displayCallback({ type: 'text_end', content: event.content })
+                this.displayCallback({
+                    type: 'text_end',
+                    content: event.content,
+                })
                 break
             case 'thinking_delta':
-                this.displayCallback({ type: 'thinking_delta', content: event.delta })
+                this.displayCallback({
+                    type: 'thinking_delta',
+                    content: event.delta,
+                })
                 break
             case 'thinking_end':
-                this.displayCallback({ type: 'thinking_end', content: event.content })
+                this.displayCallback({
+                    type: 'thinking_end',
+                    content: event.content,
+                })
                 break
             case 'toolcall_start':
-                this.displayCallback({ type: 'toolcall_start', toolName: (event as any).toolName ?? '' })
+                this.displayCallback({
+                    type: 'toolcall_start',
+                    toolName: (event as any).toolName ?? '',
+                })
                 break
             case 'toolcall_delta':
-                this.displayCallback({ type: 'toolcall_delta', content: event.delta })
+                this.displayCallback({
+                    type: 'toolcall_delta',
+                    content: event.delta,
+                })
                 break
             case 'toolcall_end':
                 this.displayCallback({
                     type: 'toolcall_end',
                     toolName: (event as any).toolCall?.name ?? '',
-                    toolResult: JSON.stringify((event as any).toolCall?.arguments ?? {}),
+                    toolResult: JSON.stringify(
+                        (event as any).toolCall?.arguments ?? {},
+                    ),
                 })
                 break
             case 'done': {
-                const msg = (event as any).message as AssistantMessage | undefined
+                const msg = (event as any).message as
+                    | AssistantMessage
+                    | undefined
                 if (msg?.usage) {
                     this.displayCallback({
                         type: 'done',
@@ -197,6 +205,10 @@ export class AgentRunner {
                             input: msg.usage.input,
                             output: msg.usage.output,
                             total: msg.usage.totalTokens ?? 0,
+                            cacheRead: msg.usage.cacheRead,
+                            cacheWrite: msg.usage.cacheWrite,
+                            cacheWrite1h: msg.usage.cacheWrite1h,
+                            reasoning: msg.usage.reasoning,
                         },
                     })
                 }
@@ -204,7 +216,10 @@ export class AgentRunner {
             }
             case 'error': {
                 const err = (event as any).error as AssistantMessage | undefined
-                this.displayCallback({ type: 'error', error: err?.errorMessage ?? 'Unknown error' })
+                this.displayCallback({
+                    type: 'error',
+                    error: err?.errorMessage ?? 'Unknown error',
+                })
                 break
             }
             case 'start':
@@ -217,7 +232,14 @@ export class AgentRunner {
 
 /** 从 provider/modelId 字符串创建 Pi AgentTool（适配） */
 export function customToolToAgentTool(tool: {
-    def: { type: 'function'; function: { name: string; description: string; parameters: Record<string, unknown> } }
+    def: {
+        type: 'function'
+        function: {
+            name: string
+            description: string
+            parameters: Record<string, unknown>
+        }
+    }
     command: string[]
 }): AgentTool<any> {
     return {
@@ -226,10 +248,12 @@ export function customToolToAgentTool(tool: {
         parameters: tool.def.function.parameters,
         execute: async (args: unknown) => {
             const cmd = tool.command
-                .map(part => {
+                .map((part) => {
                     const match = part.match(/^\$\{([^}]+)\}$/)
                     if (match && args && typeof args === 'object') {
-                        return String((args as Record<string, unknown>)[match[1]] ?? '')
+                        return String(
+                            (args as Record<string, unknown>)[match[1]] ?? '',
+                        )
                     }
                     return part
                 })

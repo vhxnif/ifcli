@@ -25,7 +25,7 @@ describe('SessionManager', () => {
 
         const sessions = manager.list()
         expect(sessions).toHaveLength(2)
-        const names = sessions.map(s => s.name).sort()
+        const names = sessions.map((s) => s.name).sort()
         expect(names).toEqual(['Chat 1', 'Chat 2'])
     })
 
@@ -70,7 +70,7 @@ describe('SessionManager', () => {
         } as any)
 
         const entries = await handle.storage.getEntries()
-        const messages = entries.filter(e => e.entryType === 'message')
+        const messages = entries.filter((e) => e.entryType === 'message')
         expect(messages).toHaveLength(2)
     })
 
@@ -87,7 +87,9 @@ describe('SessionManager', () => {
         await handle.updateMeta({ systemPrompt: 'You are helpful.' })
 
         await handle.appendMessage({
-            role: 'user', content: 'Q1', timestamp: Date.now(),
+            role: 'user',
+            content: 'Q1',
+            timestamp: Date.now(),
         } as any)
         await handle.appendMessage({
             role: 'assistant',

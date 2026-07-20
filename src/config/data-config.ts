@@ -1,9 +1,16 @@
+/**
+ * [INPUT]: 依赖 node:fs 的 accessSync/mkdirSync，依赖 node:path，依赖 ../util/platform-utils 的平台信息
+ * [OUTPUT]: DataPathConfig 类（settings/settingsSchema/database/legacy 路径）
+ * [POS]: src/config/ 的路径解析器，被 app-setting.ts 消费
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { accessSync, constants, mkdirSync } from 'node:fs'
 import path from 'node:path'
-import { env, platform } from '../util/platform-utils'
 import { version as APP_VERSION } from '../../package.json'
+import { env, platform } from '../util/platform-utils'
 
 export class DataPathConfig {
     private get appName(): string {
@@ -45,26 +52,26 @@ export class DataPathConfig {
         )
     }
 
-    get setting(): string {
-        return path.join(this.configPath!, `${this.appName}.json`)
+    get settings(): string {
+        return path.join(this.configPath!, 'settings.json')
     }
 
-    get schema(): string {
-        return path.join(
-            this.configPath!,
-            `${this.appName}-settings-schema.json`,
-        )
+    get settingsSchema(): string {
+        return path.join(this.configPath!, 'settings-schema.json')
     }
 
-    get customTools(): string {
-        return path.join(this.configPath!, `${this.appName}-custom-tools.json`)
+    // ── 迁移旧文件名（改版前带 ifcli- 前缀）──
+
+    get legacySettings(): string {
+        return path.join(this.configPath!, 'ifcli.json')
     }
 
-    get customToolsSchema(): string {
-        return path.join(
-            this.configPath!,
-            `${this.appName}-custom-tools-schema.json`,
-        )
+    get legacyCustomTools(): string {
+        return path.join(this.configPath!, 'ifcli-custom-tools.json')
+    }
+
+    get legacySettingsSchema(): string {
+        return path.join(this.configPath!, 'ifcli-settings-schema.json')
     }
 }
 

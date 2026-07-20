@@ -1,4 +1,11 @@
-import schemaContent from './ifcli-settings-schema.json'
+/**
+ * [INPUT]: 依赖 ./settings-schema.json 的 schema 定义
+ * [OUTPUT]: validateSetting 函数（校验 Setting 对象）
+ * [POS]: src/config/ 的校验器，被 setting-command 等消费
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
+import schemaContent from './settings-schema.json'
 
 const allowedThemes: string[] = (
     schemaContent.properties!.generalSetting as {
@@ -50,7 +57,9 @@ const validateSetting = (obj: Record<string, unknown>): ValidationResult => {
         if (typeof gs.theme !== 'string') {
             errors.push('generalSetting.theme 必须是字符串')
         } else if (!allowedThemes.includes(gs.theme)) {
-            errors.push(`generalSetting.theme "${gs.theme}" 无效，可选值: ${allowedThemes.join(', ')}`)
+            errors.push(
+                `generalSetting.theme "${gs.theme}" 无效，可选值: ${allowedThemes.join(', ')}`,
+            )
         }
     }
 
@@ -67,7 +76,9 @@ const validateSetting = (obj: Record<string, unknown>): ValidationResult => {
                 errors.push('session.autoName.enabled 必须是 boolean')
             }
             if (typeof an.model !== 'string' || !an.model.includes('/')) {
-                errors.push('session.autoName.model 必须是 provider/modelId 格式')
+                errors.push(
+                    'session.autoName.model 必须是 provider/modelId 格式',
+                )
             }
         }
     }
@@ -77,11 +88,22 @@ const validateSetting = (obj: Record<string, unknown>): ValidationResult => {
         errors.push('缺少 compaction 配置')
     } else {
         const c = obj.compaction as Record<string, unknown>
-        if (typeof c.enabled !== 'boolean') errors.push('compaction.enabled 必须是 boolean')
-        if (typeof c.triggerRatio !== 'number' || c.triggerRatio <= 0 || c.triggerRatio > 1)
+        if (typeof c.enabled !== 'boolean')
+            errors.push('compaction.enabled 必须是 boolean')
+        if (
+            typeof c.triggerRatio !== 'number' ||
+            c.triggerRatio <= 0 ||
+            c.triggerRatio > 1
+        )
             errors.push('compaction.triggerRatio 必须是 0~1 之间的数值')
-        if (typeof c.keepRecentRatio !== 'number' || c.keepRecentRatio <= 0 || c.keepRecentRatio >= 1)
-            errors.push('compaction.keepRecentRatio 必须是 0~1 之间（不含端点）的数值')
+        if (
+            typeof c.keepRecentRatio !== 'number' ||
+            c.keepRecentRatio <= 0 ||
+            c.keepRecentRatio >= 1
+        )
+            errors.push(
+                'compaction.keepRecentRatio 必须是 0~1 之间（不含端点）的数值',
+            )
     }
 
     // mcpServers (optional)
@@ -89,15 +111,24 @@ const validateSetting = (obj: Record<string, unknown>): ValidationResult => {
         if (!Array.isArray(obj.mcpServers)) {
             errors.push('mcpServers 必须是数组')
         } else {
-            for (const [i, item] of (obj.mcpServers as Record<string, unknown>[]).entries()) {
-                if (typeof item.type !== 'string' || !mcpServerTypes.includes(item.type)) {
-                    errors.push(`mcpServers[${i}].type 无效，可选值: ${mcpServerTypes.join(', ')}`)
+            for (const [i, item] of (
+                obj.mcpServers as Record<string, unknown>[]
+            ).entries()) {
+                if (
+                    typeof item.type !== 'string' ||
+                    !mcpServerTypes.includes(item.type)
+                ) {
+                    errors.push(
+                        `mcpServers[${i}].type 无效，可选值: ${mcpServerTypes.join(', ')}`,
+                    )
                     continue
                 }
                 const requiredFields = mcpRequiredByType[item.type] ?? []
                 for (const field of requiredFields) {
                     if (!(field in item)) {
-                        errors.push(`mcpServers[${i}] 缺少必填字段: ${field} (type: ${item.type})`)
+                        errors.push(
+                            `mcpServers[${i}] 缺少必填字段: ${field} (type: ${item.type})`,
+                        )
                     }
                 }
             }

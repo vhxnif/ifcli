@@ -1,7 +1,16 @@
+/**
+ * [INPUT]: 依赖 ./data-config 的 dataPath，依赖 ./settings-schema.json 的 schema 内容，
+ *          依赖 ../llm/mcp-client 的 MCPConfig，依赖 node:fs/promises 的 unlink
+ * [OUTPUT]: Setting / CustomToolDef 类型，initAppSetting / appSetting / appSettingCover 读写函数
+ * [POS]: src/config/ 的配置读写核心，被 ../app-context 消费
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
+import { unlink } from 'node:fs/promises'
 import { version } from '../../package.json'
 import type { MCPConfig } from '../llm/mcp-client'
 import { dataPath } from './data-config'
-import settingsSchemaContent from './ifcli-settings-schema.json'
+import settingsSchemaContent from './settings-schema.json'
 
 // ── 精简后的功能配置类型 ──
 
@@ -70,44 +79,106 @@ const defaultCompaction: CompactionConfig = {
     keepRecentRatio: 0.3,
 }
 
+const defaultSetting: Setting = {
+    generalSetting: defaultGeneralSetting,
+    session: defaultSessionConfig,
+    compaction: defaultCompaction,
+    mcpServers: [],
+    customTools: [],
+}
+
+type LegacyCustomToolDef = CustomToolDef & { group?: string }
+
+const migrateCustomTools = (tools?: CustomToolDef[]): CustomToolDef[] => {
+    if (!tools) return []
+    return tools.map((ct) => {
+        const legacy = ct as LegacyCustomToolDef
+        const { group, ...rest } = legacy
+        if (group && (!rest.tags || rest.tags.length === 0)) {
+            return { ...rest, tags: [group] }
+        }
+        return rest as CustomToolDef
+    })
+}
+
+const mergeWithDefaults = (partial: Partial<Setting>): Setting => ({
+    generalSetting: partial.generalSetting ?? defaultGeneralSetting,
+    session: partial.session ?? defaultSessionConfig,
+    compaction: partial.compaction ?? defaultCompaction,
+    mcpServers: partial.mcpServers ?? [],
+    customTools: migrateCustomTools(partial.customTools),
+})
+
 // ── 初始化 & 读写 ──
 
 export const initAppSetting = async (): Promise<void> => {
-    const f = Bun.file(dataPath.setting)
-    const exists = await f.exists()
-    if (!exists) {
-        const defSetting = {
-            $schema: './ifcli-settings-schema.json',
-            generalSetting: defaultGeneralSetting,
-            session: defaultSessionConfig,
-            compaction: defaultCompaction,
-            mcpServers: [],
-            customTools: [],
+    const settingsFile = Bun.file(dataPath.settings)
+    const settingsExists = await settingsFile.exists()
+
+    let setting: Setting
+
+    if (!settingsExists) {
+        const legacyFile = Bun.file(dataPath.legacySettings)
+        if (await legacyFile.exists()) {
+            // 迁移旧配置文件
+            const legacyJson = await legacyFile.text()
+            setting = mergeWithDefaults(
+                JSON.parse(legacyJson) as Partial<Setting>,
+            )
+            await unlink(dataPath.legacySettings)
+        } else {
+            setting = { ...defaultSetting }
         }
-        await f.write(JSON.stringify(defSetting, null, 2))
+    } else {
+        const json = await settingsFile.text()
+        setting = mergeWithDefaults(JSON.parse(json) as Partial<Setting>)
     }
+
+    // 迁移旧独立 customTools 文件到 settings.json
+    const legacyCustomToolsFile = Bun.file(dataPath.legacyCustomTools)
+    if (await legacyCustomToolsFile.exists()) {
+        try {
+            const toolsJson = await legacyCustomToolsFile.text()
+            const parsed = JSON.parse(toolsJson)
+            const legacyTools = ((parsed as { tools: CustomToolDef[] }).tools ??
+                parsed) as CustomToolDef[]
+            if (legacyTools.length > 0) {
+                setting.customTools = [
+                    ...(setting.customTools ?? []),
+                    ...legacyTools,
+                ]
+            }
+        } catch {
+            // 旧文件损坏，忽略
+        }
+        await unlink(dataPath.legacyCustomTools)
+    }
+
+    // 写 settings.json（确保 schema 引用正确）
+    const toWrite = {
+        ...setting,
+        $schema: './settings-schema.json',
+    }
+    await Bun.write(dataPath.settings, JSON.stringify(toWrite, null, 2))
+
     // 写 schema 文件（供 IDE 补全）
-    const sf = Bun.file(dataPath.schema)
-    if (!(await sf.exists())) {
-        await sf.write(JSON.stringify(settingsSchemaContent, null, 2))
+    await Bun.write(
+        dataPath.settingsSchema,
+        JSON.stringify(settingsSchemaContent, null, 2),
+    )
+
+    // 删除旧 schema 文件
+    const legacySchemaFile = Bun.file(dataPath.legacySettingsSchema)
+    if (await legacySchemaFile.exists()) {
+        await unlink(dataPath.legacySettingsSchema)
     }
 }
 
 export const appSetting = async (): Promise<Setting> => {
-    const json = await Bun.file(dataPath.setting).text()
+    const json = await Bun.file(dataPath.settings).text()
     return JSON.parse(json) as Setting
 }
 
 export const appSettingCover = async (json: string): Promise<void> => {
-    await Bun.file(dataPath.setting).write(json)
-}
-
-export const customTools = async (): Promise<CustomToolDef[]> => {
-    const f = Bun.file(dataPath.customTools)
-    if (!(await f.exists())) {
-        return []
-    }
-    const toolsdef = await f.text()
-    const parsed = JSON.parse(toolsdef)
-    return ((parsed as { tools: CustomToolDef[] }).tools ?? parsed) as CustomToolDef[]
+    await Bun.file(dataPath.settings).write(json)
 }

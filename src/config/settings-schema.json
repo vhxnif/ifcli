@@ -14,9 +14,17 @@
                 "theme": {
                     "type": "string",
                     "enum": [
-                        "Tokyo Night", "Tokyo Night Day", "Tokyo Night Moon", "Tokyo Night Storm",
-                        "Rose Pine", "Rose Pine Moon", "Rose Pine Dawn",
-                        "Catppuccin Latte", "Catppuccin Frappe", "Catppuccin Macchiato", "Catppuccin Mocha"
+                        "Tokyo Night",
+                        "Tokyo Night Day",
+                        "Tokyo Night Moon",
+                        "Tokyo Night Storm",
+                        "Rose Pine",
+                        "Rose Pine Moon",
+                        "Rose Pine Dawn",
+                        "Catppuccin Latte",
+                        "Catppuccin Frappe",
+                        "Catppuccin Macchiato",
+                        "Catppuccin Mocha"
                     ],
                     "default": "Tokyo Night"
                 }
@@ -31,7 +39,11 @@
                     "type": "object",
                     "properties": {
                         "enabled": { "type": "boolean", "default": true },
-                        "model": { "type": "string", "description": "provider/modelId 格式，建议使用便宜模型", "default": "openai/gpt-4o-mini" }
+                        "model": {
+                            "type": "string",
+                            "description": "provider/modelId 格式，建议使用便宜模型",
+                            "default": "openai/gpt-4o-mini"
+                        }
                     },
                     "required": ["enabled", "model"],
                     "additionalProperties": false
@@ -44,8 +56,20 @@
             "type": "object",
             "properties": {
                 "enabled": { "type": "boolean", "default": true },
-                "triggerRatio": { "type": "number", "minimum": 0.1, "maximum": 1.0, "default": 0.8, "description": "estimatedTokens / model.contextWindow >= triggerRatio 时触发 compaction" },
-                "keepRecentRatio": { "type": "number", "minimum": 0.05, "maximum": 0.9, "default": 0.3, "description": "保留最近 keepRecentRatio × model.contextWindow 原文" }
+                "triggerRatio": {
+                    "type": "number",
+                    "minimum": 0.1,
+                    "maximum": 1.0,
+                    "default": 0.8,
+                    "description": "estimatedTokens / model.contextWindow >= triggerRatio 时触发 compaction"
+                },
+                "keepRecentRatio": {
+                    "type": "number",
+                    "minimum": 0.05,
+                    "maximum": 0.9,
+                    "default": 0.3,
+                    "description": "保留最近 keepRecentRatio × model.contextWindow 原文"
+                }
             },
             "required": ["enabled", "triggerRatio", "keepRecentRatio"],
             "additionalProperties": false
@@ -64,7 +88,13 @@
                             "url": { "type": "string", "format": "uri" },
                             "opts": { "type": "object" }
                         },
-                        "required": ["name", "version", "enable", "type", "url"],
+                        "required": [
+                            "name",
+                            "version",
+                            "enable",
+                            "type",
+                            "url"
+                        ],
                         "additionalProperties": false
                     },
                     {
@@ -78,16 +108,34 @@
                                 "type": "object",
                                 "properties": {
                                     "command": { "type": "string" },
-                                    "args": { "type": "array", "items": { "type": "string" } },
-                                    "env": { "type": "object", "additionalProperties": { "type": "string" } }
+                                    "args": {
+                                        "type": "array",
+                                        "items": { "type": "string" }
+                                    },
+                                    "env": {
+                                        "type": "object",
+                                        "additionalProperties": {
+                                            "type": "string"
+                                        }
+                                    }
                                 },
                                 "required": ["command"],
                                 "additionalProperties": false
                             },
-                            "logMode": { "type": "string", "enum": ["ignore", "inherit", "file"], "default": "file" },
+                            "logMode": {
+                                "type": "string",
+                                "enum": ["ignore", "inherit", "file"],
+                                "default": "file"
+                            },
                             "logFile": { "type": "string" }
                         },
-                        "required": ["name", "version", "enable", "type", "params"],
+                        "required": [
+                            "name",
+                            "version",
+                            "enable",
+                            "type",
+                            "params"
+                        ],
                         "additionalProperties": false
                     },
                     {
@@ -100,7 +148,13 @@
                             "url": { "type": "string", "format": "uri" },
                             "opts": { "type": "object" }
                         },
-                        "required": ["name", "version", "enable", "type", "url"],
+                        "required": [
+                            "name",
+                            "version",
+                            "enable",
+                            "type",
+                            "url"
+                        ],
                         "additionalProperties": false
                     }
                 ]

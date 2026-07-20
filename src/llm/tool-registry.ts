@@ -8,7 +8,7 @@
  */
 
 import type { AgentTool } from '@earendil-works/pi-agent-core'
-import MCPClient from '../llm/mcp-client'
+import type MCPClient from '../llm/mcp-client'
 import type { CustomToolDef } from './pi-types'
 
 // ── 类型 ──
@@ -43,7 +43,11 @@ export class ToolRegistry {
 
     /** 获取所有工具的列表（供 UI 展示） */
     listTools(): { name: string; source: 'mcp' | 'custom'; tags: string[] }[] {
-        const result: { name: string; source: 'mcp' | 'custom'; tags: string[] }[] = []
+        const result: {
+            name: string
+            source: 'mcp' | 'custom'
+            tags: string[]
+        }[] = []
 
         for (const mcp of this.mcps) {
             result.push({
@@ -57,7 +61,7 @@ export class ToolRegistry {
             result.push({
                 name: ct.def.function.name,
                 source: 'custom',
-                tags: ct.tags,
+                tags: ct.tags ?? [],
             })
         }
 
@@ -82,9 +86,15 @@ export class ToolRegistry {
                     tools.push({
                         name: mt.def.function.name,
                         description: mt.def.function.description ?? '',
-                        parameters: mt.def.function.parameters as Record<string, unknown>,
+                        parameters: mt.def.function.parameters as Record<
+                            string,
+                            unknown
+                        >,
                         execute: async (args: unknown) => {
-                            const result = await mcp.callTool(mt.def.function.name, args)
+                            const result = await mcp.callTool(
+                                mt.def.function.name,
+                                args,
+                            )
                             return JSON.stringify(result)
                         },
                     } as unknown as AgentTool<any>)
@@ -96,18 +106,25 @@ export class ToolRegistry {
 
         // 自定义工具
         for (const ct of this.customTools) {
-            if (!ct.tags.some(t => this.activeCustomNames.has(t))) continue
+            if (!(ct.tags ?? []).some((t) => this.activeCustomNames.has(t)))
+                continue
 
             tools.push({
                 name: ct.def.function.name,
                 description: ct.def.function.description,
-                parameters: ct.def.function.parameters as Record<string, unknown>,
+                parameters: ct.def.function.parameters as Record<
+                    string,
+                    unknown
+                >,
                 execute: async (args: unknown) => {
                     const cmd = ct.command
-                        .map(part => {
+                        .map((part) => {
                             const m = part.match(/^\$\{([^}]+)\}$/)
                             if (m && args && typeof args === 'object') {
-                                return String((args as Record<string, unknown>)[m[1]] ?? '')
+                                return String(
+                                    (args as Record<string, unknown>)[m[1]] ??
+                                        '',
+                                )
                             }
                             return part
                         })
@@ -133,7 +150,7 @@ export class ToolRegistry {
 
     /** 关闭所有 MCP 连接 */
     async closeAll(): Promise<void> {
-        await Promise.allSettled(this.mcps.map(m => m.close()))
+        await Promise.allSettled(this.mcps.map((m) => m.close()))
     }
 
     // ── 私有 ──
@@ -147,12 +164,25 @@ export class ToolRegistry {
             // list_available_tool_groups
             {
                 name: 'list_available_tool_groups',
-                description: '列出所有可用的工具分类（MCP 服务器和自定义工具标签）',
+                description:
+                    '列出所有可用的工具分类（MCP 服务器和自定义工具标签）',
                 parameters: { type: 'object', properties: {} },
                 execute: async () => {
                     const groups = [
-                        ...mcps.filter(m => this.activeMcpNames.has(m.name)).map(m => `mcp:${m.name}@${m.version}`),
-                        ...[...new Set(customTools.filter(ct => ct.tags.some(t => this.activeCustomNames.has(t))).flatMap(ct => ct.tags))].map(t => `custom:${t}`),
+                        ...mcps
+                            .filter((m) => this.activeMcpNames.has(m.name))
+                            .map((m) => `mcp:${m.name}@${m.version}`),
+                        ...[
+                            ...new Set(
+                                customTools
+                                    .filter((ct) =>
+                                        (ct.tags ?? []).some((t) =>
+                                            this.activeCustomNames.has(t),
+                                        ),
+                                    )
+                                    .flatMap((ct) => ct.tags ?? []),
+                            ),
+                        ].map((t) => `custom:${t}`),
                     ]
                     return groups.length > 0 ? groups : ['(no active tools)']
                 },
@@ -165,7 +195,11 @@ export class ToolRegistry {
                 parameters: {
                     type: 'object',
                     properties: {
-                        group_name: { type: 'string', description: '分类名（从 list_available_tool_groups 获取）' },
+                        group_name: {
+                            type: 'string',
+                            description:
+                                '分类名（从 list_available_tool_groups 获取）',
+                        },
                     },
                     required: ['group_name'],
                 },
@@ -173,9 +207,9 @@ export class ToolRegistry {
                     const groupName: string = args.group_name
                     if (groupName.startsWith('mcp:')) {
                         const mcpName = groupName.slice(4).split('@')[0]
-                        const mcp = mcps.find(m => m.name === mcpName)
+                        const mcp = mcps.find((m) => m.name === mcpName)
                         if (!mcp) return `MCP "${mcpName}" not found`
-                        return (await mcp.tools()).map(t => ({
+                        return (await mcp.tools()).map((t) => ({
                             name: t.def.function.name,
                             description: t.def.function.description ?? '',
                         }))
@@ -183,8 +217,12 @@ export class ToolRegistry {
                     if (groupName.startsWith('custom:')) {
                         const tag = groupName.slice(7)
                         return customTools
-                            .filter(ct => ct.tags.includes(tag) && this.activeCustomNames.has(tag))
-                            .map(ct => ({
+                            .filter(
+                                (ct) =>
+                                    (ct.tags ?? []).includes(tag) &&
+                                    this.activeCustomNames.has(tag),
+                            )
+                            .map((ct) => ({
                                 name: ct.def.function.name,
                                 description: ct.def.function.description,
                             }))

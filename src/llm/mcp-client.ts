@@ -18,7 +18,14 @@ import { println } from '../util/common-utils'
 
 // ponytail: ToolDef 原在 tool.ts，现内联定义
 type ToolDef = {
-    def: { type: string; function: { name: string; description: string; parameters: Record<string, unknown> } }
+    def: {
+        type: string
+        function: {
+            name: string
+            description: string
+            parameters: Record<string, unknown>
+        }
+    }
     group: string
     call: (args: unknown) => Promise<unknown>
 }

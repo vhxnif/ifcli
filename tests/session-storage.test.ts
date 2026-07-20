@@ -15,8 +15,12 @@ describe('SqliteSessionStorage', () => {
         db = new Database(':memory:')
         sessionId = 'test-session'
         // 先插入 session 行以满足外键约束
-        db.run('CREATE TABLE IF NOT EXISTS session (id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT \'\', model TEXT NOT NULL DEFAULT \'\', thinking_level TEXT NOT NULL DEFAULT \'off\', system_prompt TEXT NOT NULL DEFAULT \'\', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)')
-        db.prepare('INSERT INTO session (id, name, model, thinking_level, system_prompt, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(sessionId, '', '', 'off', '', Date.now(), Date.now())
+        db.run(
+            "CREATE TABLE IF NOT EXISTS session (id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', model TEXT NOT NULL DEFAULT '', thinking_level TEXT NOT NULL DEFAULT 'off', system_prompt TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)",
+        )
+        db.prepare(
+            'INSERT INTO session (id, name, model, thinking_level, system_prompt, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        ).run(sessionId, '', '', 'off', '', Date.now(), Date.now())
         storage = new SqliteSessionStorage(db, sessionId)
     })
 
@@ -46,7 +50,7 @@ describe('SqliteSessionStorage', () => {
     })
 
     test('should append entries and track leaf', async () => {
-        const id1 = await storage.appendEntry({
+        await storage.appendEntry({
             id: 'entry-1',
             sessionId: 'test-session',
             parentId: null,
@@ -56,7 +60,7 @@ describe('SqliteSessionStorage', () => {
         const leafId = await storage.getLeafId()
         expect(leafId).toBe('entry-1')
 
-        const id2 = await storage.appendEntry({
+        await storage.appendEntry({
             id: 'entry-2',
             sessionId: 'test-session',
             parentId: 'entry-1',
@@ -69,16 +73,25 @@ describe('SqliteSessionStorage', () => {
 
     test('should get path to root', async () => {
         await storage.appendEntry({
-            id: 'e-1', sessionId: 'test-session', parentId: null,
-            entryType: 'message', content: JSON.stringify({ role: 'user', content: 'Q1' }),
+            id: 'e-1',
+            sessionId: 'test-session',
+            parentId: null,
+            entryType: 'message',
+            content: JSON.stringify({ role: 'user', content: 'Q1' }),
         })
         await storage.appendEntry({
-            id: 'e-2', sessionId: 'test-session', parentId: 'e-1',
-            entryType: 'message', content: JSON.stringify({ role: 'assistant', content: 'A1' }),
+            id: 'e-2',
+            sessionId: 'test-session',
+            parentId: 'e-1',
+            entryType: 'message',
+            content: JSON.stringify({ role: 'assistant', content: 'A1' }),
         })
         await storage.appendEntry({
-            id: 'e-3', sessionId: 'test-session', parentId: 'e-2',
-            entryType: 'message', content: JSON.stringify({ role: 'user', content: 'Q2' }),
+            id: 'e-3',
+            sessionId: 'test-session',
+            parentId: 'e-2',
+            entryType: 'message',
+            content: JSON.stringify({ role: 'user', content: 'Q2' }),
         })
 
         const path = await storage.getPathToRoot()
@@ -89,12 +102,21 @@ describe('SqliteSessionStorage', () => {
 
     test('should find entries by type', async () => {
         await storage.appendEntry({
-            id: 'e-1', sessionId: 'test-session', parentId: null,
-            entryType: 'message', content: '{}',
+            id: 'e-1',
+            sessionId: 'test-session',
+            parentId: null,
+            entryType: 'message',
+            content: '{}',
         })
         await storage.appendEntry({
-            id: 'e-2', sessionId: 'test-session', parentId: 'e-1',
-            entryType: 'compaction', content: JSON.stringify({ summary: 'Summary here', tokensBefore: 5000 }),
+            id: 'e-2',
+            sessionId: 'test-session',
+            parentId: 'e-1',
+            entryType: 'compaction',
+            content: JSON.stringify({
+                summary: 'Summary here',
+                tokensBefore: 5000,
+            }),
         })
 
         const messages = await storage.findEntries('message')
@@ -107,12 +129,18 @@ describe('SqliteSessionStorage', () => {
 
     test('should get all entries', async () => {
         await storage.appendEntry({
-            id: 'e-1', sessionId: 'test-session', parentId: null,
-            entryType: 'message', content: '{}',
+            id: 'e-1',
+            sessionId: 'test-session',
+            parentId: null,
+            entryType: 'message',
+            content: '{}',
         })
         await storage.appendEntry({
-            id: 'e-2', sessionId: 'test-session', parentId: 'e-1',
-            entryType: 'message', content: '{}',
+            id: 'e-2',
+            sessionId: 'test-session',
+            parentId: 'e-1',
+            entryType: 'message',
+            content: '{}',
         })
 
         const entries = await storage.getEntries()

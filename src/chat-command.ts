@@ -1,8 +1,16 @@
 #!/usr/bin/env bun
-import chalk from 'chalk'
+/**
+ * [INPUT]: 依赖 ./app-context 的 chatService/terminalColor/availableModels，依赖 ./config/app-setting 的 APP_VERSION，
+ *          依赖 ./component/theme/color-scheme 的 commanderHelpConfiguration，依赖 ./util/* 的 CLI 工具
+ * [OUTPUT]: ifchat/ict CLI 命令（默认聊天、new/remove/switch/config/history）
+ * [POS]: src/ 的 CLI 入口之一，被 package.json bin 指向
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
 import { Command } from '@commander-js/extra-typings'
 import type { ThinkingLevel } from '@earendil-works/pi-agent-core'
-import { chatService, terminalColor } from './app-context'
+import chalk from 'chalk'
+import { availableModels, chatService, terminalColor } from './app-context'
 import { commanderHelpConfiguration } from './component/theme/color-scheme'
 import { APP_VERSION } from './config/app-setting'
 import {
@@ -15,6 +23,19 @@ import {
     stdin,
 } from './util/common-utils'
 import { select } from './util/inquirer-utils'
+
+const getCurrentSessionId = (): string | undefined => {
+    const sessions = chatService.listSessions()
+    return sessions[0]?.id
+}
+
+const defaultModelStr = (): string => {
+    if (availableModels.length > 0) {
+        const m = availableModels[0]
+        return `${m.provider}/${m.id}`
+    }
+    return 'deepseek/deepseek-chat'
+}
 
 const program = new Command()
     .configureHelp(commanderHelpConfiguration(terminalColor))
@@ -50,16 +71,18 @@ program
                 const name = `Chat ${new Date().toLocaleString()}`
                 return chatService.createSession({
                     name,
-                    modelStr: 'deepseek/deepseek-chat', // 默认，后续可由 config 覆盖
+                    modelStr: defaultModelStr(),
                 })
             }
             // 获取第一个 session 或创建
             const sessions = chatService.listSessions()
             if (sessions.length === 0) {
-                const name = content.join(' ').slice(0, 50) || `Chat ${new Date().toLocaleString()}`
+                const name =
+                    content.join(' ').slice(0, 50) ||
+                    `Chat ${new Date().toLocaleString()}`
                 return chatService.createSession({
                     name,
-                    modelStr: 'deepseek/deepseek-chat',
+                    modelStr: defaultModelStr(),
                 })
             }
             return sessions[0].id
@@ -99,10 +122,14 @@ program
     .command('new')
     .description('create a new chat session')
     .argument('<name>', 'name for the new session')
-    .option('-m, --model <str>', 'model as provider/modelId', 'deepseek/deepseek-chat')
+    .option('-m, --model <str>', 'model as provider/modelId', defaultModelStr())
     .action(async (name, { model }) => {
         chatService.createSession({ name, modelStr: model })
-        println(terminalColor.green(`Session "${name}" created with model ${model}`))
+        println(
+            terminalColor.green(
+                `Session "${name}" created with model ${model}`,
+            ),
+        )
     })
 
 // ── remove ──
@@ -125,7 +152,7 @@ program
         }
         const choice = await select({
             message: 'Select session to remove:',
-            choices: sessions.map(s => ({ name: s.name, value: s.id })),
+            choices: sessions.map((s) => ({ name: s.name, value: s.id })),
         })
         chatService.deleteSession(choice)
         println(terminalColor.green(`Session deleted.`))
@@ -146,7 +173,7 @@ program
         }
         const choice = await select({
             message: 'Select session:',
-            choices: sessions.map(s => ({
+            choices: sessions.map((s) => ({
                 name: force === s.id ? `${s.name} (active)` : s.name,
                 value: s.id,
             })),
@@ -163,38 +190,67 @@ program
     .alias('cf')
     .description('configure chat session settings')
     .option('-m, --model', 'switch AI model')
-    .option('-t, --thinking <level>', 'set thinking level (off/minimal/low/medium/high/xhigh/max)')
+    .option(
+        '-t, --thinking <level>',
+        'set thinking level (off/minimal/low/medium/high/xhigh/max)',
+    )
     .option('-p, --prompt', 'modify system prompt')
     .action(async ({ model, thinking, prompt }, cmd) => {
-        const force = cmd.parent?.opts()?.force as string | undefined
+        const force =
+            (cmd.parent?.opts()?.force as string | undefined) ||
+            getCurrentSessionId()
         if (!force) {
-            println(terminalColor.yellow('Use -f <session-id> to specify session'))
+            println(
+                terminalColor.yellow(
+                    'No sessions available. Use -f <session-id> or start a chat first.',
+                ),
+            )
             return
         }
         const handle = chatService.getSession(force)
         const meta = await handle.storage.getMetadata()
 
         if (thinking) {
-            const validLevels = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
+            const validLevels = [
+                'off',
+                'minimal',
+                'low',
+                'medium',
+                'high',
+                'xhigh',
+                'max',
+            ]
             if (!validLevels.includes(thinking)) {
-                println(terminalColor.red(`Invalid thinking level: ${thinking}. Valid: ${validLevels.join(', ')}`))
+                println(
+                    terminalColor.red(
+                        `Invalid thinking level: ${thinking}. Valid: ${validLevels.join(', ')}`,
+                    ),
+                )
                 return
             }
-            await handle.updateMeta({ thinkingLevel: thinking as ThinkingLevel })
+            await handle.updateMeta({
+                thinkingLevel: thinking as ThinkingLevel,
+            })
             println(terminalColor.green(`Thinking level set to: ${thinking}`))
         }
 
         if (model) {
-            // 交互式选择模型
+            // 从 Pi 模型发现结果中选择
+            if (availableModels.length === 0) {
+                println(
+                    terminalColor.yellow(
+                        'No models available. Check Pi environment variables.',
+                    ),
+                )
+                return
+            }
+            const choices = availableModels.map((m) => ({
+                name: `${m.provider}/${m.id}`,
+                value: `${m.provider}/${m.id}`,
+            }))
             const modelStr = await select({
                 message: 'Select model (provider/modelId):',
-                choices: [
-                    { name: 'deepseek/deepseek-chat', value: 'deepseek/deepseek-chat' },
-                    { name: 'deepseek/deepseek-reasoner', value: 'deepseek/deepseek-reasoner' },
-                    { name: 'openai/gpt-4o', value: 'openai/gpt-4o' },
-                    { name: 'openai/gpt-4o-mini', value: 'openai/gpt-4o-mini' },
-                    { name: 'anthropic/claude-sonnet-4-20250514', value: 'anthropic/claude-sonnet-4-20250514' },
-                ],
+                choices,
             })
             await handle.updateMeta({ model: modelStr })
             println(terminalColor.green(`Model set to: ${modelStr}`))
@@ -214,7 +270,9 @@ program
             println(chalk.bold('Session Configuration:'))
             println(`  Model: ${meta.model || '(not set)'}`)
             println(`  Thinking Level: ${meta.thinkingLevel}`)
-            println(`  System Prompt: ${meta.systemPrompt ? meta.systemPrompt.slice(0, 100) + '...' : '(none)'}`)
+            println(
+                `  System Prompt: ${meta.systemPrompt ? `${meta.systemPrompt.slice(0, 100)}...` : '(none)'}`,
+            )
         }
     })
 
@@ -226,27 +284,37 @@ program
     .description('view chat conversation history')
     .option('-l, --limit <number>', 'max messages to display', '50')
     .action(async ({ limit }, cmd) => {
-        const force = cmd.parent?.opts()?.force as string | undefined
+        const force =
+            (cmd.parent?.opts()?.force as string | undefined) ||
+            getCurrentSessionId()
         if (!force) {
-            println(terminalColor.yellow('Use -f <session-id> to specify session'))
+            println(
+                terminalColor.yellow(
+                    'No sessions available. Use -f <session-id> or start a chat first.',
+                ),
+            )
             return
         }
         const handle = chatService.getSession(force)
         const entries = await handle.storage.getEntries()
         const msgEntries = entries
-            .filter(e => e.entryType === 'message')
+            .filter((e) => e.entryType === 'message')
             .slice(-parseIntNumber(limit, 50))
 
         for (const entry of msgEntries) {
             try {
                 const msg = JSON.parse(entry.content)
                 const role = msg.role as string
-                const content = typeof msg.content === 'string'
-                    ? msg.content
-                    : JSON.stringify(msg.content)
+                const content =
+                    typeof msg.content === 'string'
+                        ? msg.content
+                        : JSON.stringify(msg.content)
 
                 if (role === 'user') {
-                    println(terminalColor.cyan.bold('▸ ') + terminalColor.cyan(content.slice(0, 200)))
+                    println(
+                        terminalColor.cyan.bold('▸ ') +
+                            terminalColor.cyan(content.slice(0, 200)),
+                    )
                 } else if (role === 'assistant') {
                     println(terminalColor.white(content.slice(0, 300)))
                 }
@@ -257,9 +325,13 @@ program
         }
 
         // 显示 compaction 标记
-        const compactions = entries.filter(e => e.entryType === 'compaction')
+        const compactions = entries.filter((e) => e.entryType === 'compaction')
         if (compactions.length > 0) {
-            println(terminalColor.yellow(`[${compactions.length} compaction(s) in history]`))
+            println(
+                terminalColor.yellow(
+                    `[${compactions.length} compaction(s) in history]`,
+                ),
+            )
         }
     })
 

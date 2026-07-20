@@ -1,11 +1,10 @@
 #!/usr/bin/env bun
-import chalk from 'chalk'
 import { Command } from '@commander-js/extra-typings'
-import { chatService, setting, terminalColor } from './app-context'
+import chalk from 'chalk'
+import { setting, terminalColor } from './app-context'
 import { commanderHelpConfiguration } from './component/theme/color-scheme'
-import { appSettingCover, type Setting } from './config/app-setting'
-import { APP_VERSION } from './config/app-setting'
-import { editor, matchRun, print, println } from './util/common-utils'
+import { APP_VERSION, appSettingCover } from './config/app-setting'
+import { editor, print, println } from './util/common-utils'
 import { select } from './util/inquirer-utils'
 
 const program = new Command().configureHelp(
@@ -33,47 +32,88 @@ program
             const newJson = await editor(currentJson)
             if (newJson && newJson !== currentJson) {
                 await appSettingCover(newJson)
-                println(terminalColor.green('Settings updated. Restart to apply.'))
+                println(
+                    terminalColor.green('Settings updated. Restart to apply.'),
+                )
             }
             return
         }
 
         if (theme) {
             const themes = [
-                'Tokyo Night', 'Tokyo Night Day', 'Tokyo Night Moon', 'Tokyo Night Storm',
-                'Rose Pine', 'Rose Pine Moon', 'Rose Pine Dawn',
-                'Catppuccin Latte', 'Catppuccin Frappe', 'Catppuccin Macchiato', 'Catppuccin Mocha',
+                'Tokyo Night',
+                'Tokyo Night Day',
+                'Tokyo Night Moon',
+                'Tokyo Night Storm',
+                'Rose Pine',
+                'Rose Pine Moon',
+                'Rose Pine Dawn',
+                'Catppuccin Latte',
+                'Catppuccin Frappe',
+                'Catppuccin Macchiato',
+                'Catppuccin Mocha',
             ]
             const choice = await select({
                 message: 'Select theme:',
-                choices: themes.map(t => ({ name: t, value: t })),
+                choices: themes.map((t) => ({ name: t, value: t })),
             })
-            const updated = { ...setting, generalSetting: { ...setting.generalSetting, theme: choice } }
+            const updated = {
+                ...setting,
+                generalSetting: { ...setting.generalSetting, theme: choice },
+            }
             await appSettingCover(JSON.stringify(updated, null, 2))
-            println(terminalColor.green(`Theme changed to: ${choice}. Restart to apply.`))
+            println(
+                terminalColor.green(
+                    `Theme changed to: ${choice}. Restart to apply.`,
+                ),
+            )
             return
         }
 
         if (thinkingLevel) {
-            const levels = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
+            const levels = [
+                'off',
+                'minimal',
+                'low',
+                'medium',
+                'high',
+                'xhigh',
+                'max',
+            ]
             if (!levels.includes(thinkingLevel)) {
-                println(terminalColor.red(`Invalid thinking level. Valid: ${levels.join(', ')}`))
+                println(
+                    terminalColor.red(
+                        `Invalid thinking level. Valid: ${levels.join(', ')}`,
+                    ),
+                )
                 return
             }
             println(terminalColor.green(`Thinking level: ${thinkingLevel}`))
             // 注意：thinking level 是 per-session 设置，不是全局设置
-            println(chalk.gray('Use: ict cf -f <session-id> -t <level> to set per session'))
+            println(
+                chalk.gray(
+                    'Use: ict cf -f <session-id> -t <level> to set per session',
+                ),
+            )
             return
         }
 
         // 默认：显示当前配置
         println(chalk.bold('Current Configuration:'))
         println(`  Theme: ${setting.generalSetting.theme}`)
-        println(`  AutoName: ${setting.session?.autoName?.enabled ? 'enabled' : 'disabled'}`)
-        println(`  Compaction: ${setting.compaction?.enabled ? 'enabled' : 'disabled'}`)
+        println(
+            `  AutoName: ${setting.session?.autoName?.enabled ? 'enabled' : 'disabled'}`,
+        )
+        println(
+            `  Compaction: ${setting.compaction?.enabled ? 'enabled' : 'disabled'}`,
+        )
         if (setting.compaction?.enabled) {
-            println(`    Trigger: ${setting.compaction.triggerRatio * 100}% of context window`)
-            println(`    Keep recent: ${setting.compaction.keepRecentRatio * 100}%`)
+            println(
+                `    Trigger: ${setting.compaction.triggerRatio * 100}% of context window`,
+            )
+            println(
+                `    Keep recent: ${setting.compaction.keepRecentRatio * 100}%`,
+            )
         }
     })
 
@@ -91,7 +131,9 @@ program
                 return
             }
             for (const s of servers) {
-                const status = s.enable ? terminalColor.green('✓') : chalk.gray('✗')
+                const status = s.enable
+                    ? terminalColor.green('✓')
+                    : chalk.gray('✗')
                 println(`${status} ${s.name}@${s.version} (${s.type})`)
             }
             return
@@ -117,7 +159,9 @@ program
                 return
             }
             for (const t of tools) {
-                println(`${terminalColor.cyan(t.def.function.name)} [${t.tags.join(', ')}]`)
+                println(
+                    `${terminalColor.cyan(t.def.function.name)} [${(t.tags ?? []).join(', ')}]`,
+                )
                 println(`  ${t.def.function.description}`)
             }
             return
@@ -137,14 +181,26 @@ program
     .option('-i, --import <file>', 'import prompt from file')
     .action(async ({ export: exp, import: imp }) => {
         if (exp) {
-            println(terminalColor.yellow('Export not yet implemented in new architecture.'))
+            println(
+                terminalColor.yellow(
+                    'Export not yet implemented in new architecture.',
+                ),
+            )
             return
         }
         if (imp) {
-            println(terminalColor.yellow('Import not yet implemented in new architecture.'))
+            println(
+                terminalColor.yellow(
+                    'Import not yet implemented in new architecture.',
+                ),
+            )
             return
         }
-        println(chalk.bold('Prompt management will be available in a future update.'))
+        println(
+            chalk.bold(
+                'Prompt management will be available in a future update.',
+            ),
+        )
     })
 
 program.parseAsync().catch((e: unknown) => {

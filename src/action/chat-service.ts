@@ -1,8 +1,8 @@
 /**
- * [INPUT]: 依赖 @earendil-works/pi-ai 的 Message/Model/SimpleStreamOptions，
- *          依赖 @earendil-works/pi-agent-core 的 AgentTool/ThinkingLevel，
+ * [INPUT]: 依赖 @earendil-works/pi-ai 的 Message/Model/Models，
+ *          依赖 @earendil-works/pi-agent-core 的 ThinkingLevel，
  *          依赖 ../llm/agent-runner 的 AgentRunner，
- *          依赖 ../llm/pi-display-handler 的 PiDisplayHandler/DEFAULT_PI_COLORS/PiThemeColors，
+ *          依赖 ../llm/pi-display-handler 的 PiDisplayHandler/PiThemeColors，
  *          依赖 ../llm/tool-registry 的 ToolRegistry，
  *          依赖 ../store/session-manager 的 SessionManager/SessionHandle，
  *          依赖 ../config/app-setting 的 Setting
@@ -11,17 +11,18 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
-import type { Message, Model, SimpleStreamOptions } from '@earendil-works/pi-ai'
-import type { AgentTool, ThinkingLevel } from '@earendil-works/pi-agent-core'
+import type { ThinkingLevel } from '@earendil-works/pi-agent-core'
+import type { Message, Model, Models } from '@earendil-works/pi-ai'
+import type {
+    ChalkChatBoxTheme,
+    ChalkTerminalColor,
+} from '../component/theme/theme-type'
 import type { Setting } from '../config/app-setting'
 import { AgentRunner } from '../llm/agent-runner'
-import { PiDisplayHandler } from '../llm/pi-display-handler'
 import type { PiThemeColors } from '../llm/pi-display-handler'
-import { DEFAULT_PI_COLORS } from '../llm/pi-display-handler'
-import { ToolRegistry } from '../llm/tool-registry'
-import { SessionManager } from '../store/session-manager'
-import type { SessionHandle } from '../store/session-manager'
-import type { ChalkChatBoxTheme, ChalkTerminalColor } from '../component/theme/theme-type'
+import { PiDisplayHandler } from '../llm/pi-display-handler'
+import type { ToolRegistry } from '../llm/tool-registry'
+import type { SessionHandle, SessionManager } from '../store/session-manager'
 
 // ── 类型 ──
 
@@ -31,13 +32,14 @@ export interface ChatServiceConfig {
     terminalColor: ChalkTerminalColor
     theme: ChalkChatBoxTheme
     piColors: PiThemeColors
+    models: Models
 }
 
 export interface ChatRunOptions {
     content: string
     sessionId: string
     noStream?: boolean
-    modelStr?: string   // "provider/modelId" — 覆盖 session 默认模型
+    modelStr?: string // "provider/modelId" — 覆盖 session 默认模型
     thinkingLevel?: ThinkingLevel
 }
 
@@ -56,6 +58,7 @@ export class ChatService {
     private terminalColor: ChalkTerminalColor
     private theme: ChalkChatBoxTheme
     private piColors: PiThemeColors
+    private models: Models
 
     constructor(config: ChatServiceConfig) {
         this.sessionManager = config.sessionManager
@@ -63,6 +66,7 @@ export class ChatService {
         this.terminalColor = config.terminalColor
         this.theme = config.theme
         this.piColors = config.piColors
+        this.models = config.models
     }
 
     // ── Session CRUD ──
@@ -102,8 +106,8 @@ export class ChatService {
         const modelStr = opts.modelStr || meta.model
         const thinkingLevel = opts.thinkingLevel ?? meta.thinkingLevel
 
-        // 构建 Pi Model 对象（简化版 — 从 Pi Models 注册表解析）
-        const model = this.makeModel(modelStr)
+        // 从 Pi Models 注册表解析真实 Model 对象
+        const model = this.resolveModel(modelStr)
 
         // 构建 tools
         const tools = await this.toolRegistry.buildActiveTools()
@@ -120,9 +124,6 @@ export class ChatService {
             enableSpinner: !opts.noStream,
         })
 
-        // 显示用户输入
-        display.onUserInput(opts.content)
-
         // 运行 agent
         const runner = new AgentRunner({
             model,
@@ -132,7 +133,7 @@ export class ChatService {
         })
 
         // 桥接 PiDisplayEvent → PiDisplayHandler
-        runner.onDisplay(event => {
+        runner.onDisplay((event) => {
             switch (event.type) {
                 case 'text_delta':
                     display.onTextDelta(event.content ?? '')
@@ -179,11 +180,10 @@ export class ChatService {
             if (setting?.session?.autoName?.enabled) {
                 await this.sessionManager.autoName(
                     handle,
-                    async (content, modelStr) => {
+                    async (_content, _modelStr) => {
                         // 使用 session.autoName.model 指定的便宜模型
-                        const nameModel = setting.session.autoName.model
                         // ponytail: autoName 复用 Pi streamSimple，不做额外封装
-                        return ''  // 占位，实际由外部注入
+                        return '' // 占位，实际由外部注入
                     },
                 )
             }
@@ -203,9 +203,19 @@ export class ChatService {
         this.currentSetting = s
     }
 
-    /** 从 modelStr ("provider/modelId") 构建简化的 Pi Model 对象 */
-    private makeModel(modelStr: string): Model<any> {
+    /** 从 modelStr ("provider/modelId") 解析 Pi Model 对象 */
+    private resolveModel(modelStr: string): Model<any> {
         const [provider, id] = modelStr.split('/')
+        if (provider && id) {
+            const found = this.models.getModel(provider, id)
+            if (found) return found
+        }
+        // 指定的模型不在 Pi 注册表中：回退到第一个已知模型，避免使用伪造对象导致 agent 挂起
+        const allModels = this.models.getModels()
+        if (allModels.length > 0) {
+            return allModels[0]
+        }
+        // 最后回退：构建最小 Model 对象
         return {
             id: id ?? modelStr,
             name: id ?? modelStr,
