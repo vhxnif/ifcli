@@ -17,7 +17,10 @@ import {
     toolRegistry,
 } from './app-context'
 import { commanderHelpConfiguration } from './component/theme/color-scheme'
+import type { ChalkTerminalColor } from './component/theme/theme-type'
 import { APP_VERSION } from './config/app-setting'
+import type { SessionEntry } from './llm/pi-types'
+import type { SessionHandle } from './store/session-manager'
 import {
     editor,
     isEmpty,
@@ -27,11 +30,118 @@ import {
     println,
     stdin,
 } from './util/common-utils'
-import { checkbox, checkboxThemeStyle, select } from './util/inquirer-utils'
+import {
+    checkbox,
+    checkboxThemeStyle,
+    select,
+    selectThemeStyle,
+} from './util/inquirer-utils'
 
 const getCurrentSessionId = (): string | undefined => {
     const sessions = chatService.listSessions()
     return sessions[0]?.id
+}
+
+const getUserContent = (entry: SessionEntry): string => {
+    try {
+        const msg = JSON.parse(entry.content)
+        const content =
+            typeof msg.content === 'string'
+                ? msg.content
+                : JSON.stringify(msg.content)
+        return content
+    } catch {
+        return ''
+    }
+}
+
+const buildLeafChoices = async (
+    handle: SessionHandle,
+): Promise<{ name: string; value: string }[]> => {
+    const entries = await handle.storage.getEntries()
+    const userEntries = entries.filter((e) => {
+        if (e.entryType !== 'message') return false
+        try {
+            return JSON.parse(e.content).role === 'user'
+        } catch {
+            return false
+        }
+    })
+    if (userEntries.length === 0) return []
+
+    const currentPath = await handle.storage.getPathToRoot()
+    const activeUserEntry = [...currentPath].reverse().find((e) => {
+        if (e.entryType !== 'message') return false
+        try {
+            return JSON.parse(e.content).role === 'user'
+        } catch {
+            return false
+        }
+    })
+    const activeUserId = activeUserEntry?.id
+
+    // 建立 entry 查找表，用于找到每条 user 消息在 user 树中的最近 user 祖先
+    const entryMap = new Map(entries.map((e) => [e.id, e]))
+    const userIds = new Set(userEntries.map((e) => e.id))
+    const nearestUserAncestor = new Map<string, string | null>()
+
+    const findNearestUserAncestor = (id: string | null): string | null => {
+        if (!id) return null
+        if (nearestUserAncestor.has(id)) return nearestUserAncestor.get(id)!
+        const parentId = entryMap.get(id)?.parentId ?? null
+        const result = userIds.has(id) ? id : findNearestUserAncestor(parentId)
+        nearestUserAncestor.set(id, result)
+        return result
+    }
+
+    const childrenMap = new Map<string | null, SessionEntry[]>()
+    for (const e of userEntries) {
+        const ancestorId = findNearestUserAncestor(e.parentId)
+        if (!childrenMap.has(ancestorId)) childrenMap.set(ancestorId, [])
+        childrenMap.get(ancestorId)!.push(e)
+    }
+    for (const list of childrenMap.values()) {
+        list.sort((a, b) => a.order - b.order)
+    }
+
+    const walk = (
+        parentId: string | null,
+        depth: number,
+    ): { name: string; value: string }[] => {
+        const children = childrenMap.get(parentId) ?? []
+        const result: { name: string; value: string }[] = []
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i]
+            const isLast = i === children.length - 1
+            const indent =
+                depth === 0
+                    ? ''
+                    : `${'  '.repeat(depth - 1)}${isLast ? '└─ ' : '├─ '}`
+            const activeMark = child.id === activeUserId ? ' (active)' : ''
+            result.push({
+                name: `${indent}[${child.id.slice(0, 8)}] ${getUserContent(child).slice(0, 50)}${activeMark}`,
+                value: child.id,
+            })
+            result.push(...walk(child.id, depth + 1))
+        }
+        return result
+    }
+
+    return walk(null, 0)
+}
+
+const leafSelectTheme = (color: ChalkTerminalColor) => {
+    const base = selectThemeStyle(color)
+    return {
+        ...base,
+        style: {
+            ...base.style,
+            answer: (text: string) =>
+                base.style.answer(
+                    text.replace(/^(?:(?:\s{2}|[├└]─ )+)(?:\[\w{8}\]\s)?/, ''),
+                ),
+        },
+    }
 }
 
 const defaultModelStr = (): string => {
@@ -168,9 +278,44 @@ program
 program
     .command('switch')
     .alias('st')
-    .description('switch between chat sessions')
-    .action(async (_, cmd) => {
+    .description('switch between chat sessions or conversation leaves')
+    .option('--leaf', 'switch conversation leaf for the selected session')
+    .action(async (options, cmd) => {
+        const { leaf } = options
         const force = cmd.parent?.opts()?.force as string | undefined
+
+        if (leaf) {
+            const sessionId = force || getCurrentSessionId()
+            if (!sessionId) {
+                println(
+                    terminalColor.yellow(
+                        'No session selected. Use -f <session-id> or start a chat first.',
+                    ),
+                )
+                return
+            }
+            const handle = chatService.getSession(sessionId)
+            const choices = await buildLeafChoices(handle)
+            if (choices.length === 0) {
+                println(
+                    terminalColor.yellow('No conversation leaves available.'),
+                )
+                return
+            }
+            const choice = await select({
+                message: 'Select question to branch from:',
+                choices,
+                theme: leafSelectTheme(terminalColor),
+            })
+            await handle.switchLeaf(choice)
+            println(
+                terminalColor.green(
+                    `Switched to leaf: ${choice.slice(0, 8)}...`,
+                ),
+            )
+            return
+        }
+
         const sessions = chatService.listSessions()
         const activeId = force || getCurrentSessionId()
         if (sessions.length === 0) {

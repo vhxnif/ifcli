@@ -57,6 +57,9 @@ export class AgentRunner {
         const { model, tools, systemPrompt, thinkingLevel, transformContext } =
             this.config
 
+        // 记录原始上下文长度，用于只返回本轮新增消息
+        const originalLength = contextMessages.length
+
         const agent = new Agent({
             initialState: {
                 model,
@@ -86,7 +89,10 @@ export class AgentRunner {
         await agent.prompt(userMsg)
         await agent.waitForIdle()
 
-        return agent.state.messages as unknown as Message[]
+        // 只返回本轮新增消息（user + assistant + tool result），避免把已持久化的上下文再存一遍
+        return (agent.state.messages as unknown as Message[]).slice(
+            originalLength,
+        )
     }
 
     /** 中止运行 */
