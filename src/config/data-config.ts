@@ -9,7 +9,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { accessSync, constants, mkdirSync } from 'node:fs'
 import path from 'node:path'
-import { version as APP_VERSION } from '../../package.json'
 import { env, platform } from '../util/platform-utils'
 
 export class DataPathConfig {
@@ -46,10 +45,7 @@ export class DataPathConfig {
         return env('APPDATA')!.split(path.sep)!.join(path.posix.sep)
     }
     get database(): string {
-        return path.join(
-            this.configPath!,
-            `${this.appName}_${APP_VERSION}.sqlite`,
-        )
+        return path.join(this.configPath!, 'data.sqlite')
     }
 
     get settings(): string {
@@ -58,20 +54,6 @@ export class DataPathConfig {
 
     get settingsSchema(): string {
         return path.join(this.configPath!, 'settings-schema.json')
-    }
-
-    // ── 迁移旧文件名（改版前带 ifcli- 前缀）──
-
-    get legacySettings(): string {
-        return path.join(this.configPath!, 'ifcli.json')
-    }
-
-    get legacyCustomTools(): string {
-        return path.join(this.configPath!, 'ifcli-custom-tools.json')
-    }
-
-    get legacySettingsSchema(): string {
-        return path.join(this.configPath!, 'ifcli-settings-schema.json')
     }
 }
 

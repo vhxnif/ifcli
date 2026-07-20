@@ -82,8 +82,12 @@ export class ChatService {
             opts.thinkingLevel ?? 'off',
         )
         const handle = this.sessionManager.get(info.id)
-        if (opts.systemPrompt) {
-            handle.updateMeta({ systemPrompt: opts.systemPrompt })
+        const systemPrompt =
+            opts.systemPrompt ??
+            this.currentSetting?.session?.defaultSystemPrompt ??
+            ''
+        if (systemPrompt) {
+            handle.updateMeta({ systemPrompt })
         }
         return info.id
     }

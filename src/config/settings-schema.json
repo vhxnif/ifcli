@@ -53,9 +53,14 @@
                     },
                     "required": ["enabled", "model"],
                     "additionalProperties": false
+                },
+                "defaultSystemPrompt": {
+                    "type": "string",
+                    "default": "",
+                    "description": "新建 chat session 时的默认系统提示词"
                 }
             },
-            "required": ["autoName"],
+            "required": ["autoName", "defaultSystemPrompt"],
             "additionalProperties": false
         },
         "compaction": {

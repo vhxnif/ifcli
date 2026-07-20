@@ -1,12 +1,11 @@
 /**
  * [INPUT]: 依赖 ./data-config 的 dataPath，依赖 ./settings-schema.json 的 schema 内容，
- *          依赖 ../llm/mcp-client 的 MCPConfig，依赖 node:fs/promises 的 unlink
+ *          依赖 ../llm/mcp-client 的 MCPConfig
  * [OUTPUT]: Setting / CustomToolDef 类型，initAppSetting / appSetting / appSettingCover 读写函数
  * [POS]: src/config/ 的配置读写核心，被 ../app-context 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
-import { unlink } from 'node:fs/promises'
 import { version } from '../../package.json'
 import type { MCPConfig } from '../llm/mcp-client'
 import { dataPath } from './data-config'
@@ -28,6 +27,8 @@ export type AutoNameConfig = {
 
 export type SessionConfig = {
     autoName: AutoNameConfig
+    /** 新建 session 时默认使用的系统提示词 */
+    defaultSystemPrompt: string
 }
 
 export type CompactionConfig = {
@@ -74,6 +75,7 @@ const defaultSessionConfig: SessionConfig = {
         enabled: true,
         model: 'openai/gpt-4o-mini',
     },
+    defaultSystemPrompt: '',
 }
 
 const defaultCompaction: CompactionConfig = {
@@ -90,26 +92,12 @@ const defaultSetting: Setting = {
     customTools: [],
 }
 
-type LegacyCustomToolDef = CustomToolDef & { group?: string }
-
-const migrateCustomTools = (tools?: CustomToolDef[]): CustomToolDef[] => {
-    if (!tools) return []
-    return tools.map((ct) => {
-        const legacy = ct as LegacyCustomToolDef
-        const { group, ...rest } = legacy
-        if (group && (!rest.tags || rest.tags.length === 0)) {
-            return { ...rest, tags: [group] }
-        }
-        return rest as CustomToolDef
-    })
-}
-
 const mergeWithDefaults = (partial: Partial<Setting>): Setting => ({
     generalSetting: partial.generalSetting ?? defaultGeneralSetting,
     session: partial.session ?? defaultSessionConfig,
     compaction: partial.compaction ?? defaultCompaction,
     mcpServers: partial.mcpServers ?? [],
-    customTools: migrateCustomTools(partial.customTools),
+    customTools: partial.customTools ?? [],
 })
 
 // ── 初始化 & 读写 ──
@@ -118,44 +106,11 @@ export const initAppSetting = async (): Promise<void> => {
     const settingsFile = Bun.file(dataPath.settings)
     const settingsExists = await settingsFile.exists()
 
-    let setting: Setting
-
-    if (!settingsExists) {
-        const legacyFile = Bun.file(dataPath.legacySettings)
-        if (await legacyFile.exists()) {
-            // 迁移旧配置文件
-            const legacyJson = await legacyFile.text()
-            setting = mergeWithDefaults(
-                JSON.parse(legacyJson) as Partial<Setting>,
-            )
-            await unlink(dataPath.legacySettings)
-        } else {
-            setting = { ...defaultSetting }
-        }
-    } else {
-        const json = await settingsFile.text()
-        setting = mergeWithDefaults(JSON.parse(json) as Partial<Setting>)
-    }
-
-    // 迁移旧独立 customTools 文件到 settings.json
-    const legacyCustomToolsFile = Bun.file(dataPath.legacyCustomTools)
-    if (await legacyCustomToolsFile.exists()) {
-        try {
-            const toolsJson = await legacyCustomToolsFile.text()
-            const parsed = JSON.parse(toolsJson)
-            const legacyTools = ((parsed as { tools: CustomToolDef[] }).tools ??
-                parsed) as CustomToolDef[]
-            if (legacyTools.length > 0) {
-                setting.customTools = [
-                    ...(setting.customTools ?? []),
-                    ...legacyTools,
-                ]
-            }
-        } catch {
-            // 旧文件损坏，忽略
-        }
-        await unlink(dataPath.legacyCustomTools)
-    }
+    const setting = settingsExists
+        ? mergeWithDefaults(
+              JSON.parse(await settingsFile.text()) as Partial<Setting>,
+          )
+        : { ...defaultSetting }
 
     // 写 settings.json（确保 schema 引用正确）
     const toWrite = {
@@ -169,12 +124,6 @@ export const initAppSetting = async (): Promise<void> => {
         dataPath.settingsSchema,
         JSON.stringify(settingsSchemaContent, null, 2),
     )
-
-    // 删除旧 schema 文件
-    const legacySchemaFile = Bun.file(dataPath.legacySettingsSchema)
-    if (await legacySchemaFile.exists()) {
-        await unlink(dataPath.legacySettingsSchema)
-    }
 }
 
 export const appSetting = async (): Promise<Setting> => {

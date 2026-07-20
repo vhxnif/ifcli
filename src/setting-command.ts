@@ -176,31 +176,47 @@ program
 program
     .command('prompt')
     .alias('pt')
-    .description('manage system prompts')
-    .option('-e, --export', 'export prompts to files')
-    .option('-i, --import <file>', 'import prompt from file')
+    .description('manage default system prompt')
+    .option('-e, --export [file]', 'export default prompt to file')
+    .option('-i, --import <file>', 'import default prompt from file')
     .action(async ({ export: exp, import: imp }) => {
-        if (exp) {
-            println(
-                terminalColor.yellow(
-                    'Export not yet implemented in new architecture.',
-                ),
-            )
-            return
-        }
+        const current = setting.session?.defaultSystemPrompt ?? ''
+
         if (imp) {
-            println(
-                terminalColor.yellow(
-                    'Import not yet implemented in new architecture.',
-                ),
-            )
+            const content = await Bun.file(imp).text()
+            const updated = {
+                ...setting,
+                session: { ...setting.session, defaultSystemPrompt: content },
+            }
+            await appSettingCover(JSON.stringify(updated, null, 2))
+            println(terminalColor.green('Default prompt imported.'))
             return
         }
-        println(
-            chalk.bold(
-                'Prompt management will be available in a future update.',
-            ),
-        )
+
+        if (exp) {
+            if (exp === true) {
+                println(current || '(empty)')
+            } else {
+                await Bun.file(exp).write(current)
+                println(
+                    terminalColor.green(`Default prompt exported to: ${exp}`),
+                )
+            }
+            return
+        }
+
+        const newPrompt = await editor(current || '')
+        if (newPrompt !== undefined && newPrompt !== current) {
+            const updated = {
+                ...setting,
+                session: {
+                    ...setting.session,
+                    defaultSystemPrompt: newPrompt,
+                },
+            }
+            await appSettingCover(JSON.stringify(updated, null, 2))
+            println(terminalColor.green('Default prompt updated.'))
+        }
     })
 
 program.parseAsync().catch((e: unknown) => {

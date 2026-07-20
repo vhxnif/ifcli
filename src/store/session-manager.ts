@@ -60,17 +60,6 @@ export class SessionManager {
                 updated_at INTEGER NOT NULL
             )
         `)
-        // 旧表迁移：添加工具启用列
-        for (const col of [
-            'active_mcps TEXT NOT NULL DEFAULT "[]"',
-            'active_custom_tags TEXT NOT NULL DEFAULT "[]"',
-        ]) {
-            try {
-                this.db.run(`ALTER TABLE session ADD COLUMN ${col}`)
-            } catch {
-                // 列已存在，忽略
-            }
-        }
         this.db.run(`
             CREATE TABLE IF NOT EXISTS session_entry (
                 id TEXT PRIMARY KEY,

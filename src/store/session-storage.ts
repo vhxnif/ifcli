@@ -51,11 +51,6 @@ CREATE TABLE IF NOT EXISTS session_leaf (
     label TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (session_id) REFERENCES session(id)
 );
-
--- 旧数据迁移占位表（从旧 ifcli 迁移用）
-CREATE TABLE IF NOT EXISTS _migration_done (
-    done INTEGER DEFAULT 0
-);
 `
 
 // ── 实现 ──
@@ -77,17 +72,6 @@ export class SqliteSessionStorage implements SessionStorage {
             .map((s) => s.trim())
             .filter(Boolean)) {
             this.db.run(stmt)
-        }
-        // 旧表迁移：添加工具启用列
-        for (const col of [
-            'active_mcps TEXT NOT NULL DEFAULT "[]"',
-            'active_custom_tags TEXT NOT NULL DEFAULT "[]"',
-        ]) {
-            try {
-                this.db.run(`ALTER TABLE session ADD COLUMN ${col}`)
-            } catch {
-                // 列已存在，忽略
-            }
         }
     }
 
