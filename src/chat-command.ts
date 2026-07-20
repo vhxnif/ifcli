@@ -167,15 +167,27 @@ program
     .action(async (_, cmd) => {
         const force = cmd.parent?.opts()?.force as string | undefined
         const sessions = chatService.listSessions()
-        if (sessions.length <= 1) {
-            println(terminalColor.yellow('Only one session available.'))
+        const activeId = force || getCurrentSessionId()
+        if (sessions.length === 0) {
+            println(terminalColor.yellow('No sessions available.'))
+            return
+        }
+        if (sessions.length === 1) {
+            const s = sessions[0]
+            const isActive = s.id === activeId
+            println(
+                terminalColor.yellow(
+                    `No other session to switch to. Current: ${s.name}${isActive ? ' (active)' : ''}`,
+                ),
+            )
             return
         }
         const choice = await select({
-            message: 'Select session:',
+            message: 'Select session to switch to:',
             choices: sessions.map((s) => ({
-                name: force === s.id ? `${s.name} (active)` : s.name,
+                name: s.id === activeId ? `${s.name} (active)` : s.name,
                 value: s.id,
+                disabled: s.id === activeId ? 'current session' : false,
             })),
         })
         println(terminalColor.green(`Switched to session: ${choice}`))
