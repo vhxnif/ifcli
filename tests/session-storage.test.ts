@@ -1,26 +1,31 @@
 /**
- * 测试 SqliteSessionStorage — 新的树形存储层。
+ * 测试 SqliteSessionStorage — 树形存储层。
  */
 
 import Database from 'bun:sqlite'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { SqliteSessionStorage } from '../src/store/session-storage'
+import {
+    ensureStorageSchema,
+    SqliteSessionStorage,
+} from '../src/store/session-storage'
 
 describe('SqliteSessionStorage', () => {
     let db: Database
     let storage: SqliteSessionStorage
     let sessionId: string
+    let agentId: string
 
     beforeEach(async () => {
         db = new Database(':memory:')
+        ensureStorageSchema(db)
+        agentId = 'test-agent'
         sessionId = 'test-session'
-        // 先插入 session 行以满足外键约束
-        db.run(
-            "CREATE TABLE IF NOT EXISTS session (id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', model TEXT NOT NULL DEFAULT '', thinking_level TEXT NOT NULL DEFAULT 'off', system_prompt TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)",
-        )
         db.prepare(
-            'INSERT INTO session (id, name, model, thinking_level, system_prompt, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        ).run(sessionId, '', '', 'off', '', Date.now(), Date.now())
+            'INSERT INTO agent (id, name, model, thinking_level, system_prompt, active_mcps, active_custom_tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        ).run(agentId, '', '', 'off', '', '[]', '[]', Date.now(), Date.now())
+        db.prepare(
+            'INSERT INTO session (id, agent_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+        ).run(sessionId, agentId, '', Date.now(), Date.now())
         storage = new SqliteSessionStorage(db, sessionId)
     })
 
@@ -31,22 +36,16 @@ describe('SqliteSessionStorage', () => {
     test('should initialize with default metadata', async () => {
         const meta = await storage.getMetadata()
         expect(meta.name).toBe('')
-        expect(meta.model).toBe('')
-        expect(meta.thinkingLevel).toBe('off')
+        expect(meta.agentId).toBe(agentId)
     })
 
     test('should set and get metadata', async () => {
         await storage.setMetadata({
-            name: 'Test Chat',
-            model: 'deepseek/deepseek-chat',
-            thinkingLevel: 'high',
-            systemPrompt: 'You are helpful.',
+            name: 'Test Session',
         })
         const meta = await storage.getMetadata()
-        expect(meta.name).toBe('Test Chat')
-        expect(meta.model).toBe('deepseek/deepseek-chat')
-        expect(meta.thinkingLevel).toBe('high')
-        expect(meta.systemPrompt).toBe('You are helpful.')
+        expect(meta.name).toBe('Test Session')
+        expect(meta.agentId).toBe(agentId)
     })
 
     test('should append entries and track leaf', async () => {

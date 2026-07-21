@@ -4,7 +4,7 @@
  *          依赖 ../llm/agent-runner 的 AgentRunner，
  *          依赖 ../llm/pi-display-handler 的 PiDisplayHandler/PiThemeColors，
  *          依赖 ../llm/tool-registry 的 ToolRegistry，
- *          依赖 ../store/session-manager 的 SessionManager/SessionHandle，
+ *          依赖 ../store/agent-manager 的 AgentManager/AgentHandle/SessionHandle，
  *          依赖 ../config/app-setting 的 Setting
  * [OUTPUT]: ChatService 类（listSessions/createSession/getSession/deleteSession/runChat）
  * [POS]: src/action/ 的编排层，替代旧 chat-action.ts + action-types.ts + command-action.ts，被 CLI 命令消费
@@ -22,12 +22,16 @@ import { AgentRunner } from '../llm/agent-runner'
 import type { PiThemeColors } from '../llm/pi-display-handler'
 import { PiDisplayHandler } from '../llm/pi-display-handler'
 import type { ToolRegistry } from '../llm/tool-registry'
-import type { SessionHandle, SessionManager } from '../store/session-manager'
+import type {
+    AgentHandle,
+    AgentManager,
+    SessionHandle,
+} from '../store/agent-manager'
 
 // ── 类型 ──
 
 export interface ChatServiceConfig {
-    sessionManager: SessionManager
+    agentManager: AgentManager
     toolRegistry: ToolRegistry
     terminalColor: ChalkTerminalColor
     theme: ChalkChatBoxTheme
@@ -37,23 +41,31 @@ export interface ChatServiceConfig {
 
 export interface ChatRunOptions {
     content: string
+    agentId: string
     sessionId: string
     noStream?: boolean
-    modelStr?: string // "provider/modelId" — 覆盖 session 默认模型
+    modelStr?: string // "provider/modelId" — 覆盖 agent 默认模型
     thinkingLevel?: ThinkingLevel
 }
 
-export interface NewSessionOptions {
+export interface NewAgentOptions {
     name: string
     modelStr: string
     thinkingLevel?: ThinkingLevel
     systemPrompt?: string
+    activeMcps?: string[]
+    activeCustomTags?: string[]
+}
+
+export interface NewSessionOptions {
+    agentId: string
+    name: string
 }
 
 // ── ChatService ──
 
 export class ChatService {
-    private sessionManager: SessionManager
+    private agentManager: AgentManager
     private toolRegistry: ToolRegistry
     private terminalColor: ChalkTerminalColor
     private theme: ChalkChatBoxTheme
@@ -61,7 +73,7 @@ export class ChatService {
     private models: Models
 
     constructor(config: ChatServiceConfig) {
-        this.sessionManager = config.sessionManager
+        this.agentManager = config.agentManager
         this.toolRegistry = config.toolRegistry
         this.terminalColor = config.terminalColor
         this.theme = config.theme
@@ -69,50 +81,66 @@ export class ChatService {
         this.models = config.models
     }
 
+    // ── Agent CRUD ──
+
+    listAgents() {
+        return this.agentManager.listAgents()
+    }
+
+    createAgent(opts: NewAgentOptions): string {
+        const info = this.agentManager.createAgent(opts.name, {
+            model: opts.modelStr,
+            thinkingLevel: opts.thinkingLevel ?? 'off',
+            systemPrompt: opts.systemPrompt,
+            activeMcps: opts.activeMcps,
+            activeCustomTags: opts.activeCustomTags,
+        })
+        return info.id
+    }
+
+    getAgent(id: string): AgentHandle {
+        return this.agentManager.getAgent(id)
+    }
+
+    deleteAgent(id: string): void {
+        this.agentManager.deleteAgent(id)
+    }
+
     // ── Session CRUD ──
 
-    listSessions() {
-        return this.sessionManager.list()
+    listSessions(agentId: string) {
+        return this.agentManager.listSessions(agentId)
     }
 
     createSession(opts: NewSessionOptions): string {
-        const info = this.sessionManager.create(
-            opts.name,
-            opts.modelStr,
-            opts.thinkingLevel ?? 'off',
-        )
-        const handle = this.sessionManager.get(info.id)
-        const systemPrompt = opts.systemPrompt ?? ''
-        if (systemPrompt) {
-            handle.updateMeta({ systemPrompt })
-        }
+        const info = this.agentManager.createSession(opts.agentId, opts.name)
         return info.id
     }
 
     getSession(id: string): SessionHandle {
-        return this.sessionManager.get(id)
+        return this.agentManager.getSession(id)
     }
 
     deleteSession(id: string): void {
-        this.sessionManager.delete(id)
+        this.agentManager.deleteSession(id)
     }
 
     // ── 主对话流程 ──
 
     async runChat(opts: ChatRunOptions): Promise<void> {
-        const handle = this.sessionManager.get(opts.sessionId)
-        const meta = await handle.storage.getMetadata()
+        const agentMeta = this.agentManager.getAgentMeta(opts.agentId)
+        const handle = this.agentManager.getSession(opts.sessionId)
 
         // 确定模型
-        const modelStr = opts.modelStr || meta.model
-        const thinkingLevel = opts.thinkingLevel ?? meta.thinkingLevel
+        const modelStr = opts.modelStr || agentMeta.model
+        const thinkingLevel = opts.thinkingLevel ?? agentMeta.thinkingLevel
 
         // 从 Pi Models 注册表解析真实 Model 对象
         const model = this.resolveModel(modelStr)
 
-        // 按 session 配置启用工具
-        this.toolRegistry.setActiveMcps(meta.activeMcps)
-        this.toolRegistry.setActiveCustomTools(meta.activeCustomTags)
+        // 按 agent 配置启用工具
+        this.toolRegistry.setActiveMcps(agentMeta.activeMcps)
+        this.toolRegistry.setActiveCustomTools(agentMeta.activeCustomTags)
 
         // 构建 tools
         const tools = await this.toolRegistry.buildActiveTools()
@@ -134,7 +162,7 @@ export class ChatService {
         const runner = new AgentRunner({
             model,
             tools,
-            systemPrompt: meta.systemPrompt || '',
+            systemPrompt: agentMeta.systemPrompt || '',
             thinkingLevel,
         })
 
@@ -184,7 +212,7 @@ export class ChatService {
             // 自动命名
             const setting = this.currentSetting
             if (setting?.session?.autoName?.enabled) {
-                await this.sessionManager.autoName(
+                await this.agentManager.autoName(
                     handle,
                     async (_content, _modelStr) => {
                         // 使用 session.autoName.model 指定的便宜模型

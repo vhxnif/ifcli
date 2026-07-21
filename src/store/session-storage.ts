@@ -1,13 +1,12 @@
 /**
- * [INPUT]: 依赖 bun:sqlite 的 Database，依赖 @earendil-works/pi-agent-core 的 ThinkingLevel，
+ * [INPUT]: 依赖 bun:sqlite 的 Database，
  *          依赖 ../llm/pi-types 的 SessionEntry/SessionEntryType/SessionMeta/SessionStorage
  * [OUTPUT]: SqliteSessionStorage 类（实现 SessionStorage 接口 — getMetadata/setMetadata/appendEntry/getPathToRoot 等）
- * [POS]: src/store/ 的 SQLite 存储实现，替代旧 db-client.ts + table-def.ts + store.ts + store-types.ts，被 session-manager 消费
+ * [POS]: src/store/ 的 SQLite 存储实现，替代旧 db-client.ts + table-def.ts + store.ts + store-types.ts，被 agent-manager 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
 import type Database from 'bun:sqlite'
-import type { ThinkingLevel } from '@earendil-works/pi-agent-core'
 import type {
     SessionEntry,
     SessionEntryType,
@@ -17,10 +16,10 @@ import type {
 
 // ── SQL schema ──
 
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS session (
+export const SCHEMA = `
+CREATE TABLE IF NOT EXISTS agent (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT '' UNIQUE,
     model TEXT NOT NULL DEFAULT '',
     thinking_level TEXT NOT NULL DEFAULT 'off',
     system_prompt TEXT NOT NULL DEFAULT '',
@@ -28,6 +27,15 @@ CREATE TABLE IF NOT EXISTS session (
     active_custom_tags TEXT NOT NULL DEFAULT '[]',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS session (
+    id TEXT PRIMARY KEY,
+    agent_id TEXT NOT NULL,
+    name TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (agent_id) REFERENCES agent(id)
 );
 
 CREATE TABLE IF NOT EXISTS session_entry (
@@ -62,17 +70,7 @@ export class SqliteSessionStorage implements SessionStorage {
     constructor(db: Database, sessionId: string) {
         this.db = db
         this.sessionId = sessionId
-        this.ensureSchema()
-    }
-
-    private ensureSchema(): void {
-        this.db.run('PRAGMA journal_mode = WAL')
-        this.db.run('PRAGMA foreign_keys = ON')
-        for (const stmt of SCHEMA.split(';')
-            .map((s) => s.trim())
-            .filter(Boolean)) {
-            this.db.run(stmt)
-        }
+        ensureStorageSchema(this.db)
     }
 
     // ── Metadata ──
@@ -80,29 +78,15 @@ export class SqliteSessionStorage implements SessionStorage {
     async getMetadata(): Promise<SessionMeta> {
         const row = this.db
             .query(
-                `SELECT name, model, thinking_level as thinkingLevel, system_prompt as systemPrompt, active_mcps as activeMcps, active_custom_tags as activeCustomTags, created_at as createdAt, updated_at as updatedAt
+                `SELECT agent_id as agentId, name, created_at as createdAt, updated_at as updatedAt
                  FROM session WHERE id = ?`,
             )
             .get(this.sessionId) as Record<string, unknown> | undefined
 
-        const parseArr = (raw: unknown): string[] => {
-            if (typeof raw !== 'string' || raw === '') return []
-            try {
-                const parsed = JSON.parse(raw)
-                return Array.isArray(parsed) ? parsed : []
-            } catch {
-                return []
-            }
-        }
-
         // 如果行不存在（session 尚未 create），返回默认值
         return {
+            agentId: (row?.agentId as string) || '',
             name: (row?.name as string) || '',
-            model: (row?.model as string) || '',
-            thinkingLevel: (row?.thinkingLevel as ThinkingLevel) || 'off',
-            systemPrompt: (row?.systemPrompt as string) || '',
-            activeMcps: parseArr(row?.activeMcps),
-            activeCustomTags: parseArr(row?.activeCustomTags),
             createdAt: (row?.createdAt as number) || Date.now(),
             updatedAt: (row?.updatedAt as number) || Date.now(),
         }
@@ -111,30 +95,20 @@ export class SqliteSessionStorage implements SessionStorage {
     async setMetadata(meta: Partial<SessionMeta>): Promise<void> {
         const existing = await this.getMetadata()
         const merged = {
+            agentId: meta.agentId ?? existing.agentId ?? '',
             name: meta.name ?? existing.name ?? '',
-            model: meta.model ?? existing.model ?? '',
-            thinkingLevel:
-                meta.thinkingLevel ?? existing.thinkingLevel ?? 'off',
-            systemPrompt: meta.systemPrompt ?? existing.systemPrompt ?? '',
-            activeMcps: meta.activeMcps ?? existing.activeMcps,
-            activeCustomTags:
-                meta.activeCustomTags ?? existing.activeCustomTags,
             createdAt: meta.createdAt ?? existing.createdAt ?? Date.now(),
             updatedAt: Date.now(),
         }
 
         this.db
             .prepare(
-                `INSERT OR REPLACE INTO session (id, name, model, thinking_level, system_prompt, active_mcps, active_custom_tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT OR REPLACE INTO session (id, agent_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
             )
             .run(
                 this.sessionId,
+                merged.agentId,
                 merged.name,
-                merged.model,
-                merged.thinkingLevel,
-                merged.systemPrompt,
-                JSON.stringify(merged.activeMcps),
-                JSON.stringify(merged.activeCustomTags),
                 merged.createdAt,
                 merged.updatedAt,
             )
@@ -251,5 +225,15 @@ export class SqliteSessionStorage implements SessionStorage {
             order: row.order as number,
             timestamp: row.timestamp as number,
         }
+    }
+}
+
+export function ensureStorageSchema(db: Database): void {
+    db.run('PRAGMA journal_mode = WAL')
+    db.run('PRAGMA foreign_keys = ON')
+    for (const stmt of SCHEMA.split(';')
+        .map((s) => s.trim())
+        .filter(Boolean)) {
+        db.run(stmt)
     }
 }

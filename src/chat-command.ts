@@ -17,10 +17,7 @@ import {
     toolRegistry,
 } from './app-context'
 import { commanderHelpConfiguration } from './component/theme/color-scheme'
-import type { ChalkTerminalColor } from './component/theme/theme-type'
 import { APP_VERSION } from './config/app-setting'
-import type { SessionEntry } from './llm/pi-types'
-import type { SessionHandle } from './store/session-manager'
 import {
     editor,
     isEmpty,
@@ -30,118 +27,30 @@ import {
     println,
     stdin,
 } from './util/common-utils'
-import {
-    checkbox,
-    checkboxThemeStyle,
-    select,
-    selectThemeStyle,
-} from './util/inquirer-utils'
+import { checkbox, checkboxThemeStyle, select } from './util/inquirer-utils'
 
-const getCurrentSessionId = (): string | undefined => {
-    const sessions = chatService.listSessions()
+const getCurrentAgentId = (): string | undefined => {
+    const agents = chatService.listAgents()
+    return agents[0]?.id
+}
+
+const getCurrentSessionId = (agentId: string): string | undefined => {
+    const sessions = chatService.listSessions(agentId)
     return sessions[0]?.id
 }
 
-const getUserContent = (entry: SessionEntry): string => {
-    try {
-        const msg = JSON.parse(entry.content)
-        const content =
-            typeof msg.content === 'string'
-                ? msg.content
-                : JSON.stringify(msg.content)
-        return content
-    } catch {
-        return ''
-    }
-}
-
-const buildLeafChoices = async (
-    handle: SessionHandle,
-): Promise<{ name: string; value: string }[]> => {
-    const entries = await handle.storage.getEntries()
-    const userEntries = entries.filter((e) => {
-        if (e.entryType !== 'message') return false
-        try {
-            return JSON.parse(e.content).role === 'user'
-        } catch {
-            return false
-        }
+const getOrCreateCurrentSession = async (
+    agentId: string,
+    contentHint: string,
+): Promise<string> => {
+    const sessions = chatService.listSessions(agentId)
+    if (sessions.length > 0) return sessions[0].id
+    return chatService.createSession({
+        agentId,
+        name:
+            contentHint.slice(0, 50) ||
+            `Session ${new Date().toLocaleString()}`,
     })
-    if (userEntries.length === 0) return []
-
-    const currentPath = await handle.storage.getPathToRoot()
-    const activeUserEntry = [...currentPath].reverse().find((e) => {
-        if (e.entryType !== 'message') return false
-        try {
-            return JSON.parse(e.content).role === 'user'
-        } catch {
-            return false
-        }
-    })
-    const activeUserId = activeUserEntry?.id
-
-    // 建立 entry 查找表，用于找到每条 user 消息在 user 树中的最近 user 祖先
-    const entryMap = new Map(entries.map((e) => [e.id, e]))
-    const userIds = new Set(userEntries.map((e) => e.id))
-    const nearestUserAncestor = new Map<string, string | null>()
-
-    const findNearestUserAncestor = (id: string | null): string | null => {
-        if (!id) return null
-        if (nearestUserAncestor.has(id)) return nearestUserAncestor.get(id)!
-        const parentId = entryMap.get(id)?.parentId ?? null
-        const result = userIds.has(id) ? id : findNearestUserAncestor(parentId)
-        nearestUserAncestor.set(id, result)
-        return result
-    }
-
-    const childrenMap = new Map<string | null, SessionEntry[]>()
-    for (const e of userEntries) {
-        const ancestorId = findNearestUserAncestor(e.parentId)
-        if (!childrenMap.has(ancestorId)) childrenMap.set(ancestorId, [])
-        childrenMap.get(ancestorId)!.push(e)
-    }
-    for (const list of childrenMap.values()) {
-        list.sort((a, b) => a.order - b.order)
-    }
-
-    const walk = (
-        parentId: string | null,
-        depth: number,
-    ): { name: string; value: string }[] => {
-        const children = childrenMap.get(parentId) ?? []
-        const result: { name: string; value: string }[] = []
-        for (let i = 0; i < children.length; i++) {
-            const child = children[i]
-            const isLast = i === children.length - 1
-            const indent =
-                depth === 0
-                    ? ''
-                    : `${'  '.repeat(depth - 1)}${isLast ? '└─ ' : '├─ '}`
-            const activeMark = child.id === activeUserId ? ' (active)' : ''
-            result.push({
-                name: `${indent}[${child.id.slice(0, 8)}] ${getUserContent(child).slice(0, 50)}${activeMark}`,
-                value: child.id,
-            })
-            result.push(...walk(child.id, depth + 1))
-        }
-        return result
-    }
-
-    return walk(null, 0)
-}
-
-const leafSelectTheme = (color: ChalkTerminalColor) => {
-    const base = selectThemeStyle(color)
-    return {
-        ...base,
-        style: {
-            ...base.style,
-            answer: (text: string) =>
-                base.style.answer(
-                    text.replace(/^(?:(?:\s{2}|[├└]─ )+)(?:\[\w{8}\]\s)?/, ''),
-                ),
-        },
-    }
 }
 
 const defaultModelStr = (): string => {
@@ -161,10 +70,13 @@ program
     .alias('ict')
     .version(`${APP_VERSION}`)
     .description('Interactive AI chat interface (powered by Pi)')
-    .option('-f, --force <id>', 'use specified chat session')
+    .option('-f, --force <id>', 'use specified agent')
     .option('-s, --sync-call', 'use synchronous (non-streaming) mode')
     .option('-e, --edit', 'open editor for input')
-    .option('-t, --new-session', 'create a new session for this message')
+    .option(
+        '-t, --new-session',
+        'create a new session under current agent for this message',
+    )
     .option('-r, --retry', 'retry the last question')
     .option('-a, --attachment <file>', 'attach text file content to message')
     .argument(
@@ -180,33 +92,46 @@ program
             return `# User\n\n${ct}\n\n# Attachment \n\n${fileContent}`
         }
 
-        const getOrCreateSession = async (): Promise<string> => {
-            if (force) return force
-            if (newSession) {
-                const name = `Chat ${new Date().toLocaleString()}`
-                return chatService.createSession({
-                    name,
+        const getOrCreateAgent = async (): Promise<string | undefined> => {
+            if (force) {
+                const agents = chatService.listAgents()
+                const match =
+                    agents.find((a) => a.id === force) ||
+                    agents.find((a) => a.name === force)
+                if (!match) {
+                    println(
+                        terminalColor.red(
+                            `Agent not found: ${force}. Use "ict switch" to list agents.`,
+                        ),
+                    )
+                    return undefined
+                }
+                return match.id
+            }
+            const agents = chatService.listAgents()
+            if (agents.length === 0) {
+                return chatService.createAgent({
+                    name:
+                        content.join(' ').slice(0, 50) ||
+                        `Agent ${new Date().toLocaleString()}`,
                     modelStr: defaultModelStr(),
                 })
             }
-            // 获取第一个 session 或创建
-            const sessions = chatService.listSessions()
-            if (sessions.length === 0) {
-                const name =
-                    content.join(' ').slice(0, 50) ||
-                    `Chat ${new Date().toLocaleString()}`
-                return chatService.createSession({
-                    name,
-                    modelStr: defaultModelStr(),
-                })
-            }
-            return sessions[0].id
+            return agents[0].id
         }
 
         const ask = async (ct: string) => {
-            const sessionId = await getOrCreateSession()
+            const agentId = await getOrCreateAgent()
+            if (!agentId) return
+            const sessionId = newSession
+                ? chatService.createSession({
+                      agentId,
+                      name: `Session ${new Date().toLocaleString()}`,
+                  })
+                : await getOrCreateCurrentSession(agentId, content.join(' '))
             await chatService.runChat({
                 content: await withAttachment(ct),
+                agentId,
                 sessionId,
                 noStream: !!syncCall,
             })
@@ -235,16 +160,26 @@ program
 
 program
     .command('new')
-    .description('create a new chat session')
-    .argument('<name>', 'name for the new session')
+    .description('create a new agent (chat)')
+    .argument('<name>', 'name for the new agent')
     .option('-m, --model <str>', 'model as provider/modelId', defaultModelStr())
     .action(async (name, { model }) => {
-        chatService.createSession({ name, modelStr: model })
-        println(
-            terminalColor.green(
-                `Session "${name}" created with model ${model}`,
-            ),
-        )
+        try {
+            const agentId = chatService.createAgent({ name, modelStr: model })
+            chatService.createSession({
+                agentId,
+                name: `Default Session ${new Date().toLocaleString()}`,
+            })
+            println(
+                terminalColor.green(
+                    `Agent "${name}" created with model ${model}`,
+                ),
+            )
+        } catch (e: unknown) {
+            println(
+                terminalColor.red(e instanceof Error ? e.message : String(e)),
+            )
+        }
     })
 
 // ── remove ──
@@ -252,25 +187,25 @@ program
 program
     .command('remove')
     .alias('rm')
-    .description('delete a chat session')
+    .description('delete an agent (chat) and all its sessions')
     .action(async (_, cmd) => {
         const force = cmd.parent?.opts()?.force as string | undefined
         if (force) {
-            chatService.deleteSession(force)
-            println(terminalColor.green(`Session deleted.`))
+            chatService.deleteAgent(force)
+            println(terminalColor.green(`Agent deleted.`))
             return
         }
-        const sessions = chatService.listSessions()
-        if (sessions.length === 0) {
-            println(terminalColor.yellow('No sessions to remove.'))
+        const agents = chatService.listAgents()
+        if (agents.length === 0) {
+            println(terminalColor.yellow('No agents to remove.'))
             return
         }
         const choice = await select({
-            message: 'Select session to remove:',
-            choices: sessions.map((s) => ({ name: s.name, value: s.id })),
+            message: 'Select agent to remove:',
+            choices: agents.map((a) => ({ name: a.name, value: a.id })),
         })
-        chatService.deleteSession(choice)
-        println(terminalColor.green(`Session deleted.`))
+        chatService.deleteAgent(choice)
+        println(terminalColor.green(`Agent deleted.`))
     })
 
 // ── switch ──
@@ -278,70 +213,34 @@ program
 program
     .command('switch')
     .alias('st')
-    .description('switch between chat sessions or conversation leaves')
-    .option('--leaf', 'switch conversation leaf for the selected session')
-    .action(async (options, cmd) => {
-        const { leaf } = options
+    .description('switch between agents (chats)')
+    .action(async (_, cmd) => {
         const force = cmd.parent?.opts()?.force as string | undefined
-
-        if (leaf) {
-            const sessionId = force || getCurrentSessionId()
-            if (!sessionId) {
-                println(
-                    terminalColor.yellow(
-                        'No session selected. Use -f <session-id> or start a chat first.',
-                    ),
-                )
-                return
-            }
-            const handle = chatService.getSession(sessionId)
-            const choices = await buildLeafChoices(handle)
-            if (choices.length === 0) {
-                println(
-                    terminalColor.yellow('No conversation leaves available.'),
-                )
-                return
-            }
-            const choice = await select({
-                message: 'Select question to branch from:',
-                choices,
-                theme: leafSelectTheme(terminalColor),
-            })
-            await handle.switchLeaf(choice)
-            println(
-                terminalColor.green(
-                    `Switched to leaf: ${choice.slice(0, 8)}...`,
-                ),
-            )
+        const agents = chatService.listAgents()
+        const activeId = force || getCurrentAgentId()
+        if (agents.length === 0) {
+            println(terminalColor.yellow('No agents available.'))
             return
         }
-
-        const sessions = chatService.listSessions()
-        const activeId = force || getCurrentSessionId()
-        if (sessions.length === 0) {
-            println(terminalColor.yellow('No sessions available.'))
-            return
-        }
-        if (sessions.length === 1) {
-            const s = sessions[0]
-            const isActive = s.id === activeId
+        if (agents.length === 1) {
+            const a = agents[0]
+            const isActive = a.id === activeId
             println(
                 terminalColor.yellow(
-                    `No other session to switch to. Current: ${s.name}${isActive ? ' (active)' : ''}`,
+                    `No other agent to switch to. Current: ${a.name}${isActive ? ' (active)' : ''}`,
                 ),
             )
             return
         }
         const choice = await select({
-            message: 'Select session to switch to:',
-            choices: sessions.map((s) => ({
-                name: s.id === activeId ? `${s.name} (active)` : s.name,
-                value: s.id,
-                disabled: s.id === activeId ? 'current session' : false,
+            message: 'Select agent to switch to:',
+            choices: agents.map((a) => ({
+                name: a.id === activeId ? `${a.name} (active)` : a.name,
+                value: a.id,
+                disabled: a.id === activeId ? 'current agent' : false,
             })),
         })
-        println(terminalColor.green(`Switched to session: ${choice}`))
-        // 后续命令通过 -f 指定 session id
+        println(terminalColor.green(`Switched to agent: ${choice}`))
         println(chalk.gray(`Use: ict -f ${choice.slice(0, 8)}... <message>`))
     })
 
@@ -350,28 +249,27 @@ program
 program
     .command('config')
     .alias('cf')
-    .description('configure chat session settings')
+    .description('configure current agent (chat) settings')
     .option('-m, --model', 'switch AI model')
     .option(
         '-r, --reasoning <level>',
         'set reasoning level (off/minimal/low/medium/high/xhigh/max)',
     )
-    .option('-p, --prompt', 'modify system prompt')
-    .option('-t, --tools', 'enable/disable tools for this session')
-    .action(async ({ model, reasoning, prompt, tools }, cmd) => {
+    .option('-t, --tools', 'enable/disable tools for this agent')
+    .action(async ({ model, reasoning, tools }, cmd) => {
         const force =
             (cmd.parent?.opts()?.force as string | undefined) ||
-            getCurrentSessionId()
+            getCurrentAgentId()
         if (!force) {
             println(
                 terminalColor.yellow(
-                    'No sessions available. Use -f <session-id> or start a chat first.',
+                    'No agents available. Use -f <agent-id> or start a chat first.',
                 ),
             )
             return
         }
-        const handle = chatService.getSession(force)
-        const meta = await handle.storage.getMetadata()
+        const handle = chatService.getAgent(force)
+        const meta = await handle.info
 
         if (reasoning) {
             const validLevels = [
@@ -391,7 +289,7 @@ program
                 )
                 return
             }
-            await handle.updateMeta({
+            await handle.update({
                 thinkingLevel: reasoning as ThinkingLevel,
             })
             println(terminalColor.green(`Reasoning level set to: ${reasoning}`))
@@ -415,17 +313,8 @@ program
                 message: 'Select model (provider/modelId):',
                 choices,
             })
-            await handle.updateMeta({ model: modelStr })
+            await handle.update({ model: modelStr })
             println(terminalColor.green(`Model set to: ${modelStr}`))
-        }
-
-        if (prompt) {
-            const current = meta.systemPrompt || '(none)'
-            const newPrompt = await editor(current)
-            if (newPrompt !== undefined && newPrompt !== current) {
-                await handle.updateMeta({ systemPrompt: newPrompt })
-                println(terminalColor.green('System prompt updated.'))
-            }
         }
 
         if (tools) {
@@ -448,7 +337,7 @@ program
                 checked: active.has(g.id),
             }))
             const selected = await checkbox({
-                message: 'Select active tools for this session:',
+                message: 'Select active tools for this agent:',
                 choices,
                 theme: checkboxThemeStyle(terminalColor),
             })
@@ -458,18 +347,15 @@ program
             const activeCustomTags = selected
                 .filter((id) => id.startsWith('custom:'))
                 .map((id) => id.slice(7))
-            await handle.updateMeta({ activeMcps, activeCustomTags })
+            await handle.update({ activeMcps, activeCustomTags })
             println(terminalColor.green('Active tools updated.'))
         }
 
-        if (!reasoning && !model && !prompt && !tools) {
+        if (!reasoning && !model && !tools) {
             // 显示当前配置
-            println(chalk.bold('Session Configuration:'))
+            println(chalk.bold('Agent Configuration:'))
             println(`  Model: ${meta.model || '(not set)'}`)
             println(`  Reasoning Level: ${meta.thinkingLevel}`)
-            println(
-                `  System Prompt: ${meta.systemPrompt ? `${meta.systemPrompt.slice(0, 100)}...` : '(none)'}`,
-            )
             println(`  Active MCPs: ${meta.activeMcps.join(', ') || '(none)'}`)
             println(
                 `  Active Custom Tags: ${meta.activeCustomTags.join(', ') || '(none)'}`,
@@ -482,21 +368,28 @@ program
 program
     .command('history')
     .alias('hs')
-    .description('view chat conversation history')
+    .description('view current session (topic) conversation history')
     .option('-l, --limit <number>', 'max messages to display', '50')
     .action(async ({ limit }, cmd) => {
-        const force =
+        const agentId =
             (cmd.parent?.opts()?.force as string | undefined) ||
-            getCurrentSessionId()
-        if (!force) {
+            getCurrentAgentId()
+        if (!agentId) {
             println(
                 terminalColor.yellow(
-                    'No sessions available. Use -f <session-id> or start a chat first.',
+                    'No agents available. Use -f <agent-id> or start a chat first.',
                 ),
             )
             return
         }
-        const handle = chatService.getSession(force)
+        const sessionId = getCurrentSessionId(agentId)
+        if (!sessionId) {
+            println(
+                terminalColor.yellow('No sessions available for this agent.'),
+            )
+            return
+        }
+        const handle = chatService.getSession(sessionId)
         const entries = await handle.storage.getEntries()
         const msgEntries = entries
             .filter((e) => e.entryType === 'message')
@@ -534,6 +427,98 @@ program
                 ),
             )
         }
+    })
+
+// ── session ──
+
+const sessionCmd = program
+    .command('session')
+    .alias('ss')
+    .description('manage sessions (topics) under current agent')
+
+sessionCmd
+    .command('new')
+    .description('create a new session under current agent')
+    .argument('<name>', 'name for the new session')
+    .action(async (name, cmd) => {
+        const agentId =
+            ((cmd as any).optsWithGlobals?.()?.force as string | undefined) ||
+            getCurrentAgentId()
+        if (!agentId) {
+            println(
+                terminalColor.yellow(
+                    'No agents available. Use -f <agent-id> or start a chat first.',
+                ),
+            )
+            return
+        }
+        const sessionId = chatService.createSession({ agentId, name })
+        println(terminalColor.green(`Session "${name}" created.`))
+        println(
+            chalk.gray(`Use: ict -f ${agentId.slice(0, 8)}... -t <message>`),
+        )
+        println(chalk.gray(`Session id: ${sessionId.slice(0, 8)}...`))
+    })
+
+sessionCmd
+    .command('switch')
+    .alias('sw')
+    .description('switch session under current agent')
+    .action(async (_, cmd) => {
+        const agentId =
+            ((cmd as any).optsWithGlobals?.()?.force as string | undefined) ||
+            getCurrentAgentId()
+        if (!agentId) {
+            println(
+                terminalColor.yellow(
+                    'No agents available. Use -f <agent-id> or start a chat first.',
+                ),
+            )
+            return
+        }
+        const sessions = chatService.listSessions(agentId)
+        if (sessions.length === 0) {
+            println(terminalColor.yellow('No sessions available.'))
+            return
+        }
+        const choice = await select({
+            message: 'Select session to switch to:',
+            choices: sessions.map((s) => ({
+                name: s.name,
+                value: s.id,
+            })),
+        })
+        println(terminalColor.green(`Switched to session: ${choice}`))
+        println(chalk.gray(`Use: ict -f ${agentId.slice(0, 8)}... <message>`))
+    })
+
+sessionCmd
+    .command('remove')
+    .alias('rm')
+    .description('remove a session under current agent')
+    .action(async (_, cmd) => {
+        const agentId =
+            ((cmd as any).optsWithGlobals?.()?.force as string | undefined) ||
+            getCurrentAgentId()
+        if (!agentId) {
+            println(
+                terminalColor.yellow(
+                    'No agents available. Use -f <agent-id> or start a chat first.',
+                ),
+            )
+            return
+        }
+        const sessions = chatService.listSessions(agentId)
+        if (sessions.length === 0) {
+            println(terminalColor.yellow('No sessions to remove.'))
+            return
+        }
+        const choice = await select({
+            message: 'Select session to remove:',
+            choices: sessions.map((s) => ({ name: s.name, value: s.id })),
+        })
+        chatService.deleteSession(choice)
+        println(terminalColor.green(`Session deleted.`))
     })
 
 program.parseAsync().catch((e: unknown) => {

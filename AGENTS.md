@@ -32,7 +32,7 @@ src/
 │   └── mcp-client.ts      — MCP 协议客户端（保留自旧架构）
 ├── store/                 — 存储层 (2 文件)
 │   ├── session-storage.ts — SQLite 实现 Pi SessionStorage 接口（树形）
-│   └── session-manager.ts — 多 session 生命周期管理
+│   └── agent-manager.ts — agent/session 两层生命周期管理
 ├── action/                — 服务层 (1 文件)
 │   └── chat-service.ts    — 聊天编排服务（Session + Agent + Display + Tool）
 ├── config/                — 配置层 (4 文件)

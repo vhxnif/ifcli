@@ -2,7 +2,7 @@
  * [INPUT]: 依赖 @earendil-works/pi-ai 的 Message/Model/Context/Tool/AssistantMessage 类型,
  *          依赖 @earendil-works/pi-agent-core 的 AgentMessage/AgentTool/ThinkingLevel 类型
  * [OUTPUT]: 重导出 Pi 类型，定义 SessionEntry/SessionStorage/SessionMeta/ChatConfig/CustomToolDef/PiDisplayEvent（含 usage 缓存字段）
- * [POS]: src/llm/ 的类型基石，被 agent-runner/pi-display-handler/tool-registry/session-storage/session-manager/chat-service 消费
+ * [POS]: src/llm/ 的类型基石，被 agent-runner/pi-display-handler/tool-registry/session-storage/agent-manager/chat-service 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  *
  * 核心类型 — 基于 Pi 的 AgentMessage / SessionTree / SessionStorage。
@@ -63,9 +63,9 @@ export interface SessionEntry {
     timestamp: number
 }
 
-// ── Session (chat) 元数据 ──
+// ── Agent (chat) 元数据 ──
 
-export interface SessionMeta {
+export interface AgentMeta {
     name: string
     /** provider/modelId，如 "deepseek/deepseek-chat" */
     model: string
@@ -73,10 +73,19 @@ export interface SessionMeta {
     thinkingLevel: ThinkingLevel
     /** 系统提示词 */
     systemPrompt: string
-    /** 当前 session 启用的 MCP 服务器名 */
+    /** 当前 agent 启用的 MCP 服务器名 */
     activeMcps: string[]
-    /** 当前 session 启用的自定义工具标签 */
+    /** 当前 agent 启用的自定义工具标签 */
     activeCustomTags: string[]
+    createdAt: number
+    updatedAt: number
+}
+
+// ── Session (topic) 元数据 ──
+
+export interface SessionMeta {
+    name: string
+    agentId: string
     createdAt: number
     updatedAt: number
 }
