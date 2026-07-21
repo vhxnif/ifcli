@@ -71,8 +71,3 @@ CLI (chat-command / setting-command)
 ```
 
 扩展点: SessionStorage 接口、StreamFn、transformContext hook、AgentTool<any>、PiDisplayHandler。
-
-## 项目规则
-
-> 所有规则定义在 [GEB_GUIDE.md](./GEB_GUIDE.md)。开始任何工作前必须先读取该文件。
-> 包含: 分形文档协议 (L1/L2/L3)、同构铁律、强制回环、死罪清单、SOLID/DRY/KISS/YAGNI、编码规范。
