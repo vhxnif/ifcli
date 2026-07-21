@@ -130,6 +130,7 @@ export class ChatService {
             theme: this.theme,
             piColors: this.piColors,
             enableSpinner: !opts.noStream,
+            quiet: opts.noStream,
         })
 
         // 运行 agent

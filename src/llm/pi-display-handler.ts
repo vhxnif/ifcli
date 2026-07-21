@@ -40,6 +40,8 @@ export interface PiDisplayOptions {
     piColors: PiThemeColors
     enableSpinner?: boolean
     spinnerName?: SpinnerName
+    /** 静默模式：只输出最终结果，不展示过程（思考、工具调用、用量等） */
+    quiet?: boolean
 }
 
 // ── 默认 Pi 色板 ──
@@ -65,11 +67,14 @@ export class PiDisplayHandler {
     private piColors: PiThemeColors
     private spinner?: OraShow
     private currentMode: 'idle' | 'thinking' | 'assistant' | 'tool' = 'idle'
+    private quiet: boolean
+    private textBuffer: string = ''
 
     constructor(options: PiDisplayOptions) {
         this.color = options.color
         this.theme = options.theme
         this.piColors = options.piColors
+        this.quiet = options.quiet ?? false
 
         if (options.enableSpinner !== false) {
             this.spinner = new OraShow(
@@ -85,6 +90,10 @@ export class PiDisplayHandler {
 
     /** text_delta: 助手回复正文 */
     onTextDelta(delta: string): void {
+        if (this.quiet) {
+            this.textBuffer += delta
+            return
+        }
         this.transitionTo('assistant')
         this.spinner?.stop()
         print(this.theme.assisant.content(delta))
@@ -97,6 +106,9 @@ export class PiDisplayHandler {
 
     /** thinking_delta: 思考过程 */
     onThinkingDelta(delta: string): void {
+        if (this.quiet) {
+            return
+        }
         this.transitionTo('thinking')
         this.spinner?.stop()
         print(chalk[this.piColors.thinking](delta))
@@ -110,6 +122,9 @@ export class PiDisplayHandler {
 
     /** toolcall_start: 工具调用开始 */
     onToolcallStart(name: string): void {
+        if (this.quiet) {
+            return
+        }
         this.transitionTo('tool')
         this.spinner?.stop()
         println('')
@@ -126,6 +141,9 @@ export class PiDisplayHandler {
 
     /** toolcall_end: 工具调用完成 */
     onToolcallEnd(name: string, result: string): void {
+        if (this.quiet) {
+            return
+        }
         const truncated =
             result.length > 200
                 ? `${result.slice(0, 100)}...${result.slice(-100)}`
@@ -141,6 +159,13 @@ export class PiDisplayHandler {
     /** done: 完成 */
     onDone(usage?: PiDisplayEvent['usage']): void {
         this.spinner?.stop()
+        if (this.quiet) {
+            if (this.textBuffer) {
+                println(this.theme.assisant.content(this.textBuffer))
+            }
+            this.currentMode = 'idle'
+            return
+        }
         if (usage) {
             const parts = [
                 `in: ${usage.input}`,
