@@ -353,12 +353,12 @@ program
     .description('configure chat session settings')
     .option('-m, --model', 'switch AI model')
     .option(
-        '-t, --thinking <level>',
-        'set thinking level (off/minimal/low/medium/high/xhigh/max)',
+        '-r, --reasoning <level>',
+        'set reasoning level (off/minimal/low/medium/high/xhigh/max)',
     )
     .option('-p, --prompt', 'modify system prompt')
-    .option('--tools', 'enable/disable tools for this session')
-    .action(async ({ model, thinking, prompt, tools }, cmd) => {
+    .option('-t, --tools', 'enable/disable tools for this session')
+    .action(async ({ model, reasoning, prompt, tools }, cmd) => {
         const force =
             (cmd.parent?.opts()?.force as string | undefined) ||
             getCurrentSessionId()
@@ -373,7 +373,7 @@ program
         const handle = chatService.getSession(force)
         const meta = await handle.storage.getMetadata()
 
-        if (thinking) {
+        if (reasoning) {
             const validLevels = [
                 'off',
                 'minimal',
@@ -383,18 +383,18 @@ program
                 'xhigh',
                 'max',
             ]
-            if (!validLevels.includes(thinking)) {
+            if (!validLevels.includes(reasoning)) {
                 println(
                     terminalColor.red(
-                        `Invalid thinking level: ${thinking}. Valid: ${validLevels.join(', ')}`,
+                        `Invalid reasoning level: ${reasoning}. Valid: ${validLevels.join(', ')}`,
                     ),
                 )
                 return
             }
             await handle.updateMeta({
-                thinkingLevel: thinking as ThinkingLevel,
+                thinkingLevel: reasoning as ThinkingLevel,
             })
-            println(terminalColor.green(`Thinking level set to: ${thinking}`))
+            println(terminalColor.green(`Reasoning level set to: ${reasoning}`))
         }
 
         if (model) {
@@ -462,11 +462,11 @@ program
             println(terminalColor.green('Active tools updated.'))
         }
 
-        if (!thinking && !model && !prompt && !tools) {
+        if (!reasoning && !model && !prompt && !tools) {
             // 显示当前配置
             println(chalk.bold('Session Configuration:'))
             println(`  Model: ${meta.model || '(not set)'}`)
-            println(`  Thinking Level: ${meta.thinkingLevel}`)
+            println(`  Reasoning Level: ${meta.thinkingLevel}`)
             println(
                 `  System Prompt: ${meta.systemPrompt ? `${meta.systemPrompt.slice(0, 100)}...` : '(none)'}`,
             )

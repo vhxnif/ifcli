@@ -27,8 +27,6 @@ export type AutoNameConfig = {
 
 export type SessionConfig = {
     autoName: AutoNameConfig
-    /** 新建 session 时默认使用的系统提示词 */
-    defaultSystemPrompt: string
 }
 
 export type CompactionConfig = {
@@ -75,7 +73,6 @@ const defaultSessionConfig: SessionConfig = {
         enabled: true,
         model: 'openai/gpt-4o-mini',
     },
-    defaultSystemPrompt: '',
 }
 
 const defaultCompaction: CompactionConfig = {

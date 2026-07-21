@@ -1,9 +1,11 @@
 #!/usr/bin/env bun
+import { pathToFileURL } from 'node:url'
 import { Command } from '@commander-js/extra-typings'
 import chalk from 'chalk'
 import { setting, terminalColor } from './app-context'
 import { commanderHelpConfiguration } from './component/theme/color-scheme'
 import { APP_VERSION, appSettingCover } from './config/app-setting'
+import { dataPath } from './config/data-config'
 import { editor, print, println } from './util/common-utils'
 import { select } from './util/inquirer-utils'
 
@@ -28,10 +30,17 @@ program
     .option('-s, --thinking-level <level>', 'set default thinking level')
     .action(async ({ modify, theme, thinkingLevel }) => {
         if (modify) {
-            const currentJson = JSON.stringify(setting, null, 2)
-            const newJson = await editor(currentJson)
+            const schemaUri = pathToFileURL(dataPath.settingsSchema).href
+            const currentJson = JSON.stringify(
+                { ...setting, $schema: schemaUri },
+                null,
+                2,
+            )
+            const newJson = await editor(currentJson, 'json')
             if (newJson && newJson !== currentJson) {
-                await appSettingCover(newJson)
+                const parsed = JSON.parse(newJson) as Record<string, unknown>
+                parsed.$schema = './settings-schema.json'
+                await appSettingCover(JSON.stringify(parsed, null, 2))
                 println(
                     terminalColor.green('Settings updated. Restart to apply.'),
                 )
@@ -169,54 +178,6 @@ program
         println(chalk.bold('Custom Tools:'))
         println('  Edit settings JSON to configure custom tools.')
         println('  Use: ist cf -m to open editor.')
-    })
-
-// ── prompt ──
-
-program
-    .command('prompt')
-    .alias('pt')
-    .description('manage default system prompt')
-    .option('-e, --export [file]', 'export default prompt to file')
-    .option('-i, --import <file>', 'import default prompt from file')
-    .action(async ({ export: exp, import: imp }) => {
-        const current = setting.session?.defaultSystemPrompt ?? ''
-
-        if (imp) {
-            const content = await Bun.file(imp).text()
-            const updated = {
-                ...setting,
-                session: { ...setting.session, defaultSystemPrompt: content },
-            }
-            await appSettingCover(JSON.stringify(updated, null, 2))
-            println(terminalColor.green('Default prompt imported.'))
-            return
-        }
-
-        if (exp) {
-            if (exp === true) {
-                println(current || '(empty)')
-            } else {
-                await Bun.file(exp).write(current)
-                println(
-                    terminalColor.green(`Default prompt exported to: ${exp}`),
-                )
-            }
-            return
-        }
-
-        const newPrompt = await editor(current || '')
-        if (newPrompt !== undefined && newPrompt !== current) {
-            const updated = {
-                ...setting,
-                session: {
-                    ...setting.session,
-                    defaultSystemPrompt: newPrompt,
-                },
-            }
-            await appSettingCover(JSON.stringify(updated, null, 2))
-            println(terminalColor.green('Default prompt updated.'))
-        }
     })
 
 program.parseAsync().catch((e: unknown) => {
