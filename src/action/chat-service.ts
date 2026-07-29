@@ -6,7 +6,7 @@
  *          依赖 ../llm/tool-registry 的 ToolRegistry，
  *          依赖 ../store/agent-manager 的 AgentManager/AgentHandle/SessionHandle，
  *          依赖 ../config/app-setting 的 Setting
- * [OUTPUT]: ChatService 类（listSessions/createSession/getSession/deleteSession/runChat）
+ * [OUTPUT]: ChatService 类（listSessions/createSession/getSession/deleteSession/runChat + active agent 读写）
  * [POS]: src/action/ 的编排层，替代旧 chat-action.ts + action-types.ts + command-action.ts，被 CLI 命令消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -107,6 +107,14 @@ export class ChatService {
     }
 
     // ── Session CRUD ──
+
+    getActiveAgentId(): string | undefined {
+        return this.agentManager.getActiveAgentId()
+    }
+
+    setActiveAgentId(id: string): void {
+        this.agentManager.setActiveAgentId(id)
+    }
 
     listSessions(agentId: string) {
         return this.agentManager.listSessions(agentId)

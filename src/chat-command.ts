@@ -1,14 +1,16 @@
 #!/usr/bin/env bun
 /**
  * [INPUT]: 依赖 ./app-context 的 chatService/terminalColor/availableModels，依赖 ./config/app-setting 的 APP_VERSION，
+ *          依赖 @earendil-works/pi-ai 的 Message 类型，
  *          依赖 ./component/theme/color-scheme 的 commanderHelpConfiguration，依赖 ./util/* 的 CLI 工具
- * [OUTPUT]: ifchat/ict CLI 命令（默认聊天、new/remove/switch/config/history）
+ * [OUTPUT]: ifchat/ict CLI 命令（默认聊天、new/remove/switch/config/history），读写 active agent 状态，history 按角色友好渲染
  * [POS]: src/ 的 CLI 入口之一，被 package.json bin 指向
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
 import { Command } from '@commander-js/extra-typings'
 import type { ThinkingLevel } from '@earendil-works/pi-agent-core'
+import type { Message } from '@earendil-works/pi-ai'
 import chalk from 'chalk'
 import {
     availableModels,
@@ -29,8 +31,39 @@ import {
 } from './util/common-utils'
 import { checkbox, checkboxThemeStyle, select } from './util/inquirer-utils'
 
+const renderMessageContent = (msg: Message): string => {
+    if (msg.role === 'user') {
+        if (typeof msg.content === 'string') return msg.content
+        return msg.content
+            .map((c) => (c.type === 'text' ? c.text : '[image]'))
+            .join('\n')
+    }
+    if (msg.role === 'toolResult') {
+        return msg.content
+            .map((c) => (c.type === 'text' ? c.text : '[image]'))
+            .join('\n')
+    }
+    if (msg.role === 'assistant') {
+        return msg.content
+            .map((c) => {
+                if (c.type === 'text') return c.text
+                if (c.type === 'toolCall') {
+                    return `🔧 ${c.name}(${JSON.stringify(c.arguments)})`
+                }
+                return '' // thinking 内容默认不展示
+            })
+            .filter(Boolean)
+            .join('\n')
+    }
+    return ''
+}
+
 const getCurrentAgentId = (): string | undefined => {
+    const activeId = chatService.getActiveAgentId()
     const agents = chatService.listAgents()
+    if (activeId && agents.some((a) => a.id === activeId)) {
+        return activeId
+    }
     return agents[0]?.id
 }
 
@@ -70,14 +103,13 @@ program
     .alias('ict')
     .version(`${APP_VERSION}`)
     .description('Interactive AI chat interface (powered by Pi)')
-    .option('-f, --force <id>', 'use specified agent')
+    .option('-f, --force <id-or-name>', 'use specified agent by id or name')
     .option('-s, --sync-call', 'use synchronous (non-streaming) mode')
     .option('-e, --edit', 'open editor for input')
     .option(
         '-t, --new-session',
         'create a new session under current agent for this message',
     )
-    .option('-r, --retry', 'retry the last question')
     .option('-a, --attachment <file>', 'attach text file content to message')
     .argument(
         '[string...]',
@@ -108,6 +140,8 @@ program
                 }
                 return match.id
             }
+            const activeId = getCurrentAgentId()
+            if (activeId) return activeId
             const agents = chatService.listAgents()
             if (agents.length === 0) {
                 return chatService.createAgent({
@@ -240,8 +274,10 @@ program
                 disabled: a.id === activeId ? 'current agent' : false,
             })),
         })
-        println(terminalColor.green(`Switched to agent: ${choice}`))
-        println(chalk.gray(`Use: ict -f ${choice.slice(0, 8)}... <message>`))
+        chatService.setActiveAgentId(choice)
+        const targetName = agents.find((a) => a.id === choice)?.name ?? choice
+        println(terminalColor.green(`Switched to agent: ${targetName}`))
+        println(chalk.gray(`Use: ict -f ${targetName} <message>`))
     })
 
 // ── config ──
@@ -256,7 +292,8 @@ program
         'set reasoning level (off/minimal/low/medium/high/xhigh/max)',
     )
     .option('-t, --tools', 'enable/disable tools for this agent')
-    .action(async ({ model, reasoning, tools }, cmd) => {
+    .option('-s, --system-prompt [prompt]', 'set or edit system prompt')
+    .action(async ({ model, reasoning, tools, systemPrompt }, cmd) => {
         const force =
             (cmd.parent?.opts()?.force as string | undefined) ||
             getCurrentAgentId()
@@ -351,11 +388,23 @@ program
             println(terminalColor.green('Active tools updated.'))
         }
 
-        if (!reasoning && !model && !tools) {
+        if (systemPrompt) {
+            const newPrompt =
+                typeof systemPrompt === 'string'
+                    ? systemPrompt
+                    : await editor(meta.systemPrompt ?? '')
+            await handle.update({ systemPrompt: newPrompt })
+            println(terminalColor.green('System prompt updated.'))
+        }
+
+        if (!reasoning && !model && !tools && !systemPrompt) {
             // 显示当前配置
             println(chalk.bold('Agent Configuration:'))
             println(`  Model: ${meta.model || '(not set)'}`)
             println(`  Reasoning Level: ${meta.thinkingLevel}`)
+            println(
+                `  System Prompt: ${meta.systemPrompt ? `${meta.systemPrompt.slice(0, 80).replace(/\n/g, ' ')}...` : '(not set)'}`,
+            )
             println(`  Active MCPs: ${meta.activeMcps.join(', ') || '(none)'}`)
             println(
                 `  Active Custom Tags: ${meta.activeCustomTags.join(', ') || '(none)'}`,
@@ -395,23 +444,22 @@ program
             .filter((e) => e.entryType === 'message')
             .slice(-parseIntNumber(limit, 50))
 
-        for (const entry of msgEntries) {
+        for (const [i, entry] of msgEntries.entries()) {
             try {
-                const msg = JSON.parse(entry.content)
-                const role = msg.role as string
-                const content =
-                    typeof msg.content === 'string'
-                        ? msg.content
-                        : JSON.stringify(msg.content)
+                const msg = JSON.parse(entry.content) as Message
+                const content = renderMessageContent(msg)
+                const ts = msg.timestamp
+                    ? new Date(msg.timestamp).toLocaleString()
+                    : ''
+                const prefix =
+                    msg.role === 'user'
+                        ? terminalColor.cyan.bold('You')
+                        : msg.role === 'toolResult'
+                          ? terminalColor.yellow.bold('Tool')
+                          : terminalColor.white.bold('Assistant')
 
-                if (role === 'user') {
-                    println(
-                        terminalColor.cyan.bold('▸ ') +
-                            terminalColor.cyan(content.slice(0, 200)),
-                    )
-                } else if (role === 'assistant') {
-                    println(terminalColor.white(content.slice(0, 300)))
-                }
+                println(`${terminalColor.gray(`#${i + 1} ${ts}`)} ${prefix}`)
+                println(content)
                 println(chalk.gray('---'))
             } catch {
                 // skip malformed

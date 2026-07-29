@@ -1,5 +1,6 @@
 /**
  * [INPUT]: 依赖 bun:sqlite 的 Database，
+ *          依赖 ./schema.sql 的数据库结构定义，
  *          依赖 ../llm/pi-types 的 SessionEntry/SessionEntryType/SessionMeta/SessionStorage
  * [OUTPUT]: SqliteSessionStorage 类（实现 SessionStorage 接口 — getMetadata/setMetadata/appendEntry/getPathToRoot 等）
  * [POS]: src/store/ 的 SQLite 存储实现，替代旧 db-client.ts + table-def.ts + store.ts + store-types.ts，被 agent-manager 消费
@@ -16,50 +17,9 @@ import type {
 
 // ── SQL schema ──
 
-export const SCHEMA = `
-CREATE TABLE IF NOT EXISTS agent (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL DEFAULT '' UNIQUE,
-    model TEXT NOT NULL DEFAULT '',
-    thinking_level TEXT NOT NULL DEFAULT 'off',
-    system_prompt TEXT NOT NULL DEFAULT '',
-    active_mcps TEXT NOT NULL DEFAULT '[]',
-    active_custom_tags TEXT NOT NULL DEFAULT '[]',
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS session (
-    id TEXT PRIMARY KEY,
-    agent_id TEXT NOT NULL,
-    name TEXT NOT NULL DEFAULT '',
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY (agent_id) REFERENCES agent(id)
-);
-
-CREATE TABLE IF NOT EXISTS session_entry (
-    id TEXT PRIMARY KEY,
-    session_id TEXT NOT NULL,
-    parent_id TEXT,
-    entry_type TEXT NOT NULL,
-    content TEXT NOT NULL DEFAULT '{}',
-    "order" INTEGER NOT NULL DEFAULT 0,
-    timestamp INTEGER NOT NULL,
-    FOREIGN KEY (session_id) REFERENCES session(id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_entry_session ON session_entry(session_id);
-CREATE INDEX IF NOT EXISTS idx_entry_parent ON session_entry(parent_id);
-CREATE INDEX IF NOT EXISTS idx_entry_type ON session_entry(entry_type);
-
-CREATE TABLE IF NOT EXISTS session_leaf (
-    session_id TEXT PRIMARY KEY,
-    entry_id TEXT NOT NULL,
-    label TEXT NOT NULL DEFAULT '',
-    FOREIGN KEY (session_id) REFERENCES session(id)
-);
-`
+export const SCHEMA = await Bun.file(
+    new URL('./schema.sql', import.meta.url),
+).text()
 
 // ── 实现 ──
 
