@@ -1,13 +1,13 @@
 /**
  * [INPUT]: 依赖 node:fs 的 accessSync/mkdirSync，依赖 node:path，依赖 ../util/platform-utils 的平台信息
- * [OUTPUT]: DataPathConfig 类（settings/settingsSchema/database/legacy 路径）
+ * [OUTPUT]: DataPathConfig 类（settings/settingsSchema/database/skills/legacy 路径）
  * [POS]: src/config/ 的路径解析器，被 app-setting.ts 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { accessSync, constants, mkdirSync } from 'node:fs'
+import { accessSync, constants, existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { env, platform } from '../util/platform-utils'
 
@@ -54,6 +54,14 @@ export class DataPathConfig {
 
     get settingsSchema(): string {
         return path.join(this.configPath!, 'settings-schema.json')
+    }
+
+    get skills(): string {
+        const dir = path.join(this.configPath!, 'skills')
+        if (!existsSync(dir)) {
+            mkdirSync(dir, { recursive: true })
+        }
+        return dir
     }
 }
 

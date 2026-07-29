@@ -2,11 +2,13 @@
  * [INPUT]: 依赖 @earendil-works/pi-agent-core 的 AgentTool,
  *          依赖 ../llm/mcp-client 的 MCPClient,
  *          依赖 ../llm/pi-types 的 CustomToolDef
- * [OUTPUT]: ToolRegistry 类（buildActiveTools/listTools/closeAll），含可选的分组发现工具
+ * [OUTPUT]: ToolRegistry 类（buildActiveTools/listTools/closeAll/availableSkills），含 MCP/custom/skill 三类工具及可选的分组发现工具
  * [POS]: src/llm/ 的工具注册层，替代旧 tool.ts，被 chat-service 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import path from 'node:path'
 import type { AgentTool } from '@earendil-works/pi-agent-core'
 import type MCPClient from '../llm/mcp-client'
 import type { CustomToolDef } from './pi-types'
@@ -16,6 +18,8 @@ import type { CustomToolDef } from './pi-types'
 export interface ToolRegistryConfig {
     mcps: MCPClient[]
     customTools: CustomToolDef[]
+    /** skill 根目录，递归加载其子目录下的 SKILL.md */
+    skillsDir?: string
     /** 超过此数量时只注入发现工具，否则直接注入原始 schema */
     toolDiscoveryThreshold?: number
 }
@@ -27,19 +31,32 @@ interface ToolGroup {
     tools: { name: string; description: string }[]
 }
 
+export interface Skill {
+    name: string
+    description: string
+    basePath: string
+    content: string
+    frontMatter: Record<string, unknown>
+}
+
 // ── 注册表 ──
 
 export class ToolRegistry {
     private mcps: MCPClient[]
     private customTools: CustomToolDef[]
+    private skills: Skill[] = []
     private activeMcpNames: Set<string> = new Set()
     private activeCustomNames: Set<string> = new Set()
+    private activeSkillNames: Set<string> = new Set()
     private toolDiscoveryThreshold: number
 
     constructor(config: ToolRegistryConfig) {
         this.mcps = config.mcps
         this.customTools = config.customTools
         this.toolDiscoveryThreshold = config.toolDiscoveryThreshold ?? 8
+        if (config.skillsDir) {
+            this.skills = this.loadSkills(config.skillsDir)
+        }
     }
 
     /** 设置活跃的 MCP 服务器 */
@@ -50,6 +67,11 @@ export class ToolRegistry {
     /** 设置活跃的自定义工具 */
     setActiveCustomTools(tags: string[]): void {
         this.activeCustomNames = new Set(tags)
+    }
+
+    /** 设置活跃的 skill 名称 */
+    setActiveSkills(names: string[]): void {
+        this.activeSkillNames = new Set(names)
     }
 
     /** 获取所有工具的列表（供 UI 展示） */
@@ -77,6 +99,14 @@ export class ToolRegistry {
         }
 
         return result
+    }
+
+    /** 列出所有可用的 skill */
+    availableSkills(): { name: string; description: string }[] {
+        return this.skills.map((s) => ({
+            name: s.name,
+            description: s.description,
+        }))
     }
 
     /** 构建当前活跃的 AgentTool 列表（用于注入 Agent） */
@@ -191,6 +221,57 @@ export class ToolRegistry {
             }
         }
 
+        // Skill 工具：把启用的 skill 注册为统一的 Skill 调用入口
+        const activeSkills = this.skills.filter((s) =>
+            this.activeSkillNames.has(s.name),
+        )
+        if (activeSkills.length > 0) {
+            const skillsXml = activeSkills
+                .map(
+                    (s) =>
+                        `<skill>\n  <name>${s.name}</name>\n  <description>${s.description}</description>\n</skill>`,
+                )
+                .join('\n')
+            flatTools.set('Skill', {
+                name: 'Skill',
+                description: `Execute a skill within the main conversation.
+
+<skills_instructions>
+When users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively.
+
+How to use skills:
+- Invoke skills using this tool with the skill name only (no arguments)
+- When you invoke a skill, you will see <command-message>The skill is loading</command-message>
+- The skill's prompt will expand and provide detailed instructions on how to complete the task
+
+Important:
+- Only use skills listed in <available_skills> below
+- Do not invoke a skill that is already running
+</skills_instructions>
+
+<available_skills>
+${skillsXml}
+</available_skills>`,
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        command: {
+                            type: 'string',
+                            description:
+                                'The skill name (no arguments). E.g., "pdf" or "xlsx"',
+                        },
+                    },
+                    required: ['command'],
+                },
+                execute: async (args: any) => {
+                    const command = args.command as string
+                    const skill = activeSkills.find((s) => s.name === command)
+                    if (!skill) return `Skill not found: ${command}`
+                    return `Base directory for this skill: ${skill.basePath}\n\n${skill.content}`
+                },
+            } as unknown as AgentTool<any>)
+        }
+
         if (flatTools.size > this.toolDiscoveryThreshold) {
             return this.buildDiscoveryTools(groups)
         }
@@ -224,6 +305,74 @@ export class ToolRegistry {
     }
 
     // ── 私有 ──
+
+    /** 递归加载 skills 目录下的 SKILL.md */
+    private loadSkills(rootDir: string): Skill[] {
+        const skills: Skill[] = []
+        if (!this.skillsDirExists(rootDir)) return skills
+
+        const walk = (dir: string) => {
+            for (const entry of readdirSync(dir)) {
+                const fullPath = path.join(dir, entry)
+                const stat = statSync(fullPath)
+                if (stat.isDirectory()) {
+                    walk(fullPath)
+                } else if (entry === 'SKILL.md') {
+                    try {
+                        const markdown = readFileSync(fullPath, 'utf-8')
+                        skills.push(
+                            this.parseSkill(markdown, path.dirname(fullPath)),
+                        )
+                    } catch {
+                        // 读取失败则跳过
+                    }
+                }
+            }
+        }
+        walk(rootDir)
+        return skills
+    }
+
+    private skillsDirExists(rootDir: string): boolean {
+        try {
+            return statSync(rootDir).isDirectory()
+        } catch {
+            return false
+        }
+    }
+
+    private parseSkill(markdown: string, basePath: string): Skill {
+        const match = markdown.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)
+        if (!match) {
+            return {
+                name: path.basename(basePath),
+                description: '',
+                basePath,
+                content: markdown.trim(),
+                frontMatter: {},
+            }
+        }
+        const frontMatter = this.parseFrontMatter(match[1])
+        return {
+            name: String(frontMatter.name ?? path.basename(basePath)),
+            description: String(frontMatter.description ?? ''),
+            basePath,
+            content: match[2].trim(),
+            frontMatter,
+        }
+    }
+
+    private parseFrontMatter(raw: string): Record<string, unknown> {
+        const result: Record<string, unknown> = {}
+        for (const line of raw.split('\n')) {
+            const idx = line.indexOf(':')
+            if (idx <= 0) continue
+            const key = line.slice(0, idx).trim()
+            const value = line.slice(idx + 1).trim()
+            result[key] = value
+        }
+        return result
+    }
 
     /** 发现工具：当活跃工具数超过阈值时注入，让模型按需拉取分组/工具 */
     private buildDiscoveryTools(groups: ToolGroup[]): AgentTool<any>[] {

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 @earendil-works/pi-ai 的 Message/Model/Context/Tool/AssistantMessage 类型,
  *          依赖 @earendil-works/pi-agent-core 的 AgentMessage/AgentTool/ThinkingLevel 类型
- * [OUTPUT]: 重导出 Pi 类型，定义 SessionEntry/SessionStorage/SessionMeta/ChatConfig/CustomToolDef/PiDisplayEvent（含 usage 缓存字段）
+ * [OUTPUT]: 重导出 Pi 类型，定义 SessionEntry/SessionStorage/SessionMeta/ChatConfig/CustomToolDef/AgentMeta/PiDisplayEvent（含 usage 缓存字段）
  * [POS]: src/llm/ 的类型基石，被 agent-runner/pi-display-handler/tool-registry/session-storage/agent-manager/chat-service 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  *
@@ -77,6 +77,8 @@ export interface AgentMeta {
     activeMcps: string[]
     /** 当前 agent 启用的自定义工具标签 */
     activeCustomTags: string[]
+    /** 当前 agent 启用的 skill 名称 */
+    skills: string[]
     createdAt: number
     updatedAt: number
 }

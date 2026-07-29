@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 bun:sqlite 的 Database，
- *          依赖 ./schema.sql 的数据库结构定义，
+ *          依赖 ./schema 的 SCHEMA 数据库结构定义，
  *          依赖 ../llm/pi-types 的 SessionEntry/SessionEntryType/SessionMeta/SessionStorage
  * [OUTPUT]: SqliteSessionStorage 类（实现 SessionStorage 接口 — getMetadata/setMetadata/appendEntry/getPathToRoot 等）
  * [POS]: src/store/ 的 SQLite 存储实现，替代旧 db-client.ts + table-def.ts + store.ts + store-types.ts，被 agent-manager 消费
@@ -17,9 +17,9 @@ import type {
 
 // ── SQL schema ──
 
-export const SCHEMA = await Bun.file(
-    new URL('./schema.sql', import.meta.url),
-).text()
+import { SCHEMA } from './schema'
+
+export { SCHEMA }
 
 // ── 实现 ──
 

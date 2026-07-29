@@ -30,7 +30,8 @@ src/
 │   ├── pi-display-handler.ts — Pi 事件 → 终端渲染（替代 simplified-display）
 │   ├── tool-registry.ts   — MCP + Custom → AgentTool 注册（替代 tool.ts）
 │   └── mcp-client.ts      — MCP 协议客户端（保留自旧架构）
-├── store/                 — 存储层 (2 文件)
+├── store/                 — 存储层 (3 文件)
+│   ├── schema.ts          — SQLite 数据库结构定义
 │   ├── session-storage.ts — SQLite 实现 Pi SessionStorage 接口（树形）
 │   └── agent-manager.ts — agent/session 两层生命周期管理
 ├── action/                — 服务层 (1 文件)
@@ -65,9 +66,11 @@ src/
 ```
 CLI (chat-command / setting-command)
   └─ AppContext (连线)
-       ├─ ChatService (编排) → SessionManager, AgentRunner, ToolRegistry, PiDisplayHandler
+       ├─ ChatService (编排) → AgentManager, AgentRunner, ToolRegistry, PiDisplayHandler
        ├─ Config (功能配置)
        └─ Pi Models (环境变量发现供应商)
 ```
+
+Skill 扩展: 将 SKILL.md 放入 `~/.config/ifcli/skills/<skill>/` 目录，然后在 `ict config -k` 中为 agent 启用，即可通过 `Skill` tool 调用。
 
 扩展点: SessionStorage 接口、StreamFn、transformContext hook、AgentTool<any>、PiDisplayHandler。

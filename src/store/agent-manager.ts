@@ -2,7 +2,7 @@
  * [INPUT]: 依赖 bun:sqlite 的 Database，依赖 @earendil-works/pi-ai 的 Context/Message，
  *          依赖 @earendil-works/pi-agent-core 的 uuidv7/ThinkingLevel，
  *          依赖 ../llm/pi-types 的 AgentMeta/SessionMeta，依赖 ./session-storage 的 SqliteSessionStorage
- * [OUTPUT]: AgentManager 类（create/list/get/delete agent、session 管理、active agent 持久化）+ AgentHandle/SessionHandle 类型
+ * [OUTPUT]: AgentManager 类（create/list/get/delete agent、session 管理、active agent/skills 持久化）+ AgentHandle/SessionHandle 类型
  * [POS]: src/store/ 的 agent/session 两层管理入口，被 chat-service 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -74,7 +74,7 @@ export class AgentManager {
         const now = Date.now()
         this.db
             .prepare(
-                `INSERT INTO agent (id, name, model, thinking_level, system_prompt, active_mcps, active_custom_tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO agent (id, name, model, thinking_level, system_prompt, active_mcps, active_custom_tags, skills, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             )
             .run(
                 id,
@@ -84,6 +84,7 @@ export class AgentManager {
                 meta.systemPrompt ?? '',
                 JSON.stringify(meta.activeMcps ?? []),
                 JSON.stringify(meta.activeCustomTags ?? []),
+                JSON.stringify(meta.skills ?? []),
                 now,
                 now,
             )
@@ -95,6 +96,7 @@ export class AgentManager {
             systemPrompt: meta.systemPrompt ?? '',
             activeMcps: meta.activeMcps ?? [],
             activeCustomTags: meta.activeCustomTags ?? [],
+            skills: meta.skills ?? [],
             createdAt: now,
             updatedAt: now,
         }
@@ -104,7 +106,7 @@ export class AgentManager {
     listAgents(): AgentInfo[] {
         const rows = this.db
             .query(
-                `SELECT id, name, model, thinking_level as thinkingLevel, system_prompt as systemPrompt, active_mcps as activeMcps, active_custom_tags as activeCustomTags, created_at as createdAt, updated_at as updatedAt
+                `SELECT id, name, model, thinking_level as thinkingLevel, system_prompt as systemPrompt, active_mcps as activeMcps, active_custom_tags as activeCustomTags, skills, created_at as createdAt, updated_at as updatedAt
                  FROM agent ORDER BY updated_at DESC`,
             )
             .all() as Record<string, unknown>[]
@@ -167,7 +169,7 @@ export class AgentManager {
     getAgentMeta(id: string): AgentMeta {
         const row = this.db
             .query(
-                `SELECT name, model, thinking_level as thinkingLevel, system_prompt as systemPrompt, active_mcps as activeMcps, active_custom_tags as activeCustomTags, created_at as createdAt, updated_at as updatedAt
+                `SELECT name, model, thinking_level as thinkingLevel, system_prompt as systemPrompt, active_mcps as activeMcps, active_custom_tags as activeCustomTags, skills, created_at as createdAt, updated_at as updatedAt
                  FROM agent WHERE id = ?`,
             )
             .get(id) as Record<string, unknown> | undefined
@@ -188,11 +190,12 @@ export class AgentManager {
             activeMcps: meta.activeMcps ?? existing.activeMcps,
             activeCustomTags:
                 meta.activeCustomTags ?? existing.activeCustomTags,
+            skills: meta.skills ?? existing.skills,
             updatedAt: Date.now(),
         }
         this.db
             .prepare(
-                `UPDATE agent SET name=?, model=?, thinking_level=?, system_prompt=?, active_mcps=?, active_custom_tags=?, updated_at=? WHERE id=?`,
+                `UPDATE agent SET name=?, model=?, thinking_level=?, system_prompt=?, active_mcps=?, active_custom_tags=?, skills=?, updated_at=? WHERE id=?`,
             )
             .run(
                 merged.name,
@@ -201,6 +204,7 @@ export class AgentManager {
                 merged.systemPrompt,
                 JSON.stringify(merged.activeMcps),
                 JSON.stringify(merged.activeCustomTags),
+                JSON.stringify(merged.skills),
                 merged.updatedAt,
                 id,
             )
@@ -373,6 +377,21 @@ export class AgentManager {
 
     private ensureSchema(): void {
         ensureStorageSchema(this.db)
+        this.migrateAgentSkillsColumn()
+    }
+
+    /** 兼容旧数据库：agent 表缺少 skills 列时自动添加 */
+    private migrateAgentSkillsColumn(): void {
+        const columns = this.db
+            .query(
+                "SELECT name FROM pragma_table_info('agent') WHERE name = 'skills'",
+            )
+            .all() as { name: string }[]
+        if (columns.length === 0) {
+            this.db.run(
+                "ALTER TABLE agent ADD COLUMN skills TEXT NOT NULL DEFAULT '[]'",
+            )
+        }
     }
 
     private rowToAgentInfo(row: Record<string, unknown>): AgentInfo {
@@ -384,6 +403,7 @@ export class AgentManager {
             systemPrompt: (row.systemPrompt as string) ?? '',
             activeMcps: this.parseArr(row.activeMcps),
             activeCustomTags: this.parseArr(row.activeCustomTags),
+            skills: this.parseArr(row.skills),
             createdAt: (row.createdAt as number) ?? Date.now(),
             updatedAt: (row.updatedAt as number) ?? Date.now(),
         }
@@ -397,6 +417,7 @@ export class AgentManager {
             systemPrompt: (row.systemPrompt as string) ?? '',
             activeMcps: this.parseArr(row.activeMcps),
             activeCustomTags: this.parseArr(row.activeCustomTags),
+            skills: this.parseArr(row.skills),
             createdAt: (row.createdAt as number) ?? Date.now(),
             updatedAt: (row.updatedAt as number) ?? Date.now(),
         }
@@ -428,7 +449,7 @@ export class AgentManager {
     ): Promise<AgentInfo> {
         const row = db
             .query(
-                `SELECT name, model, thinking_level as thinkingLevel, system_prompt as systemPrompt, active_mcps as activeMcps, active_custom_tags as activeCustomTags, created_at as createdAt, updated_at as updatedAt
+                `SELECT name, model, thinking_level as thinkingLevel, system_prompt as systemPrompt, active_mcps as activeMcps, active_custom_tags as activeCustomTags, skills, created_at as createdAt, updated_at as updatedAt
                  FROM agent WHERE id = ?`,
             )
             .get(id) as Record<string, unknown> | undefined
@@ -449,6 +470,8 @@ export class AgentManager {
                 typeof row.activeCustomTags === 'string'
                     ? JSON.parse(row.activeCustomTags)
                     : [],
+            skills:
+                typeof row.skills === 'string' ? JSON.parse(row.skills) : [],
             createdAt: (row.createdAt as number) ?? Date.now(),
             updatedAt: (row.updatedAt as number) ?? Date.now(),
         }

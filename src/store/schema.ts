@@ -1,10 +1,11 @@
-/*
+/**
  * [INPUT]: 无外部依赖
- * [OUTPUT]: ifcli SQLite 数据库 schema：agent / session / session_entry / session_leaf / app_state
+ * [OUTPUT]: SQLite 数据库结构定义字符串 SCHEM A
  * [POS]: src/store/ 的数据库结构定义，被 session-storage.ts 加载并执行
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
+export const SCHEMA = `
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
 
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS agent (
     system_prompt TEXT NOT NULL DEFAULT '',
     active_mcps TEXT NOT NULL DEFAULT '[]',
     active_custom_tags TEXT NOT NULL DEFAULT '[]',
+    skills TEXT NOT NULL DEFAULT '[]',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
 );
@@ -55,3 +57,4 @@ CREATE TABLE IF NOT EXISTS app_state (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+`

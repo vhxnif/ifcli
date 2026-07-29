@@ -6,7 +6,7 @@
  *          依赖 ../llm/tool-registry 的 ToolRegistry，
  *          依赖 ../store/agent-manager 的 AgentManager/AgentHandle/SessionHandle，
  *          依赖 ../config/app-setting 的 Setting
- * [OUTPUT]: ChatService 类（listSessions/createSession/getSession/deleteSession/runChat + active agent 读写）
+ * [OUTPUT]: ChatService 类（listSessions/createSession/getSession/deleteSession/runChat + active agent 读写），透传 agent skills 到 ToolRegistry
  * [POS]: src/action/ 的编排层，替代旧 chat-action.ts + action-types.ts + command-action.ts，被 CLI 命令消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -55,6 +55,7 @@ export interface NewAgentOptions {
     systemPrompt?: string
     activeMcps?: string[]
     activeCustomTags?: string[]
+    skills?: string[]
 }
 
 export interface NewSessionOptions {
@@ -94,6 +95,7 @@ export class ChatService {
             systemPrompt: opts.systemPrompt,
             activeMcps: opts.activeMcps,
             activeCustomTags: opts.activeCustomTags,
+            skills: opts.skills,
         })
         return info.id
     }
@@ -149,6 +151,7 @@ export class ChatService {
         // 按 agent 配置启用工具
         this.toolRegistry.setActiveMcps(agentMeta.activeMcps)
         this.toolRegistry.setActiveCustomTools(agentMeta.activeCustomTags)
+        this.toolRegistry.setActiveSkills(agentMeta.skills)
 
         // 构建 tools
         const tools = await this.toolRegistry.buildActiveTools()

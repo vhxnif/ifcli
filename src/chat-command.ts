@@ -3,7 +3,7 @@
  * [INPUT]: 依赖 ./app-context 的 chatService/terminalColor/availableModels，依赖 ./config/app-setting 的 APP_VERSION，
  *          依赖 @earendil-works/pi-ai 的 Message 类型，
  *          依赖 ./component/theme/color-scheme 的 commanderHelpConfiguration，依赖 ./util/* 的 CLI 工具
- * [OUTPUT]: ifchat/ict CLI 命令（默认聊天、new/remove/switch/config/history），读写 active agent 状态，history 按角色友好渲染
+ * [OUTPUT]: ifchat/ict CLI 命令（默认聊天、new/remove/switch/config/history），读写 active agent 状态，管理 agent skills，history 按角色友好渲染
  * [POS]: src/ 的 CLI 入口之一，被 package.json bin 指向
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -65,6 +65,39 @@ const getCurrentAgentId = (): string | undefined => {
         return activeId
     }
     return agents[0]?.id
+}
+
+const resolveAgentId = (
+    force: string | undefined,
+    opts: { allowMissing?: boolean; fallback?: boolean } = {},
+): string | undefined => {
+    const { allowMissing = false, fallback = true } = opts
+    if (!force) {
+        return fallback ? getCurrentAgentId() : undefined
+    }
+    const agents = chatService.listAgents()
+    const match =
+        agents.find((a) => a.id === force) ||
+        agents.find((a) => a.name === force)
+    if (!match) {
+        if (!allowMissing) {
+            println(
+                terminalColor.red(
+                    `Agent not found: ${force}. Use "ict switch" to list agents.`,
+                ),
+            )
+        }
+        return undefined
+    }
+    return match.id
+}
+
+const getGlobalForce = (cmd: any): string | undefined => {
+    return (
+        cmd.parent?.opts()?.force ??
+        (cmd as any).optsWithGlobals?.()?.force ??
+        undefined
+    )
 }
 
 const getCurrentSessionId = (agentId: string): string | undefined => {
@@ -223,9 +256,11 @@ program
     .alias('rm')
     .description('delete an agent (chat) and all its sessions')
     .action(async (_, cmd) => {
-        const force = cmd.parent?.opts()?.force as string | undefined
+        const force = getGlobalForce(cmd)
         if (force) {
-            chatService.deleteAgent(force)
+            const agentId = resolveAgentId(force)
+            if (!agentId) return
+            chatService.deleteAgent(agentId)
             println(terminalColor.green(`Agent deleted.`))
             return
         }
@@ -249,9 +284,9 @@ program
     .alias('st')
     .description('switch between agents (chats)')
     .action(async (_, cmd) => {
-        const force = cmd.parent?.opts()?.force as string | undefined
+        const force = getGlobalForce(cmd)
         const agents = chatService.listAgents()
-        const activeId = force || getCurrentAgentId()
+        const activeId = resolveAgentId(force) ?? getCurrentAgentId()
         if (agents.length === 0) {
             println(terminalColor.yellow('No agents available.'))
             return
@@ -293,19 +328,18 @@ program
     )
     .option('-t, --tools', 'enable/disable tools for this agent')
     .option('-s, --system-prompt [prompt]', 'set or edit system prompt')
-    .action(async ({ model, reasoning, tools, systemPrompt }, cmd) => {
-        const force =
-            (cmd.parent?.opts()?.force as string | undefined) ||
-            getCurrentAgentId()
-        if (!force) {
+    .option('-k, --skills', 'enable/disable skills for this agent')
+    .action(async ({ model, reasoning, tools, systemPrompt, skills }, cmd) => {
+        const agentId = resolveAgentId(getGlobalForce(cmd))
+        if (!agentId) {
             println(
                 terminalColor.yellow(
-                    'No agents available. Use -f <agent-id> or start a chat first.',
+                    'No agents available. Use -f <agent-name> or start a chat first.',
                 ),
             )
             return
         }
-        const handle = chatService.getAgent(force)
+        const handle = chatService.getAgent(agentId)
         const meta = await handle.info
 
         if (reasoning) {
@@ -397,7 +431,32 @@ program
             println(terminalColor.green('System prompt updated.'))
         }
 
-        if (!reasoning && !model && !tools && !systemPrompt) {
+        if (skills) {
+            const available = toolRegistry.availableSkills()
+            if (available.length === 0) {
+                println(
+                    terminalColor.yellow(
+                        'No skills available. Add SKILL.md files to the skills directory first.',
+                    ),
+                )
+                return
+            }
+            const active = new Set(meta.skills)
+            const choices = available.map((s) => ({
+                name: s.name,
+                value: s.name,
+                checked: active.has(s.name),
+            }))
+            const selected = await checkbox({
+                message: 'Select active skills for this agent:',
+                choices,
+                theme: checkboxThemeStyle(terminalColor),
+            })
+            await handle.update({ skills: selected })
+            println(terminalColor.green('Active skills updated.'))
+        }
+
+        if (!reasoning && !model && !tools && !systemPrompt && !skills) {
             // 显示当前配置
             println(chalk.bold('Agent Configuration:'))
             println(`  Model: ${meta.model || '(not set)'}`)
@@ -405,6 +464,7 @@ program
             println(
                 `  System Prompt: ${meta.systemPrompt ? `${meta.systemPrompt.slice(0, 80).replace(/\n/g, ' ')}...` : '(not set)'}`,
             )
+            println(`  Active Skills: ${meta.skills.join(', ') || '(none)'}`)
             println(`  Active MCPs: ${meta.activeMcps.join(', ') || '(none)'}`)
             println(
                 `  Active Custom Tags: ${meta.activeCustomTags.join(', ') || '(none)'}`,
@@ -420,13 +480,11 @@ program
     .description('view current session (topic) conversation history')
     .option('-l, --limit <number>', 'max messages to display', '50')
     .action(async ({ limit }, cmd) => {
-        const agentId =
-            (cmd.parent?.opts()?.force as string | undefined) ||
-            getCurrentAgentId()
+        const agentId = resolveAgentId(getGlobalForce(cmd))
         if (!agentId) {
             println(
                 terminalColor.yellow(
-                    'No agents available. Use -f <agent-id> or start a chat first.',
+                    'No agents available. Use -f <agent-name> or start a chat first.',
                 ),
             )
             return
@@ -489,13 +547,11 @@ sessionCmd
     .description('create a new session under current agent')
     .argument('<name>', 'name for the new session')
     .action(async (name, cmd) => {
-        const agentId =
-            ((cmd as any).optsWithGlobals?.()?.force as string | undefined) ||
-            getCurrentAgentId()
+        const agentId = resolveAgentId(getGlobalForce(cmd))
         if (!agentId) {
             println(
                 terminalColor.yellow(
-                    'No agents available. Use -f <agent-id> or start a chat first.',
+                    'No agents available. Use -f <agent-name> or start a chat first.',
                 ),
             )
             return
@@ -513,13 +569,11 @@ sessionCmd
     .alias('sw')
     .description('switch session under current agent')
     .action(async (_, cmd) => {
-        const agentId =
-            ((cmd as any).optsWithGlobals?.()?.force as string | undefined) ||
-            getCurrentAgentId()
+        const agentId = resolveAgentId(getGlobalForce(cmd))
         if (!agentId) {
             println(
                 terminalColor.yellow(
-                    'No agents available. Use -f <agent-id> or start a chat first.',
+                    'No agents available. Use -f <agent-name> or start a chat first.',
                 ),
             )
             return
@@ -545,13 +599,11 @@ sessionCmd
     .alias('rm')
     .description('remove a session under current agent')
     .action(async (_, cmd) => {
-        const agentId =
-            ((cmd as any).optsWithGlobals?.()?.force as string | undefined) ||
-            getCurrentAgentId()
+        const agentId = resolveAgentId(getGlobalForce(cmd))
         if (!agentId) {
             println(
                 terminalColor.yellow(
-                    'No agents available. Use -f <agent-id> or start a chat first.',
+                    'No agents available. Use -f <agent-name> or start a chat first.',
                 ),
             )
             return

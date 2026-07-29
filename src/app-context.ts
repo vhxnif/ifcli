@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 ./config/app-setting 的 initAppSetting/appSetting，依赖 @earendil-works/pi-ai/providers/all 的 builtinModels，
  *          依赖 ./store/agent-manager 的 AgentManager，依赖 ./llm/tool-registry 的 ToolRegistry，依赖 ./component/theme/color-scheme 的主题
- * [OUTPUT]: 组装后的 chatService / terminalColor / theme / db / models / availableModels 等全局实例
+ * [OUTPUT]: 组装后的 chatService / terminalColor / theme / db / models / availableModels / toolRegistry 等全局实例，初始化时传入 skills 目录
  * [POS]: src/ 的应用组装入口，被 chat-command.ts / setting-command.ts 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -58,6 +58,7 @@ const agentManager = new AgentManager(db)
 const toolRegistry = new ToolRegistry({
     mcps,
     customTools: setting.customTools ?? [],
+    skillsDir: dataPath.skills,
     toolDiscoveryThreshold: setting.generalSetting.toolDiscoveryThreshold,
 })
 
