@@ -2,7 +2,7 @@
  * [INPUT]: 依赖 @earendil-works/pi-agent-core 的 AgentTool,
  *          依赖 ../llm/mcp-client 的 MCPClient,
  *          依赖 ../llm/pi-types 的 CustomToolDef
- * [OUTPUT]: ToolRegistry 类（buildActiveTools/listTools/closeAll/availableSkills），含 MCP/custom/skill 三类工具及可选的分组发现工具
+ * [OUTPUT]: ToolRegistry 类（buildActiveTools/listTools/closeAll/availableSkills），含 MCP/custom/skill 三类工具；skill 支持返回目录文件列表及读取 skill 内文件
  * [POS]: src/llm/ 的工具注册层，替代旧 tool.ts，被 chat-service 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -37,6 +37,8 @@ export interface Skill {
     basePath: string
     content: string
     frontMatter: Record<string, unknown>
+    /** skill 目录下相对 basePath 的文件列表 */
+    files: string[]
 }
 
 // ── 注册表 ──
@@ -229,7 +231,7 @@ export class ToolRegistry {
             const skillsXml = activeSkills
                 .map(
                     (s) =>
-                        `<skill>\n  <name>${s.name}</name>\n  <description>${s.description}</description>\n</skill>`,
+                        `<skill>\n  <name>${s.name}</name>\n  <description>${s.description}</description>\n  <basePath>${s.basePath}</basePath>\n</skill>`,
                 )
                 .join('\n')
             flatTools.set('Skill', {
@@ -237,16 +239,13 @@ export class ToolRegistry {
                 description: `Execute a skill within the main conversation.
 
 <skills_instructions>
-When users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively.
+When users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively. Skills provide specialized capabilities and domain knowledge.
 
 How to use skills:
-- Invoke skills using this tool with the skill name only (no arguments)
-- When you invoke a skill, you will see <command-message>The skill is loading</command-message>
-- The skill's prompt will expand and provide detailed instructions on how to complete the task
-
-Important:
+- Invoke a skill by passing its name as the "command" parameter, e.g. {"command": "readlink"}
+- The response includes the skill's base directory, a list of files inside the skill, and the SKILL.md content
+- To read a specific file inside a skill, use {"command": "<skill-name>:<relative-file-path>"}, e.g. {"command": "readlink:clean_markdown.lua"}
 - Only use skills listed in <available_skills> below
-- Do not invoke a skill that is already running
 </skills_instructions>
 
 <available_skills>
@@ -258,16 +257,40 @@ ${skillsXml}
                         command: {
                             type: 'string',
                             description:
-                                'The skill name (no arguments). E.g., "pdf" or "xlsx"',
+                                'Skill name (e.g. "readlink") or "<skill-name>:<relative-file-path>" to read a file inside the skill',
                         },
                     },
                     required: ['command'],
                 },
                 execute: async (args: any) => {
                     const command = args.command as string
+                    const colonIdx = command.indexOf(':')
+
+                    // 读取 skill 内指定文件: <skill-name>:<relative-path>
+                    if (colonIdx > 0) {
+                        const skillName = command.slice(0, colonIdx)
+                        const filePath = command.slice(colonIdx + 1)
+                        const skill = activeSkills.find(
+                            (s) => s.name === skillName,
+                        )
+                        if (!skill) return `Skill not found: ${skillName}`
+                        const fullPath = path.join(skill.basePath, filePath)
+                        try {
+                            const content = readFileSync(fullPath, 'utf-8')
+                            return `File: ${filePath}\n\n${content}`
+                        } catch {
+                            return `File not found in skill ${skillName}: ${filePath}`
+                        }
+                    }
+
+                    // 返回 skill 信息 + SKILL.md 内容
                     const skill = activeSkills.find((s) => s.name === command)
                     if (!skill) return `Skill not found: ${command}`
-                    return `Base directory for this skill: ${skill.basePath}\n\n${skill.content}`
+                    const filesList =
+                        skill.files.length > 0
+                            ? skill.files.map((f) => `  - ${f}`).join('\n')
+                            : '  (no additional files)'
+                    return `Base directory for this skill: ${skill.basePath}\n\nFiles in this skill:\n${filesList}\n\n${skill.content}`
                 },
             } as unknown as AgentTool<any>)
         }
@@ -306,30 +329,36 @@ ${skillsXml}
 
     // ── 私有 ──
 
-    /** 递归加载 skills 目录下的 SKILL.md */
+    /** 加载 skills 目录下每个子目录中的 SKILL.md 及其文件列表 */
     private loadSkills(rootDir: string): Skill[] {
         const skills: Skill[] = []
         if (!this.skillsDirExists(rootDir)) return skills
 
-        const walk = (dir: string) => {
-            for (const entry of readdirSync(dir)) {
-                const fullPath = path.join(dir, entry)
-                const stat = statSync(fullPath)
-                if (stat.isDirectory()) {
-                    walk(fullPath)
-                } else if (entry === 'SKILL.md') {
-                    try {
-                        const markdown = readFileSync(fullPath, 'utf-8')
-                        skills.push(
-                            this.parseSkill(markdown, path.dirname(fullPath)),
-                        )
-                    } catch {
-                        // 读取失败则跳过
+        for (const entry of readdirSync(rootDir)) {
+            const skillDir = path.join(rootDir, entry)
+            if (!statSync(skillDir).isDirectory()) continue
+
+            const files: string[] = []
+            const walk = (dir: string) => {
+                for (const child of readdirSync(dir)) {
+                    const fullPath = path.join(dir, child)
+                    if (statSync(fullPath).isDirectory()) {
+                        walk(fullPath)
+                    } else {
+                        files.push(path.relative(skillDir, fullPath))
                     }
                 }
             }
+            walk(skillDir)
+
+            const skillMdPath = path.join(skillDir, 'SKILL.md')
+            try {
+                const markdown = readFileSync(skillMdPath, 'utf-8')
+                skills.push(this.parseSkill(markdown, skillDir, files))
+            } catch {
+                // 没有 SKILL.md 则跳过
+            }
         }
-        walk(rootDir)
         return skills
     }
 
@@ -341,7 +370,11 @@ ${skillsXml}
         }
     }
 
-    private parseSkill(markdown: string, basePath: string): Skill {
+    private parseSkill(
+        markdown: string,
+        basePath: string,
+        files: string[],
+    ): Skill {
         const match = markdown.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)
         if (!match) {
             return {
@@ -350,6 +383,7 @@ ${skillsXml}
                 basePath,
                 content: markdown.trim(),
                 frontMatter: {},
+                files,
             }
         }
         const frontMatter = this.parseFrontMatter(match[1])
@@ -359,6 +393,7 @@ ${skillsXml}
             basePath,
             content: match[2].trim(),
             frontMatter,
+            files,
         }
     }
 
