@@ -1,5 +1,4 @@
 import type {
-    ChatBoxTheme,
     ColorScheme,
     SpinnerName,
     TerminalColorName,
@@ -79,27 +78,6 @@ const scheme: Record<RosePineType, Color> = {
     },
 }
 
-const generateTheme = (s: Color): ChatBoxTheme => {
-    const { pine, gold, love, highlightMed, subtle, muted, text } = s
-    return {
-        reasoner: {
-            title: pine,
-            bolder: highlightMed,
-            content: subtle,
-        },
-        tools: {
-            title: gold,
-            bolder: highlightMed,
-            content: muted,
-        },
-        assisant: {
-            title: love,
-            bolder: love,
-            content: text,
-        },
-    }
-}
-
 const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
     const { base, text, love, pine, foam, iris, rose, gold, muted } = s
     return {
@@ -143,7 +121,6 @@ const colorScheme: ColorScheme[] = [
     {
         name: 'Rose Pine',
         color: generateTerminalColor(rosePine),
-        theme: generateTheme(rosePine),
         semantic: generateSemanticColors(),
         spinner: 'cascade' as SpinnerName,
     },
@@ -152,7 +129,6 @@ const colorScheme: ColorScheme[] = [
         color: {
             ...generateTerminalColor(rosePineMoon),
         },
-        theme: generateTheme(rosePineMoon),
         semantic: generateSemanticColors(),
         spinner: 'cascade' as SpinnerName,
     },
@@ -163,7 +139,6 @@ const colorScheme: ColorScheme[] = [
             black: rosePineDawn.text,
             white: rosePineDawn.base,
         },
-        theme: generateTheme(rosePineDawn),
         semantic: generateSemanticColors(),
         spinner: 'cascade' as SpinnerName,
     },

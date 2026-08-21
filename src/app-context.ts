@@ -10,15 +10,7 @@ import Database from 'bun:sqlite'
 import type { Models } from '@earendil-works/pi-ai'
 import { builtinModels } from '@earendil-works/pi-ai/providers/all'
 import { ChatService } from './action/chat-service'
-import {
-    chalkColor,
-    getSemanticColors,
-    getSpinnerName,
-} from './component/theme/color-scheme'
-import type {
-    SpinnerName,
-    ThemeSemanticColors,
-} from './component/theme/theme-type'
+import { colorScheme } from './component/theme/color-scheme'
 import { appSetting, initAppSetting } from './config/app-setting'
 import { dataPath } from './config/data-config'
 import MCPClient from './llm/mcp-client'
@@ -63,17 +55,14 @@ const toolRegistry = new ToolRegistry({
 })
 
 // 主题
-const { theme: colorScheme } = setting.generalSetting
-const [terminalColor, chalkTheme] = chalkColor(colorScheme)
-const semanticColors: ThemeSemanticColors = getSemanticColors(colorScheme)
-const spinnerName: SpinnerName = getSpinnerName(colorScheme)
+const { theme } = setting.generalSetting
+
+const themeScheme = colorScheme(theme)
 
 // 聊天服务
 const chatService = new ChatService({
     agentManager,
     toolRegistry,
-    terminalColor,
-    theme: chalkTheme,
     piColors: DEFAULT_PI_COLORS,
     models,
 })
@@ -84,13 +73,10 @@ chatService.setSetting(setting)
 export {
     agentManager,
     availableModels,
-    chalkTheme,
     chatService,
     db,
     models,
-    semanticColors,
     setting,
-    spinnerName,
-    terminalColor,
+    themeScheme,
     toolRegistry,
 }

@@ -30,11 +30,6 @@ export type ChatBoxColor = Record<ChatBoxPart, string>
 
 export type ChalkChatBoxColor = Record<ChatBoxPart, ChalkInstance>
 
-export type ChatBoxContentType = 'reasoner' | 'tools' | 'assisant'
-
-export type ChatBoxTheme = Record<ChatBoxContentType, ChatBoxColor>
-export type ChalkChatBoxTheme = Record<ChatBoxContentType, ChalkChatBoxColor>
-
 export type SemanticColorType =
     | 'waiting'
     | 'analyzing'
@@ -69,12 +64,10 @@ export type SpinnerName =
 export type ColorScheme = {
     name: string
     color: Record<TerminalColorName, string>
-    theme: ChatBoxTheme
     semantic?: ThemeSemanticColors
     spinner?: SpinnerName
 }
 
-export type ChalkColor = [
-    terminalColor: ChalkTerminalColor,
-    chatBoxTheme: ChalkChatBoxTheme,
-]
+export type ThemeScheme = ColorScheme & {
+    chalkColor: Record<TerminalColorName, ChalkInstance>
+}

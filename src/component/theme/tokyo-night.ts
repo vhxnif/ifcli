@@ -1,5 +1,4 @@
 import type {
-    ChatBoxTheme,
     ColorScheme,
     SpinnerName,
     TerminalColorName,
@@ -117,27 +116,6 @@ const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
     }
 }
 
-const generateTheme = (s: Color): ChatBoxTheme => {
-    const { blue, orange, purple, comment, whiteBright, blackBright } = s
-    return {
-        reasoner: {
-            title: blue,
-            bolder: blackBright,
-            content: comment,
-        },
-        tools: {
-            title: orange,
-            bolder: blackBright,
-            content: comment,
-        },
-        assisant: {
-            title: purple,
-            bolder: purple,
-            content: whiteBright,
-        },
-    }
-}
-
 const generateSemanticColors = (): ThemeSemanticColors => {
     return {
         waiting: 'cyan',
@@ -159,30 +137,26 @@ const colorScheme: ColorScheme[] = [
     {
         name: 'Tokyo Night',
         color: generateTerminalColor(tokyoNight),
-        theme: generateTheme(tokyoNight),
         semantic: generateSemanticColors(),
-        spinner: 'helix' as SpinnerName,
+        spinner: 'rain' as SpinnerName,
     },
     {
         name: 'Tokyo Night Day',
         color: generateTerminalColor(tokyoNightDay),
-        theme: generateTheme(tokyoNightDay),
         semantic: generateSemanticColors(),
-        spinner: 'helix' as SpinnerName,
+        spinner: 'rain' as SpinnerName,
     },
     {
         name: 'Tokyo Night Moon',
         color: generateTerminalColor(tokyoNightMoon),
-        theme: generateTheme(tokyoNightMoon),
         semantic: generateSemanticColors(),
-        spinner: 'helix' as SpinnerName,
+        spinner: 'rain' as SpinnerName,
     },
     {
         name: 'Tokyo Night Storm',
         color: generateTerminalColor(tokyoNightStorm),
-        theme: generateTheme(tokyoNightStorm),
         semantic: generateSemanticColors(),
-        spinner: 'helix' as SpinnerName,
+        spinner: 'rain' as SpinnerName,
     },
 ]
 

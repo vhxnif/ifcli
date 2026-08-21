@@ -2,15 +2,17 @@
 import { pathToFileURL } from 'node:url'
 import { Command } from '@commander-js/extra-typings'
 import chalk from 'chalk'
-import { setting, terminalColor } from './app-context'
+import { setting, themeScheme } from './app-context'
 import { commanderHelpConfiguration } from './component/theme/color-scheme'
 import { APP_VERSION, appSettingCover } from './config/app-setting'
 import { dataPath } from './config/data-config'
 import { editor, print, println } from './util/common-utils'
 import { select } from './util/inquirer-utils'
 
+const { green, red, yellow, cyan } = themeScheme.chalkColor
+
 const program = new Command().configureHelp(
-    commanderHelpConfiguration(terminalColor),
+    commanderHelpConfiguration(themeScheme.color),
 )
 
 program
@@ -41,9 +43,7 @@ program
                 const parsed = JSON.parse(newJson) as Record<string, unknown>
                 parsed.$schema = './settings-schema.json'
                 await appSettingCover(JSON.stringify(parsed, null, 2))
-                println(
-                    terminalColor.green('Settings updated. Restart to apply.'),
-                )
+                println(green('Settings updated. Restart to apply.'))
             }
             return
         }
@@ -71,11 +71,7 @@ program
                 generalSetting: { ...setting.generalSetting, theme: choice },
             }
             await appSettingCover(JSON.stringify(updated, null, 2))
-            println(
-                terminalColor.green(
-                    `Theme changed to: ${choice}. Restart to apply.`,
-                ),
-            )
+            println(green(`Theme changed to: ${choice}. Restart to apply.`))
             return
         }
 
@@ -91,13 +87,11 @@ program
             ]
             if (!levels.includes(thinkingLevel)) {
                 println(
-                    terminalColor.red(
-                        `Invalid thinking level. Valid: ${levels.join(', ')}`,
-                    ),
+                    red(`Invalid thinking level. Valid: ${levels.join(', ')}`),
                 )
                 return
             }
-            println(terminalColor.green(`Thinking level: ${thinkingLevel}`))
+            println(green(`Thinking level: ${thinkingLevel}`))
             // 注意：thinking level 是 per-session 设置，不是全局设置
             println(
                 chalk.gray(
@@ -136,13 +130,11 @@ program
         if (list) {
             const servers = setting.mcpServers ?? []
             if (servers.length === 0) {
-                println(terminalColor.yellow('No MCP servers configured.'))
+                println(yellow('No MCP servers configured.'))
                 return
             }
             for (const s of servers) {
-                const status = s.enable
-                    ? terminalColor.green('✓')
-                    : chalk.gray('✗')
+                const status = s.enable ? green('✓') : chalk.gray('✗')
                 println(`${status} ${s.name}@${s.version} (${s.type})`)
             }
             return
@@ -164,12 +156,12 @@ program
         if (listOpt) {
             const tools = setting.customTools ?? []
             if (tools.length === 0) {
-                println(terminalColor.yellow('No custom tools configured.'))
+                println(yellow('No custom tools configured.'))
                 return
             }
             for (const t of tools) {
                 println(
-                    `${terminalColor.cyan(t.def.function.name)} [${(t.tags ?? []).join(', ')}]`,
+                    `${cyan(t.def.function.name)} [${(t.tags ?? []).join(', ')}]`,
                 )
                 println(`  ${t.def.function.description}`)
             }
@@ -182,5 +174,5 @@ program
 
 program.parseAsync().catch((e: unknown) => {
     const { message } = e as Error
-    print(terminalColor.red(message))
+    print(red(message))
 })

@@ -15,7 +15,7 @@ import chalk from 'chalk'
 import {
     availableModels,
     chatService,
-    terminalColor,
+    themeScheme,
     toolRegistry,
 } from './app-context'
 import { commanderHelpConfiguration } from './component/theme/color-scheme'
@@ -30,6 +30,8 @@ import {
     stdin,
 } from './util/common-utils'
 import { checkbox, checkboxThemeStyle, select } from './util/inquirer-utils'
+
+const { red, green, yellow, cyan, white, gray } = themeScheme.chalkColor
 
 const renderMessageContent = (msg: Message): string => {
     if (msg.role === 'user') {
@@ -82,7 +84,7 @@ const resolveAgentId = (
     if (!match) {
         if (!allowMissing) {
             println(
-                terminalColor.red(
+                red(
                     `Agent not found: ${force}. Use "ict switch" to list agents.`,
                 ),
             )
@@ -128,7 +130,7 @@ const defaultModelStr = (): string => {
 }
 
 const program = new Command()
-    .configureHelp(commanderHelpConfiguration(terminalColor))
+    .configureHelp(commanderHelpConfiguration(themeScheme.color))
     .enablePositionalOptions()
 
 program
@@ -165,7 +167,7 @@ program
                     agents.find((a) => a.name === force)
                 if (!match) {
                     println(
-                        terminalColor.red(
+                        red(
                             `Agent not found: ${force}. Use "ict switch" to list agents.`,
                         ),
                     )
@@ -237,15 +239,9 @@ program
                 agentId,
                 name: `Default Session ${new Date().toLocaleString()}`,
             })
-            println(
-                terminalColor.green(
-                    `Agent "${name}" created with model ${model}`,
-                ),
-            )
+            println(green(`Agent "${name}" created with model ${model}`))
         } catch (e: unknown) {
-            println(
-                terminalColor.red(e instanceof Error ? e.message : String(e)),
-            )
+            println(red(e instanceof Error ? e.message : String(e)))
         }
     })
 
@@ -261,12 +257,12 @@ program
             const agentId = resolveAgentId(force)
             if (!agentId) return
             chatService.deleteAgent(agentId)
-            println(terminalColor.green(`Agent deleted.`))
+            println(green(`Agent deleted.`))
             return
         }
         const agents = chatService.listAgents()
         if (agents.length === 0) {
-            println(terminalColor.yellow('No agents to remove.'))
+            println(yellow('No agents to remove.'))
             return
         }
         const choice = await select({
@@ -274,7 +270,7 @@ program
             choices: agents.map((a) => ({ name: a.name, value: a.id })),
         })
         chatService.deleteAgent(choice)
-        println(terminalColor.green(`Agent deleted.`))
+        println(green(`Agent deleted.`))
     })
 
 // ── switch ──
@@ -288,14 +284,14 @@ program
         const agents = chatService.listAgents()
         const activeId = resolveAgentId(force) ?? getCurrentAgentId()
         if (agents.length === 0) {
-            println(terminalColor.yellow('No agents available.'))
+            println(yellow('No agents available.'))
             return
         }
         if (agents.length === 1) {
             const a = agents[0]
             const isActive = a.id === activeId
             println(
-                terminalColor.yellow(
+                yellow(
                     `No other agent to switch to. Current: ${a.name}${isActive ? ' (active)' : ''}`,
                 ),
             )
@@ -311,7 +307,7 @@ program
         })
         chatService.setActiveAgentId(choice)
         const targetName = agents.find((a) => a.id === choice)?.name ?? choice
-        println(terminalColor.green(`Switched to agent: ${targetName}`))
+        println(green(`Switched to agent: ${targetName}`))
         println(chalk.gray(`Use: ict -f ${targetName} <message>`))
     })
 
@@ -333,7 +329,7 @@ program
         const agentId = resolveAgentId(getGlobalForce(cmd))
         if (!agentId) {
             println(
-                terminalColor.yellow(
+                yellow(
                     'No agents available. Use -f <agent-name> or start a chat first.',
                 ),
             )
@@ -354,7 +350,7 @@ program
             ]
             if (!validLevels.includes(reasoning)) {
                 println(
-                    terminalColor.red(
+                    red(
                         `Invalid reasoning level: ${reasoning}. Valid: ${validLevels.join(', ')}`,
                     ),
                 )
@@ -363,14 +359,14 @@ program
             await handle.update({
                 thinkingLevel: reasoning as ThinkingLevel,
             })
-            println(terminalColor.green(`Reasoning level set to: ${reasoning}`))
+            println(green(`Reasoning level set to: ${reasoning}`))
         }
 
         if (model) {
             // 从 Pi 模型发现结果中选择
             if (availableModels.length === 0) {
                 println(
-                    terminalColor.yellow(
+                    yellow(
                         'No models available. Check Pi environment variables.',
                     ),
                 )
@@ -385,14 +381,14 @@ program
                 choices,
             })
             await handle.update({ model: modelStr })
-            println(terminalColor.green(`Model set to: ${modelStr}`))
+            println(green(`Model set to: ${modelStr}`))
         }
 
         if (tools) {
             const groups = toolRegistry.availableGroups()
             if (groups.length === 0) {
                 println(
-                    terminalColor.yellow(
+                    yellow(
                         'No tools available. Configure mcpServers/customTools in settings first.',
                     ),
                 )
@@ -410,7 +406,7 @@ program
             const selected = await checkbox({
                 message: 'Select active tools for this agent:',
                 choices,
-                theme: checkboxThemeStyle(terminalColor),
+                theme: checkboxThemeStyle(themeScheme.chalkColor),
             })
             const activeMcps = selected
                 .filter((id) => id.startsWith('mcp:'))
@@ -419,7 +415,7 @@ program
                 .filter((id) => id.startsWith('custom:'))
                 .map((id) => id.slice(7))
             await handle.update({ activeMcps, activeCustomTags })
-            println(terminalColor.green('Active tools updated.'))
+            println(green('Active tools updated.'))
         }
 
         if (systemPrompt) {
@@ -428,14 +424,14 @@ program
                     ? systemPrompt
                     : await editor(meta.systemPrompt ?? '')
             await handle.update({ systemPrompt: newPrompt })
-            println(terminalColor.green('System prompt updated.'))
+            println(green('System prompt updated.'))
         }
 
         if (skills) {
             const available = toolRegistry.availableSkills()
             if (available.length === 0) {
                 println(
-                    terminalColor.yellow(
+                    yellow(
                         'No skills available. Add SKILL.md files to the skills directory first.',
                     ),
                 )
@@ -450,10 +446,10 @@ program
             const selected = await checkbox({
                 message: 'Select active skills for this agent:',
                 choices,
-                theme: checkboxThemeStyle(terminalColor),
+                theme: checkboxThemeStyle(themeScheme.chalkColor),
             })
             await handle.update({ skills: selected })
-            println(terminalColor.green('Active skills updated.'))
+            println(green('Active skills updated.'))
         }
 
         if (!reasoning && !model && !tools && !systemPrompt && !skills) {
@@ -483,7 +479,7 @@ program
         const agentId = resolveAgentId(getGlobalForce(cmd))
         if (!agentId) {
             println(
-                terminalColor.yellow(
+                yellow(
                     'No agents available. Use -f <agent-name> or start a chat first.',
                 ),
             )
@@ -491,9 +487,7 @@ program
         }
         const sessionId = getCurrentSessionId(agentId)
         if (!sessionId) {
-            println(
-                terminalColor.yellow('No sessions available for this agent.'),
-            )
+            println(yellow('No sessions available for this agent.'))
             return
         }
         const handle = chatService.getSession(sessionId)
@@ -511,12 +505,12 @@ program
                     : ''
                 const prefix =
                     msg.role === 'user'
-                        ? terminalColor.cyan.bold('You')
+                        ? cyan.bold('You')
                         : msg.role === 'toolResult'
-                          ? terminalColor.yellow.bold('Tool')
-                          : terminalColor.white.bold('Assistant')
+                          ? yellow.bold('Tool')
+                          : white.bold('Assistant')
 
-                println(`${terminalColor.gray(`#${i + 1} ${ts}`)} ${prefix}`)
+                println(`${gray(`#${i + 1} ${ts}`)} ${prefix}`)
                 println(content)
                 println(chalk.gray('---'))
             } catch {
@@ -527,11 +521,7 @@ program
         // 显示 compaction 标记
         const compactions = entries.filter((e) => e.entryType === 'compaction')
         if (compactions.length > 0) {
-            println(
-                terminalColor.yellow(
-                    `[${compactions.length} compaction(s) in history]`,
-                ),
-            )
+            println(yellow(`[${compactions.length} compaction(s) in history]`))
         }
     })
 
@@ -550,14 +540,14 @@ sessionCmd
         const agentId = resolveAgentId(getGlobalForce(cmd))
         if (!agentId) {
             println(
-                terminalColor.yellow(
+                yellow(
                     'No agents available. Use -f <agent-name> or start a chat first.',
                 ),
             )
             return
         }
         const sessionId = chatService.createSession({ agentId, name })
-        println(terminalColor.green(`Session "${name}" created.`))
+        println(green(`Session "${name}" created.`))
         println(
             chalk.gray(`Use: ict -f ${agentId.slice(0, 8)}... -t <message>`),
         )
@@ -572,7 +562,7 @@ sessionCmd
         const agentId = resolveAgentId(getGlobalForce(cmd))
         if (!agentId) {
             println(
-                terminalColor.yellow(
+                yellow(
                     'No agents available. Use -f <agent-name> or start a chat first.',
                 ),
             )
@@ -580,7 +570,7 @@ sessionCmd
         }
         const sessions = chatService.listSessions(agentId)
         if (sessions.length === 0) {
-            println(terminalColor.yellow('No sessions available.'))
+            println(yellow('No sessions available.'))
             return
         }
         const choice = await select({
@@ -590,7 +580,7 @@ sessionCmd
                 value: s.id,
             })),
         })
-        println(terminalColor.green(`Switched to session: ${choice}`))
+        println(green(`Switched to session: ${choice}`))
         println(chalk.gray(`Use: ict -f ${agentId.slice(0, 8)}... <message>`))
     })
 
@@ -602,7 +592,7 @@ sessionCmd
         const agentId = resolveAgentId(getGlobalForce(cmd))
         if (!agentId) {
             println(
-                terminalColor.yellow(
+                yellow(
                     'No agents available. Use -f <agent-name> or start a chat first.',
                 ),
             )
@@ -610,7 +600,7 @@ sessionCmd
         }
         const sessions = chatService.listSessions(agentId)
         if (sessions.length === 0) {
-            println(terminalColor.yellow('No sessions to remove.'))
+            println(yellow('No sessions to remove.'))
             return
         }
         const choice = await select({
@@ -618,9 +608,9 @@ sessionCmd
             choices: sessions.map((s) => ({ name: s.name, value: s.id })),
         })
         chatService.deleteSession(choice)
-        println(terminalColor.green(`Session deleted.`))
+        println(green(`Session deleted.`))
     })
 
 program.parseAsync().catch((e: unknown) => {
-    print(terminalColor.red(e instanceof Error ? e.message : String(e)))
+    print(red(e instanceof Error ? e.message : String(e)))
 })

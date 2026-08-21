@@ -4,17 +4,10 @@ import chalk from 'chalk'
 import { colorScheme as catppuccin } from './catppuccin'
 import { colorScheme as rosePine } from './rose-pine'
 import type {
-    ChalkChatBoxColor,
-    ChalkChatBoxTheme,
-    ChalkColor,
-    ChalkTerminalColor,
-    ChatBoxColor,
-    ChatBoxContentType,
-    ChatBoxPart,
-    ChatBoxTheme,
     ColorScheme,
     SpinnerName,
     TerminalColorName,
+    ThemeScheme,
     ThemeSemanticColors,
 } from './theme-type'
 import { colorScheme as tokyoNight } from './tokyo-night'
@@ -27,42 +20,28 @@ const hex = (color: string): ChalkInstance => {
 
 const defaultColor: ColorScheme = tokyoNight[0]
 
-const colorScheme = (schema: string): ColorScheme => {
+const toChalk = (color: Record<TerminalColorName, string>) => {
+    return Object.entries(color).reduce(
+        (acc, [k, v]) => {
+            acc[k as TerminalColorName] = hex(v)
+            return acc
+        },
+        {} as Record<TerminalColorName, ChalkInstance>,
+    )
+}
+
+const colorScheme = (schema: string): ThemeScheme => {
     const c = schemes.find((it) => it.name === schema)
     if (c) {
-        return c
+        return {
+            ...c,
+            chalkColor: toChalk(c.color),
+        }
     }
-    return defaultColor
-}
-
-const chalkTerminalColor = (
-    color: Record<TerminalColorName, string>,
-): ChalkTerminalColor => {
-    return Object.entries(color).reduce((obj, it) => {
-        const [key, value] = it
-        obj[key as TerminalColorName] = hex(value)
-        return obj
-    }, {} as ChalkTerminalColor)
-}
-
-const chalkChatBoxTheme = (theme: ChatBoxTheme): ChalkChatBoxTheme => {
-    const f = (c: ChatBoxColor) => {
-        return Object.entries(c).reduce((obj, it) => {
-            const [key, value] = it
-            obj[key as ChatBoxPart] = hex(value)
-            return obj
-        }, {} as ChalkChatBoxColor)
+    return {
+        ...defaultColor,
+        chalkColor: toChalk(defaultColor.color),
     }
-    return Object.entries(theme).reduce((obj, it) => {
-        const [key, value] = it
-        obj[key as ChatBoxContentType] = f(value)
-        return obj
-    }, {} as ChalkChatBoxTheme)
-}
-
-const chalkColor = (schema: string): ChalkColor => {
-    const { color, theme } = colorScheme(schema)
-    return [chalkTerminalColor(color), chalkChatBoxTheme(theme)]
 }
 
 const getSemanticColors = (schema: string): ThemeSemanticColors => {
@@ -78,23 +57,23 @@ const getSpinnerName = (schema: string): SpinnerName => {
 }
 
 const commanderHelpConfiguration = (
-    color: ChalkTerminalColor,
+    color: Record<TerminalColorName, string>,
 ): HelpConfiguration => {
     const { red, yellow, green, blue, magenta, cyan } = color
     return {
-        styleTitle: (str) => red.bold(str),
-        styleCommandText: (str) => cyan(str),
-        styleCommandDescription: (str) => green.bold.italic(str),
-        styleDescriptionText: (str) => yellow.italic(str),
-        styleOptionText: (str) => green(str),
-        styleArgumentText: (str) => red(str),
-        styleSubcommandText: (str) => blue.italic(str),
-        styleOptionTerm: (str) => magenta.italic(str),
+        styleTitle: (str) => hex(red).bold(str),
+        styleCommandText: (str) => hex(cyan)(str),
+        styleCommandDescription: (str) => hex(green).bold.italic(str),
+        styleDescriptionText: (str) => hex(yellow).italic(str),
+        styleOptionText: (str) => hex(green)(str),
+        styleArgumentText: (str) => hex(red)(str),
+        styleSubcommandText: (str) => hex(blue).italic(str),
+        styleOptionTerm: (str) => hex(magenta).italic(str),
     } as HelpConfiguration
 }
 
 export {
-    chalkColor,
+    colorScheme,
     commanderHelpConfiguration,
     getSemanticColors,
     getSpinnerName,

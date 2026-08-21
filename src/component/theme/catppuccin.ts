@@ -1,5 +1,4 @@
 import type {
-    ChatBoxTheme,
     ColorScheme,
     SpinnerName,
     TerminalColorName,
@@ -157,27 +156,6 @@ const scheme: Record<CatppuccinType, Color> = {
     },
 }
 
-const generateTheme = (s: Color): ChatBoxTheme => {
-    const { lavender, yellow, pink, text, surface1, overlay0, overlay1 } = s
-    return {
-        reasoner: {
-            title: lavender,
-            bolder: surface1,
-            content: overlay0,
-        },
-        tools: {
-            title: yellow,
-            bolder: surface1,
-            content: overlay1,
-        },
-        assisant: {
-            title: pink,
-            bolder: pink,
-            content: text,
-        },
-    }
-}
-
 const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
     const { mantle, red, green, yellow, blue, sky, text, mauve, overlay0 } = s
     return {
@@ -228,14 +206,12 @@ const colorScheme: ColorScheme[] = [
             black: latte.text,
             blackBright: latte.overlay2,
         },
-        theme: generateTheme(latte),
         semantic: generateSemanticColors(),
         spinner: 'orbit' as SpinnerName,
     },
     {
         name: 'Catppuccin Frappe',
         color: generateTerminalColor(frappe),
-        theme: generateTheme(frappe),
         semantic: generateSemanticColors(),
         spinner: 'orbit' as SpinnerName,
     },
@@ -243,14 +219,12 @@ const colorScheme: ColorScheme[] = [
     {
         name: 'Catppuccin Macchiato',
         color: generateTerminalColor(macchiato),
-        theme: generateTheme(macchiato),
         semantic: generateSemanticColors(),
         spinner: 'orbit' as SpinnerName,
     },
     {
         name: 'Catppuccin Mocha',
         color: generateTerminalColor(mocha),
-        theme: generateTheme(mocha),
         semantic: generateSemanticColors(),
         spinner: 'orbit' as SpinnerName,
     },

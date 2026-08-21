@@ -13,10 +13,6 @@
 
 import type { ThinkingLevel } from '@earendil-works/pi-agent-core'
 import type { Message, Model, Models } from '@earendil-works/pi-ai'
-import type {
-    ChalkChatBoxTheme,
-    ChalkTerminalColor,
-} from '../component/theme/theme-type'
 import type { Setting } from '../config/app-setting'
 import { AgentRunner } from '../llm/agent-runner'
 import type { PiThemeColors } from '../llm/pi-display-handler'
@@ -33,8 +29,6 @@ import type {
 export interface ChatServiceConfig {
     agentManager: AgentManager
     toolRegistry: ToolRegistry
-    terminalColor: ChalkTerminalColor
-    theme: ChalkChatBoxTheme
     piColors: PiThemeColors
     models: Models
 }
@@ -68,16 +62,12 @@ export interface NewSessionOptions {
 export class ChatService {
     private agentManager: AgentManager
     private toolRegistry: ToolRegistry
-    private terminalColor: ChalkTerminalColor
-    private theme: ChalkChatBoxTheme
     private piColors: PiThemeColors
     private models: Models
 
     constructor(config: ChatServiceConfig) {
         this.agentManager = config.agentManager
         this.toolRegistry = config.toolRegistry
-        this.terminalColor = config.terminalColor
-        this.theme = config.theme
         this.piColors = config.piColors
         this.models = config.models
     }
@@ -162,10 +152,9 @@ export class ChatService {
 
         // 显示处理器
         const display = new PiDisplayHandler({
-            color: this.terminalColor,
-            theme: this.theme,
             piColors: this.piColors,
             enableSpinner: !opts.noStream,
+            spinnerName: 'helix',
             quiet: opts.noStream,
         })
 

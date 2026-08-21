@@ -10,11 +10,7 @@
 import chalk from 'chalk'
 import type { Color } from 'ora'
 import { OraShow } from '../component/ora-show'
-import type {
-    ChalkChatBoxTheme,
-    ChalkTerminalColor,
-    SpinnerName,
-} from '../component/theme/theme-type'
+import type { SpinnerName } from '../component/theme/theme-type'
 import { print, println } from '../util/common-utils'
 import type { PiDisplayEvent } from './pi-types'
 
@@ -35,8 +31,6 @@ export type PiColorRole =
 export type PiThemeColors = Record<PiColorRole, Color>
 
 export interface PiDisplayOptions {
-    color: ChalkTerminalColor
-    theme: ChalkChatBoxTheme
     piColors: PiThemeColors
     enableSpinner?: boolean
     spinnerName?: SpinnerName
@@ -62,8 +56,6 @@ export const DEFAULT_PI_COLORS: PiThemeColors = {
 // ── 实现 ──
 
 export class PiDisplayHandler {
-    private color: ChalkTerminalColor
-    private theme: ChalkChatBoxTheme
     private piColors: PiThemeColors
     private spinner?: OraShow
     private currentMode: 'idle' | 'thinking' | 'assistant' | 'tool' = 'idle'
@@ -71,8 +63,6 @@ export class PiDisplayHandler {
     private textBuffer: string = ''
 
     constructor(options: PiDisplayOptions) {
-        this.color = options.color
-        this.theme = options.theme
         this.piColors = options.piColors
         this.quiet = options.quiet ?? false
 
@@ -96,7 +86,7 @@ export class PiDisplayHandler {
         }
         this.transitionTo('assistant')
         this.spinner?.stop()
-        print(this.theme.assisant.content(delta))
+        print(chalk[this.piColors.assistant](delta))
     }
 
     /** text_end: 文本块结束 */
@@ -157,7 +147,7 @@ export class PiDisplayHandler {
         this.spinner?.stop()
         if (this.quiet) {
             if (this.textBuffer) {
-                println(this.theme.assisant.content(this.textBuffer))
+                println(chalk[this.piColors.assistant](this.textBuffer))
             }
             this.currentMode = 'idle'
             return
