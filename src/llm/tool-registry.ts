@@ -9,7 +9,11 @@
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
-import type { AgentTool } from '@earendil-works/pi-agent-core'
+import type {
+    AgentTool,
+    AgentToolUpdateCallback,
+} from '@earendil-works/pi-agent-core'
+import type { Static } from '@earendil-works/pi-ai'
 import type MCPClient from '../llm/mcp-client'
 import type { CustomToolDef } from './pi-types'
 
@@ -144,9 +148,17 @@ export class ToolRegistry {
                             string,
                             unknown
                         >,
-                        execute: async (args: unknown) => {
-                            const result = await mcp.callTool(name, args)
-                            return JSON.stringify(result)
+                        execute: async (
+                            _toolCallId: string,
+                            params: Static<any>,
+                            _signal?: AbortSignal,
+                            _onUpdate?: AgentToolUpdateCallback<any>,
+                        ) => {
+                            const result = await mcp.callTool(name, params)
+                            return {
+                                content: result.content,
+                                details: void 0,
+                            }
                         },
                     } as unknown as AgentTool<any>)
                 }
@@ -172,13 +184,18 @@ export class ToolRegistry {
                         string,
                         unknown
                     >,
-                    execute: async (args: unknown) => {
+                    execute: async (
+                        _toolCallId: string,
+                        params: Static<any>,
+                        _signal?: AbortSignal,
+                        _onUpdate?: AgentToolUpdateCallback<any>,
+                    ) => {
                         const cmd = ct.command
                             .map((part) => {
                                 const m = part.match(/^\$\{([^}]+)\}$/)
-                                if (m && args && typeof args === 'object') {
+                                if (m && params && typeof params === 'object') {
                                     return String(
-                                        (args as Record<string, unknown>)[
+                                        (params as Record<string, unknown>)[
                                             m[1]
                                         ] ?? '',
                                     )
@@ -197,9 +214,11 @@ export class ToolRegistry {
                             const errText = await new Response(
                                 proc.stderr,
                             ).text()
-                            return `Error (exit ${exitCode}): ${errText || output}`
+                            return this.toolResult(
+                                `Error (exit ${exitCode}): ${errText || output}`,
+                            )
                         }
-                        return output
+                        return this.toolResult(output)
                     },
                 } as unknown as AgentTool<any>)
             }
@@ -262,8 +281,12 @@ ${skillsXml}
                     },
                     required: ['command'],
                 },
-                execute: async (args: any) => {
-                    const command = args.command as string
+                execute: async (
+                    _toolCallId: string,
+                    { command }: { command: string },
+                    _signal?: AbortSignal,
+                    _onUpdate?: AgentToolUpdateCallback<any>,
+                ) => {
                     const colonIdx = command.indexOf(':')
 
                     // 读取 skill 内指定文件: <skill-name>:<relative-path>
@@ -277,9 +300,13 @@ ${skillsXml}
                         const fullPath = path.join(skill.basePath, filePath)
                         try {
                             const content = readFileSync(fullPath, 'utf-8')
-                            return `File: ${filePath}\n\n${content}`
+                            return this.toolResult(
+                                `File: ${filePath}\n\n${content}`,
+                            )
                         } catch {
-                            return `File not found in skill ${skillName}: ${filePath}`
+                            return this.toolResult(
+                                `File not found in skill ${skillName}: ${filePath}`,
+                            )
                         }
                     }
 
@@ -290,7 +317,9 @@ ${skillsXml}
                         skill.files.length > 0
                             ? skill.files.map((f) => `  - ${f}`).join('\n')
                             : '  (no additional files)'
-                    return `Base directory for this skill: ${skill.basePath}\n\nFiles in this skill:\n${filesList}\n\n${skill.content}`
+                    return this.toolResult(
+                        `Base directory for this skill: ${skill.basePath}\n\nFiles in this skill:\n${filesList}\n\n${skill.content}`,
+                    )
                 },
             } as unknown as AgentTool<any>)
         }
@@ -362,6 +391,18 @@ ${skillsXml}
         return skills
     }
 
+    private toolResult(text: string) {
+        return {
+            content: [
+                {
+                    type: 'text',
+                    text: text,
+                },
+            ],
+            details: void 0,
+        }
+    }
+
     private skillsDirExists(rootDir: string): boolean {
         try {
             return statSync(rootDir).isDirectory()
@@ -417,10 +458,17 @@ ${skillsXml}
                 description:
                     '列出所有可用的工具分类（MCP 服务器和自定义工具标签）',
                 parameters: { type: 'object', properties: {} },
-                execute: async () => {
-                    return groups.length > 0
-                        ? groups.map((g) => g.id)
-                        : ['(no active tools)']
+                execute: async (
+                    _toolCallId: string,
+                    _params: any,
+                    _signal?: AbortSignal,
+                    _onUpdate?: AgentToolUpdateCallback<any>,
+                ) => {
+                    const res =
+                        groups.length > 0
+                            ? groups.map((g) => g.id)
+                            : ['(no active tools)']
+                    return this.toolResult(JSON.stringify(res))
                 },
             } as unknown as AgentTool<any>,
 
@@ -441,8 +489,10 @@ ${skillsXml}
                 execute: async (args: any) => {
                     const groupName: string = args.group_name
                     const group = groups.find((g) => g.id === groupName)
-                    if (!group) return `Unknown group: ${groupName}`
-                    return group.tools
+                    if (!group)
+                        return this.toolResult(`Unknown group: ${groupName}`)
+
+                    return this.toolResult(JSON.stringify(group.tools))
                 },
             } as unknown as AgentTool<any>,
         ]

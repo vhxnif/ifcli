@@ -134,20 +134,16 @@ export class PiDisplayHandler {
         )
     }
 
-    /** toolcall_delta: 工具参数流 */
-    onToolcallDelta(_delta: string): void {
-        // 工具参数在 toolcall_end 时统一展示
-    }
-
     /** toolcall_end: 工具调用完成 */
-    onToolcallEnd(name: string, result: string): void {
+    onToolcall(name: string, args: string): void {
         if (this.quiet) {
             return
         }
         const truncated =
-            result.length > 200
-                ? `${result.slice(0, 100)}...${result.slice(-100)}`
-                : result
+            args.length > 200
+                ? `${args.slice(0, 100)}...${args.slice(-100)}`
+                : args
+        println('')
         println(
             chalk[this.piColors.tool].bold(`[tool:${name}]`) +
                 ' → ' +

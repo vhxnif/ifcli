@@ -179,23 +179,11 @@ export class AgentRunner {
                     content: event.content,
                 })
                 break
-            case 'toolcall_start':
-                this.displayCallback({
-                    type: 'toolcall_start',
-                    toolName: (event as any).toolName ?? '',
-                })
-                break
-            case 'toolcall_delta':
-                this.displayCallback({
-                    type: 'toolcall_delta',
-                    content: event.delta,
-                })
-                break
             case 'toolcall_end':
                 this.displayCallback({
-                    type: 'toolcall_end',
+                    type: 'toolcall',
                     toolName: (event as any).toolCall?.name ?? '',
-                    toolResult: JSON.stringify(
+                    toolArgs: JSON.stringify(
                         (event as any).toolCall?.arguments ?? {},
                     ),
                 })

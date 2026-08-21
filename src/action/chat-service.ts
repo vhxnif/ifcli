@@ -192,13 +192,10 @@ export class ChatService {
                 case 'thinking_end':
                     display.onThinkingEnd(event.content ?? '')
                     break
-                case 'toolcall_start':
-                    display.onToolcallStart(event.toolName ?? '')
-                    break
-                case 'toolcall_end':
-                    display.onToolcallEnd(
+                case 'toolcall':
+                    display.onToolcall(
                         event.toolName ?? '',
-                        event.toolResult ?? '',
+                        event.toolArgs ?? '',
                     )
                     break
                 case 'done':

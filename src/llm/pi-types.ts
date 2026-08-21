@@ -139,9 +139,7 @@ export type PiEventType =
     | 'text_end'
     | 'thinking_delta'
     | 'thinking_end'
-    | 'toolcall_start'
-    | 'toolcall_delta'
-    | 'toolcall_end'
+    | 'toolcall'
     | 'done'
     | 'error'
 
@@ -149,7 +147,7 @@ export interface PiDisplayEvent {
     type: PiEventType
     content?: string
     toolName?: string
-    toolResult?: string
+    toolArgs?: string
     usage?: {
         input: number
         output: number
