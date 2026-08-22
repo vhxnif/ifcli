@@ -7,10 +7,12 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
-import chalk from 'chalk'
-import type { Color } from 'ora'
+import type { ChalkInstance } from 'chalk'
 import { OraShow } from '../component/ora-show'
-import type { SpinnerName } from '../component/theme/theme-type'
+import type {
+    TerminalColorName,
+    ThemeScheme,
+} from '../component/theme/theme-type'
 import { print, println } from '../util/common-utils'
 import type { PiDisplayEvent } from './pi-types'
 
@@ -28,49 +30,51 @@ export type PiColorRole =
     | 'compaction' // compaction 提示
     | 'branchSummary' // 分支总结
 
-export type PiThemeColors = Record<PiColorRole, Color>
+export type PiThemeColors = Record<PiColorRole, ChalkInstance>
 
 export interface PiDisplayOptions {
-    piColors: PiThemeColors
+    themeScheme: ThemeScheme
     enableSpinner?: boolean
-    spinnerName?: SpinnerName
     /** 静默模式：只输出最终结果，不展示过程（思考、工具调用、用量等） */
     quiet?: boolean
 }
 
 // ── 默认 Pi 色板 ──
 
-export const DEFAULT_PI_COLORS: PiThemeColors = {
-    assistant: 'white',
-    thinking: 'gray',
-    tool: 'magenta',
-    toolArgs: 'gray',
-    done: 'green',
-    error: 'red',
-    user: 'cyan',
-    system: 'blue',
-    compaction: 'yellow',
-    branchSummary: 'yellow',
-}
+const piColor = (
+    chalkColor: Record<TerminalColorName, ChalkInstance>,
+): PiThemeColors => ({
+    assistant: chalkColor.green,
+    thinking: chalkColor.gray,
+    tool: chalkColor.magenta.italic,
+    toolArgs: chalkColor.gray.italic,
+    done: chalkColor.magenta,
+    error: chalkColor.red,
+    user: chalkColor.cyan,
+    system: chalkColor.blue,
+    compaction: chalkColor.yellow,
+    branchSummary: chalkColor.yellow,
+})
 
 // ── 实现 ──
 
 export class PiDisplayHandler {
-    private piColors: PiThemeColors
+    private piColor: PiThemeColors
     private spinner?: OraShow
     private currentMode: 'idle' | 'thinking' | 'assistant' | 'tool' = 'idle'
     private quiet: boolean
     private textBuffer: string = ''
 
     constructor(options: PiDisplayOptions) {
-        this.piColors = options.piColors
+        const { chalkColor, spinner } = options.themeScheme
+        this.piColor = piColor(chalkColor)
         this.quiet = options.quiet ?? false
 
         if (options.enableSpinner !== false) {
             this.spinner = new OraShow(
-                chalk[this.piColors.thinking]('Thinking...'),
-                options.spinnerName ?? 'helix',
-                this.piColors.thinking as Color,
+                this.piColor.thinking('Thinking...'),
+                spinner ?? 'helix',
+                chalkColor,
             )
             this.spinner.start()
         }
@@ -86,7 +90,7 @@ export class PiDisplayHandler {
         }
         this.transitionTo('assistant')
         this.spinner?.stop()
-        print(chalk[this.piColors.assistant](delta))
+        print(this.piColor.assistant(delta))
     }
 
     /** text_end: 文本块结束 */
@@ -101,7 +105,7 @@ export class PiDisplayHandler {
         }
         this.transitionTo('thinking')
         this.spinner?.stop()
-        print(chalk[this.piColors.thinking](delta))
+        print(this.piColor.thinking(delta))
     }
 
     /** thinking_end: 思考结束 */
@@ -119,8 +123,8 @@ export class PiDisplayHandler {
         this.spinner?.stop()
         println('')
         println(
-            chalk[this.piColors.tool].bold(`[tool:${name}]`) +
-                chalk[this.piColors.toolArgs](' ...'),
+            this.piColor.tool.bold(`[tool:${name}]`) +
+                this.piColor.toolArgs(' ...'),
         )
     }
 
@@ -135,9 +139,9 @@ export class PiDisplayHandler {
                 : args
         println('')
         println(
-            chalk[this.piColors.tool].bold(`[tool:${name}]`) +
+            this.piColor.tool.bold(`[tool:${name}]`) +
                 ' → ' +
-                chalk[this.piColors.toolArgs](truncated),
+                this.piColor.toolArgs(truncated),
         )
         this.currentMode = 'idle'
     }
@@ -147,7 +151,7 @@ export class PiDisplayHandler {
         this.spinner?.stop()
         if (this.quiet) {
             if (this.textBuffer) {
-                println(chalk[this.piColors.assistant](this.textBuffer))
+                println(this.piColor.assistant(this.textBuffer))
             }
             this.currentMode = 'idle'
             return
@@ -164,30 +168,27 @@ export class PiDisplayHandler {
                 parts.push(`cacheWrite1h: ${usage.cacheWrite1h}`)
             if (usage.reasoning) parts.push(`reasoning: ${usage.reasoning}`)
             println('')
-            println(chalk[this.piColors.done](`✓ (${parts.join(', ')})`))
+            println(this.piColor.done(`✓ (${parts.join(', ')})`))
         }
         this.currentMode = 'idle'
     }
 
     /** error: 错误 */
     onError(message?: string): void {
-        this.spinner?.fail(chalk[this.piColors.error](message ?? 'Error'))
+        this.spinner?.fail(this.piColor.error(message ?? 'Error'))
         this.currentMode = 'idle'
     }
 
     /** 用户消息回显（可由上层调用） */
     onUserInput(content: string): void {
         println('')
-        println(
-            chalk[this.piColors.user].bold('▸ ') +
-                chalk[this.piColors.user](content),
-        )
+        println(this.piColor.user.bold('▸ ') + this.piColor.user(content))
         println('')
     }
 
     /** compaction/系统提示 */
     onSystem(message: string): void {
-        println(chalk[this.piColors.system](message))
+        println(this.piColor.system(message))
     }
 
     /** 停止 spinner */

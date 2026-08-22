@@ -13,9 +13,9 @@
 
 import type { ThinkingLevel } from '@earendil-works/pi-agent-core'
 import type { Message, Model, Models } from '@earendil-works/pi-ai'
+import type { ThemeScheme } from '../component/theme/theme-type'
 import type { Setting } from '../config/app-setting'
 import { AgentRunner } from '../llm/agent-runner'
-import type { PiThemeColors } from '../llm/pi-display-handler'
 import { PiDisplayHandler } from '../llm/pi-display-handler'
 import type { ToolRegistry } from '../llm/tool-registry'
 import type {
@@ -29,7 +29,7 @@ import type {
 export interface ChatServiceConfig {
     agentManager: AgentManager
     toolRegistry: ToolRegistry
-    piColors: PiThemeColors
+    themeScheme: ThemeScheme
     models: Models
 }
 
@@ -62,13 +62,13 @@ export interface NewSessionOptions {
 export class ChatService {
     private agentManager: AgentManager
     private toolRegistry: ToolRegistry
-    private piColors: PiThemeColors
+    private themeScheme: ThemeScheme
     private models: Models
 
     constructor(config: ChatServiceConfig) {
         this.agentManager = config.agentManager
         this.toolRegistry = config.toolRegistry
-        this.piColors = config.piColors
+        this.themeScheme = config.themeScheme
         this.models = config.models
     }
 
@@ -152,9 +152,8 @@ export class ChatService {
 
         // 显示处理器
         const display = new PiDisplayHandler({
-            piColors: this.piColors,
+            themeScheme: this.themeScheme,
             enableSpinner: !opts.noStream,
-            spinnerName: 'helix',
             quiet: opts.noStream,
         })
 

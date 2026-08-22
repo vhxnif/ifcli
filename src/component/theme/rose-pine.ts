@@ -122,7 +122,7 @@ const colorScheme: ColorScheme[] = [
         name: 'Rose Pine',
         color: generateTerminalColor(rosePine),
         semantic: generateSemanticColors(),
-        spinner: 'cascade' as SpinnerName,
+        spinner: 'braille' as SpinnerName,
     },
     {
         name: 'Rose Pine Moon',
@@ -130,7 +130,7 @@ const colorScheme: ColorScheme[] = [
             ...generateTerminalColor(rosePineMoon),
         },
         semantic: generateSemanticColors(),
-        spinner: 'cascade' as SpinnerName,
+        spinner: 'braille' as SpinnerName,
     },
     {
         name: 'Rose Pine Dawn',
@@ -140,7 +140,7 @@ const colorScheme: ColorScheme[] = [
             white: rosePineDawn.base,
         },
         semantic: generateSemanticColors(),
-        spinner: 'cascade' as SpinnerName,
+        spinner: 'braille' as SpinnerName,
     },
 ]
 

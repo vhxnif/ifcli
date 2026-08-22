@@ -14,7 +14,6 @@ import { colorScheme } from './component/theme/color-scheme'
 import { appSetting, initAppSetting } from './config/app-setting'
 import { dataPath } from './config/data-config'
 import MCPClient from './llm/mcp-client'
-import { DEFAULT_PI_COLORS } from './llm/pi-display-handler'
 import { ToolRegistry } from './llm/tool-registry'
 import { AgentManager } from './store/agent-manager'
 
@@ -63,7 +62,7 @@ const themeScheme = colorScheme(theme)
 const chatService = new ChatService({
     agentManager,
     toolRegistry,
-    piColors: DEFAULT_PI_COLORS,
+    themeScheme,
     models,
 })
 chatService.setSetting(setting)
