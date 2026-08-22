@@ -33,33 +33,6 @@ import { checkbox, checkboxThemeStyle, select } from './util/inquirer-utils'
 
 const { red, green, yellow, cyan, magenta, gray } = themeScheme.chalkColor
 
-const renderMessageContent = (msg: Message): string => {
-    if (msg.role === 'user') {
-        if (typeof msg.content === 'string') return msg.content
-        return msg.content
-            .map((c) => (c.type === 'text' ? c.text : '[image]'))
-            .join('\n')
-    }
-    if (msg.role === 'toolResult') {
-        return msg.content
-            .map((c) => (c.type === 'text' ? c.text : '[image]'))
-            .join('\n')
-    }
-    if (msg.role === 'assistant') {
-        return msg.content
-            .map((c) => {
-                if (c.type === 'text') return c.text
-                if (c.type === 'toolCall') {
-                    return `🔧 ${c.name}(${JSON.stringify(c.arguments)})`
-                }
-                return '' // thinking 内容默认不展示
-            })
-            .filter(Boolean)
-            .join('\n')
-    }
-    return ''
-}
-
 const getCurrentAgentId = (): string | undefined => {
     const activeId = chatService.getActiveAgentId()
     const agents = chatService.listAgents()

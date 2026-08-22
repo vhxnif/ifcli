@@ -1,9 +1,4 @@
-import type {
-    ColorScheme,
-    SpinnerName,
-    TerminalColorName,
-    ThemeSemanticColors,
-} from './theme-type'
+import type { ColorScheme, SpinnerName, TerminalColorName } from './theme-type'
 
 type CatppuccinType =
     | 'Catppuccin Latte'
@@ -179,17 +174,6 @@ const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
     }
 }
 
-const generateSemanticColors = (): ThemeSemanticColors => {
-    return {
-        waiting: 'cyan',
-        analyzing: 'yellow',
-        thinking: 'magenta',
-        rendering: 'blue',
-        error: 'red',
-        completed: 'green',
-        toolCalling: 'magenta',
-    }
-}
 const latte = scheme['Catppuccin Latte']
 const frappe = scheme['Catppuccin Frappe']
 const macchiato = scheme['Catppuccin Macchiato']
@@ -206,26 +190,22 @@ const colorScheme: ColorScheme[] = [
             black: latte.text,
             blackBright: latte.overlay2,
         },
-        semantic: generateSemanticColors(),
         spinner: 'orbit' as SpinnerName,
     },
     {
         name: 'Catppuccin Frappe',
         color: generateTerminalColor(frappe),
-        semantic: generateSemanticColors(),
         spinner: 'orbit' as SpinnerName,
     },
 
     {
         name: 'Catppuccin Macchiato',
         color: generateTerminalColor(macchiato),
-        semantic: generateSemanticColors(),
         spinner: 'orbit' as SpinnerName,
     },
     {
         name: 'Catppuccin Mocha',
         color: generateTerminalColor(mocha),
-        semantic: generateSemanticColors(),
         spinner: 'orbit' as SpinnerName,
     },
 ]

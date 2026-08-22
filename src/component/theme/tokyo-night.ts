@@ -1,9 +1,4 @@
-import type {
-    ColorScheme,
-    SpinnerName,
-    TerminalColorName,
-    ThemeSemanticColors,
-} from './theme-type'
+import type { ColorScheme, SpinnerName, TerminalColorName } from './theme-type'
 
 //  https://github.com/folke/tokyonight.nvim/tree/main/extras/helix
 type TokyoNightType =
@@ -116,18 +111,6 @@ const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
     }
 }
 
-const generateSemanticColors = (): ThemeSemanticColors => {
-    return {
-        waiting: 'cyan',
-        analyzing: 'yellow',
-        thinking: 'magenta',
-        rendering: 'blue',
-        error: 'red',
-        completed: 'green',
-        toolCalling: 'yellow',
-    }
-}
-
 const tokyoNight = scheme['Tokyo Night']
 const tokyoNightDay = scheme['Tokyo Night Day']
 const tokyoNightMoon = scheme['Tokyo Night Moon']
@@ -137,25 +120,21 @@ const colorScheme: ColorScheme[] = [
     {
         name: 'Tokyo Night',
         color: generateTerminalColor(tokyoNight),
-        semantic: generateSemanticColors(),
         spinner: 'rain' as SpinnerName,
     },
     {
         name: 'Tokyo Night Day',
         color: generateTerminalColor(tokyoNightDay),
-        semantic: generateSemanticColors(),
         spinner: 'rain' as SpinnerName,
     },
     {
         name: 'Tokyo Night Moon',
         color: generateTerminalColor(tokyoNightMoon),
-        semantic: generateSemanticColors(),
         spinner: 'rain' as SpinnerName,
     },
     {
         name: 'Tokyo Night Storm',
         color: generateTerminalColor(tokyoNightStorm),
-        semantic: generateSemanticColors(),
         spinner: 'rain' as SpinnerName,
     },
 ]

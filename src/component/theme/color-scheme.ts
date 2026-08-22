@@ -3,13 +3,7 @@ import type { ChalkInstance } from 'chalk'
 import chalk from 'chalk'
 import { colorScheme as catppuccin } from './catppuccin'
 import { colorScheme as rosePine } from './rose-pine'
-import type {
-    ColorScheme,
-    SpinnerName,
-    TerminalColorName,
-    ThemeScheme,
-    ThemeSemanticColors,
-} from './theme-type'
+import type { ColorScheme, TerminalColorName, ThemeScheme } from './theme-type'
 import { colorScheme as tokyoNight } from './tokyo-night'
 
 const schemes = [...rosePine, ...catppuccin, ...tokyoNight]
@@ -44,18 +38,6 @@ const colorScheme = (schema: string): ThemeScheme => {
     }
 }
 
-const getSemanticColors = (schema: string): ThemeSemanticColors => {
-    const c = colorScheme(schema)
-    return c.semantic ?? defaultColor.semantic!
-}
-
-const defaultSpinner: SpinnerName = 'helix'
-
-const getSpinnerName = (schema: string): SpinnerName => {
-    const c = colorScheme(schema)
-    return c.spinner ?? defaultSpinner
-}
-
 const commanderHelpConfiguration = (
     color: Record<TerminalColorName, string>,
 ): HelpConfiguration => {
@@ -72,11 +54,4 @@ const commanderHelpConfiguration = (
     } as HelpConfiguration
 }
 
-export {
-    colorScheme,
-    commanderHelpConfiguration,
-    getSemanticColors,
-    getSpinnerName,
-    hex,
-    schemes,
-}
+export { colorScheme, commanderHelpConfiguration, schemes }

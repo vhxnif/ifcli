@@ -1,9 +1,4 @@
-import type {
-    ColorScheme,
-    SpinnerName,
-    TerminalColorName,
-    ThemeSemanticColors,
-} from './theme-type'
+import type { ColorScheme, SpinnerName, TerminalColorName } from './theme-type'
 
 type RosePineType = 'Rose Pine' | 'Rose Pine Moon' | 'Rose Pine Dawn'
 type ColorName =
@@ -101,18 +96,6 @@ const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
     }
 }
 
-const generateSemanticColors = (): ThemeSemanticColors => {
-    return {
-        waiting: 'cyan',
-        analyzing: 'yellow',
-        thinking: 'magenta',
-        rendering: 'blue',
-        error: 'red',
-        completed: 'green',
-        toolCalling: 'yellow',
-    }
-}
-
 const rosePine = scheme['Rose Pine']
 const rosePineMoon = scheme['Rose Pine Moon']
 const rosePineDawn = scheme['Rose Pine Dawn']
@@ -121,7 +104,6 @@ const colorScheme: ColorScheme[] = [
     {
         name: 'Rose Pine',
         color: generateTerminalColor(rosePine),
-        semantic: generateSemanticColors(),
         spinner: 'braille' as SpinnerName,
     },
     {
@@ -129,7 +111,6 @@ const colorScheme: ColorScheme[] = [
         color: {
             ...generateTerminalColor(rosePineMoon),
         },
-        semantic: generateSemanticColors(),
         spinner: 'braille' as SpinnerName,
     },
     {
@@ -139,7 +120,6 @@ const colorScheme: ColorScheme[] = [
             black: rosePineDawn.text,
             white: rosePineDawn.base,
         },
-        semantic: generateSemanticColors(),
         spinner: 'braille' as SpinnerName,
     },
 ]

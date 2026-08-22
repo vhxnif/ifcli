@@ -3,7 +3,10 @@ import { pathToFileURL } from 'node:url'
 import { Command } from '@commander-js/extra-typings'
 import chalk from 'chalk'
 import { setting, themeScheme } from './app-context'
-import { commanderHelpConfiguration } from './component/theme/color-scheme'
+import {
+    commanderHelpConfiguration,
+    schemes,
+} from './component/theme/color-scheme'
 import { APP_VERSION, appSettingCover } from './config/app-setting'
 import { dataPath } from './config/data-config'
 import { editor, print, println } from './util/common-utils'
@@ -49,19 +52,7 @@ program
         }
 
         if (theme) {
-            const themes = [
-                'Tokyo Night',
-                'Tokyo Night Day',
-                'Tokyo Night Moon',
-                'Tokyo Night Storm',
-                'Rose Pine',
-                'Rose Pine Moon',
-                'Rose Pine Dawn',
-                'Catppuccin Latte',
-                'Catppuccin Frappe',
-                'Catppuccin Macchiato',
-                'Catppuccin Mocha',
-            ]
+            const themes = schemes.map((it) => it.name)
             const choice = await select({
                 message: 'Select theme:',
                 choices: themes.map((t) => ({ name: t, value: t })),
