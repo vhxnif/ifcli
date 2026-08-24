@@ -40,6 +40,7 @@ export interface ChatRunOptions {
     noStream?: boolean
     modelStr?: string // "provider/modelId" — 覆盖 agent 默认模型
     thinkingLevel?: ThinkingLevel
+    clean?: boolean
 }
 
 export interface NewAgentOptions {
@@ -148,7 +149,9 @@ export class ChatService {
 
         // 构建上下文
         const context = await handle.buildContext()
-        const contextMessages = context.messages as Message[]
+        const contextMessages = opts.clean
+            ? []
+            : (context.messages as Message[])
 
         // 显示处理器
         const display = new PiDisplayHandler({

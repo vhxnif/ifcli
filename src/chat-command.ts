@@ -121,12 +121,13 @@ program
         'create a new session under current agent for this message',
     )
     .option('-a, --attachment <file>', 'attach text file content to message')
+    .option('-c, --clean', 'run without context message')
     .argument(
         '[string...]',
         'chat message content (multiple arguments will be joined)',
     )
     .action(async (content, option) => {
-        const { edit, syncCall, newSession, force, attachment } = option
+        const { edit, syncCall, newSession, force, attachment, clean } = option
 
         const withAttachment = async (ct: string) => {
             if (!attachment) return ct
@@ -178,6 +179,7 @@ program
                 agentId,
                 sessionId,
                 noStream: !!syncCall,
+                clean: !!clean,
             })
         }
 
