@@ -82,7 +82,7 @@ const show = (
     }
     const title = `${prefix[role]} ${gray.underline(`[${ts}]`)}`
     if (role === 'user') {
-        return `${title}\n${userContent(content, color)}\n`
+        return `${title}\n${userContent(content, color)}`
     }
     if (role === 'assistant') {
         return `${title}\n${assistantContent(content, color, (c) => toolCallMap.set(c.id, c))}`
