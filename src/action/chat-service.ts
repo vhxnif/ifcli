@@ -16,6 +16,7 @@ import type { Message, Model, Models } from '@earendil-works/pi-ai'
 import type { ThemeScheme } from '../component/theme/theme-type'
 import type { Setting } from '../config/app-setting'
 import { AgentRunner } from '../llm/agent-runner'
+import { generate } from '../llm/generate-session-name'
 import { PiDisplayHandler } from '../llm/pi-display-handler'
 import type { ToolRegistry } from '../llm/tool-registry'
 import type {
@@ -126,6 +127,10 @@ export class ChatService {
         this.agentManager.deleteSession(id)
     }
 
+    switchSession(id: string): void {
+        this.agentManager.switchSession(id)
+    }
+
     // ── 主对话流程 ──
 
     async runChat(opts: ChatRunOptions): Promise<void> {
@@ -211,14 +216,17 @@ export class ChatService {
             // 自动命名
             const setting = this.currentSetting
             if (setting?.session?.autoName?.enabled) {
-                await this.agentManager.autoName(
-                    handle,
-                    async (_content, _modelStr) => {
-                        // 使用 session.autoName.model 指定的便宜模型
-                        // ponytail: autoName 复用 Pi streamSimple，不做额外封装
-                        return '' // 占位，实际由外部注入
-                    },
-                )
+                await this.agentManager.autoName(handle, async (_content) => {
+                    if (!this.currentSetting?.session.autoName.enabled) {
+                        return ''
+                    }
+                    if (!this.currentSetting?.session.autoName.model) {
+                        return ''
+                    }
+                    const [provider, id] =
+                        this.currentSetting.session.autoName.model.split('/')
+                    return await generate(_content, provider, id)
+                })
             }
         } catch (e: unknown) {
             display.onError(e instanceof Error ? e.message : String(e))

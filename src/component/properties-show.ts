@@ -17,7 +17,7 @@ const propertyShow =
             if (str === '(none)') {
                 return `${key} ${red(str)}`
             }
-            return `${key}${options?.newline ? '\n' : ''}${f()}`
+            return `${key}${options?.newline ? '\n' : ''} ${f()}`
         }
         if (typeof v === 'string') {
             return withDefault(v, () => v)
@@ -71,11 +71,20 @@ const settingConfigShow = (
                 ? green('enabled')
                 : red('disabled'),
         ),
+    ]
+    if (setting.session?.autoName?.enabled) {
+        arr.push(
+            show('Trigger:', magenta(setting.session.autoName.model), {
+                depth: 1,
+            }),
+        )
+    }
+    arr.push(
         show(
             'Compaction:',
             setting.compaction?.enabled ? green('enabled') : red('disabled'),
         ),
-    ]
+    )
     if (setting.compaction?.enabled) {
         arr.push(
             show(

@@ -82,6 +82,10 @@ const getCurrentSessionId = (agentId: string): string | undefined => {
     return sessions[0]?.id
 }
 
+const switchSession = (sessionId: string): void => {
+    chatService.switchSession(sessionId)
+}
+
 const getOrCreateCurrentSession = async (
     agentId: string,
     contentHint: string,
@@ -539,8 +543,7 @@ sessionCmd
                 value: s.id,
             })),
         })
-        println(green(`Switched to session: ${choice}`))
-        println(chalk.gray(`Use: ict -f ${agentId.slice(0, 8)}... <message>`))
+        switchSession(choice)
     })
 
 sessionCmd

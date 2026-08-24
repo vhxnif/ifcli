@@ -239,6 +239,12 @@ export class AgentManager {
         }
     }
 
+    switchSession(sessionId: string): void {
+        const now = Date.now()
+        this.db
+            .prepare(`update session set updated_at = ? where id = ?`)
+            .run(now, sessionId)
+    }
     /** 获取 session handle */
     getSession(id: string): SessionHandle {
         const storage = new SqliteSessionStorage(this.db, id)
@@ -346,10 +352,15 @@ export class AgentManager {
     /** 自动命名：由外部注入的 nameFn 处理 */
     async autoName(
         handle: SessionHandle,
-        nameFn: (content: string, modelStr: string) => Promise<string>,
+        nameFn: (content: string) => Promise<string>,
     ): Promise<void> {
         const info = await handle.info
-        if (info.name && info.name !== '') return
+        if (
+            !info.name?.startsWith('Default Session') &&
+            !info.name?.startsWith('Session')
+        ) {
+            return
+        }
         const entries = await handle.storage.getEntries()
         const firstUserMsg = entries.find(
             (e) =>
@@ -363,8 +374,7 @@ export class AgentManager {
                 typeof msg.content === 'string'
                     ? msg.content
                     : JSON.stringify(msg.content)
-            const agentMeta = this.getAgentMeta(info.agentId)
-            const name = await nameFn(content, agentMeta.model)
+            const name = await nameFn(content)
             if (name) {
                 await handle.updateMeta({ name })
             }
