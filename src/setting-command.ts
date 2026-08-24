@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url'
 import { Command } from '@commander-js/extra-typings'
 import chalk from 'chalk'
 import { setting, themeScheme } from './app-context'
+import { settingConfigShow } from './component/properties-show'
 import {
     commanderHelpConfiguration,
     schemes,
@@ -91,24 +92,7 @@ program
             )
             return
         }
-
-        // 默认：显示当前配置
-        println(chalk.bold('Current Configuration:'))
-        println(`  Theme: ${setting.generalSetting.theme}`)
-        println(
-            `  AutoName: ${setting.session?.autoName?.enabled ? 'enabled' : 'disabled'}`,
-        )
-        println(
-            `  Compaction: ${setting.compaction?.enabled ? 'enabled' : 'disabled'}`,
-        )
-        if (setting.compaction?.enabled) {
-            println(
-                `    Trigger: ${setting.compaction.triggerRatio * 100}% of context window`,
-            )
-            println(
-                `    Keep recent: ${setting.compaction.keepRecentRatio * 100}%`,
-            )
-        }
+        println(settingConfigShow(themeScheme.chalkColor, setting))
     })
 
 // ── mcp ──

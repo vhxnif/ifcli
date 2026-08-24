@@ -19,6 +19,7 @@ import {
     toolRegistry,
 } from './app-context'
 import { show as historyShow } from './component/agent-history-show'
+import { chatConfigShow } from './component/properties-show'
 import { commanderHelpConfiguration } from './component/theme/color-scheme'
 import { APP_VERSION } from './config/app-setting'
 import {
@@ -428,17 +429,7 @@ program
 
         if (!reasoning && !model && !tools && !systemPrompt && !skills) {
             // 显示当前配置
-            println(chalk.bold('Agent Configuration:'))
-            println(`  Model: ${meta.model || '(not set)'}`)
-            println(`  Reasoning Level: ${meta.thinkingLevel}`)
-            println(
-                `  System Prompt: ${meta.systemPrompt ? `${meta.systemPrompt.slice(0, 80).replace(/\n/g, ' ')}...` : '(not set)'}`,
-            )
-            println(`  Active Skills: ${meta.skills.join(', ') || '(none)'}`)
-            println(`  Active MCPs: ${meta.activeMcps.join(', ') || '(none)'}`)
-            println(
-                `  Active Custom Tags: ${meta.activeCustomTags.join(', ') || '(none)'}`,
-            )
+            println(chatConfigShow(themeScheme.chalkColor, meta))
         }
     })
 
