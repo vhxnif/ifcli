@@ -44,7 +44,7 @@ export interface PiDisplayOptions {
 const piColor = (
     chalkColor: Record<TerminalColorName, ChalkInstance>,
 ): PiThemeColors => ({
-    assistant: chalkColor.green,
+    assistant: chalkColor.white,
     thinking: chalkColor.gray,
     tool: chalkColor.magenta.italic,
     toolArgs: chalkColor.gray.italic,

@@ -18,6 +18,7 @@ import {
     themeScheme,
     toolRegistry,
 } from './app-context'
+import { show as historyShow } from './component/agent-history-show'
 import { commanderHelpConfiguration } from './component/theme/color-scheme'
 import { APP_VERSION } from './config/app-setting'
 import {
@@ -31,7 +32,7 @@ import {
 } from './util/common-utils'
 import { checkbox, checkboxThemeStyle, select } from './util/inquirer-utils'
 
-const { red, green, yellow, cyan, magenta, gray } = themeScheme.chalkColor
+const { red, green, yellow } = themeScheme.chalkColor
 
 const getCurrentAgentId = (): string | undefined => {
     const activeId = chatService.getActiveAgentId()
@@ -468,63 +469,16 @@ program
         const msgEntries = entries
             .filter((e) => e.entryType === 'message')
             .slice(-parseIntNumber(limit, 50))
-
-        for (const [i, entry] of msgEntries.entries()) {
+        const toolCallMap = new Map()
+        for (const [_, entry] of msgEntries.entries()) {
             try {
-                const { role, content, timestamp } = JSON.parse(
-                    entry.content,
-                ) as Message
-                const ts = timestamp ? new Date(timestamp).toLocaleString() : ''
-                const prefix = {
-                    user: cyan.bold('You'),
-                    toolResult: magenta.bold('Tool'),
-                    assistant: yellow.bold('Assistant'),
-                }
-                println(`${gray(`#${i + 1} ${ts}`)} ${prefix[role]}`)
-                if (role === 'user') {
-                    const userContent = () => {
-                        if (typeof content === 'string') return cyan(content)
-                        return content
-                            .map((c) =>
-                                c.type === 'text'
-                                    ? cyan(c.text)
-                                    : cyan.bold('[image]'),
-                            )
-                            .join('\n\n')
-                    }
-                    println(green(userContent()))
-                }
-
-                if (role === 'assistant') {
-                    const assistantContent = () =>
-                        content
-                            .map((c) => {
-                                if (c.type === 'text') return green(c.text)
-                                if (c.type === 'toolCall') {
-                                    return `🔧 ${magenta.italic(c.name)}(${gray.italic(JSON.stringify(c.arguments))})`
-                                }
-
-                                if (c.type === 'thinking')
-                                    return gray(c.thinking)
-                                return '' // thinking 内容默认不展示
-                            })
-                            .filter(Boolean)
-                            .join('\n\n')
-                    println(assistantContent())
-                }
-
-                if (role === 'toolResult') {
-                    const toolResultContent = () =>
-                        content
-                            .map((c) =>
-                                c.type === 'text'
-                                    ? gray(c.text)
-                                    : gray.bold('[image]'),
-                            )
-                            .join('\n\n')
-                    println(toolResultContent())
-                }
-                if (role) println(chalk.gray('---'))
+                println(
+                    historyShow(
+                        themeScheme.chalkColor,
+                        JSON.parse(entry.content) as Message,
+                        toolCallMap,
+                    ),
+                )
             } catch {
                 // skip malformed
             }
