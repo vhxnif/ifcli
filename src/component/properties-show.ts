@@ -5,9 +5,25 @@ import type { TerminalColorName } from './theme/theme-type'
 
 const propertyShow =
     (color: Record<TerminalColorName, ChalkInstance>) =>
-    (k: string, v: string, defaultValue: string, depth: number = 0) => {
+    (
+        k: string,
+        v: [string, ChalkInstance] | string,
+        options?: { depth?: number; newline?: boolean },
+    ) => {
         const { yellow, red } = color
-        return `${'  '.repeat(depth)}${yellow.bold(k)} ${v || red(defaultValue)}`
+        const key = `${'  '.repeat(options?.depth ?? 0)}${yellow.bold(k)}`
+        const withDefault = (s: string, f: () => string) => {
+            const str = s || '(none)'
+            if (str === '(none)') {
+                return `${key} ${red(str)}`
+            }
+            return `${key}${options?.newline ? '\n' : ''}${f()}`
+        }
+        if (typeof v === 'string') {
+            return withDefault(v, () => v)
+        }
+        const [value, vc] = v
+        return withDefault(value, () => vc(value))
     }
 
 const chatConfigShow = (
@@ -30,20 +46,14 @@ const chatConfigShow = (
     }
 
     return [
-        show('Model:', magenta.underline(meta.model), '(none)'),
-        show('Reasoning Level:', green(meta.thinkingLevel), '(none)'),
-        show('Active Skills:', blue(meta.skills.join(', ')), '(none)'),
-        show('Active MCPs:', blue(meta.activeMcps.join(', ')), '(none)'),
-        show(
-            'Active Custom Tags:',
-            blue(meta.activeCustomTags.join(', ')),
-            '(none)',
-        ),
-        show(
-            'System Prompt:',
-            gray(`\n${limitPrompt(meta.systemPrompt)}`),
-            '(none)',
-        ),
+        show('Model:', [meta.model, magenta.underline]),
+        show('Reasoning Level:', [meta.thinkingLevel, green]),
+        show('Active Skills:', [meta.skills.join(', '), blue]),
+        show('Active MCPs:', [meta.activeMcps.join(', '), blue]),
+        show('Active Custom Tags:', [meta.activeCustomTags.join(', '), blue]),
+        show('System Prompt:', [`${limitPrompt(meta.systemPrompt)}`, gray], {
+            newline: true,
+        }),
     ].join('\n')
 }
 
@@ -53,34 +63,34 @@ const settingConfigShow = (
 ) => {
     const { magenta, green, red, blue } = color
     const show = propertyShow(color)
-    return [
-        show('Theme:', magenta(setting.generalSetting.theme), '(none)'),
+    const arr = [
+        show('Theme:', [setting.generalSetting.theme, magenta]),
         show(
             'AutoName:',
             setting.session?.autoName?.enabled
                 ? green('enabled')
                 : red('disabled'),
-
-            '(none)',
         ),
         show(
             'Compaction:',
             setting.compaction?.enabled ? green('enabled') : red('disabled'),
-            '(none)',
         ),
-        show(
-            'Trigger:',
-            `${red(`${setting.compaction.triggerRatio * 100}%`)} ${blue(`of context window`)}`,
-            '(none)',
-            1,
-        ),
-        show(
-            'Keep Recent:',
-            red(`${setting.compaction.keepRecentRatio * 100}%`),
-            '(none)',
-            1,
-        ),
-    ].join('\n')
+    ]
+    if (setting.compaction?.enabled) {
+        arr.push(
+            show(
+                'Trigger:',
+                `${red(`${setting.compaction.triggerRatio * 100}%`)} ${blue(`of context window`)}`,
+                { depth: 1 },
+            ),
+            show(
+                'Keep Recent:',
+                red(`${setting.compaction.keepRecentRatio * 100}%`),
+                { depth: 1 },
+            ),
+        )
+    }
+    return arr.join('\n')
 }
 
 export { chatConfigShow, settingConfigShow }
