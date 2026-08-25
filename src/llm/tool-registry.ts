@@ -13,7 +13,7 @@ import type {
     AgentTool,
     AgentToolUpdateCallback,
 } from '@earendil-works/pi-agent-core'
-import type { Static } from '@earendil-works/pi-ai'
+import type { Static, Tool, TSchema } from '@earendil-works/pi-ai'
 import type MCPClient from '../llm/mcp-client'
 import type { CustomToolDef } from './pi-types'
 
@@ -115,57 +115,71 @@ export class ToolRegistry {
         }))
     }
 
+    private async buildMCPTools(
+        flatTools: Map<string, AgentTool<any, any>>,
+        groups: ToolGroup[],
+    ): Promise<void> {
+        const toolConvert = (
+            mcp: MCPClient,
+            { name, description, parameters }: Tool<TSchema>,
+        ) =>
+            ({
+                name,
+                description,
+                parameters,
+                execute: async (
+                    _toolCallId: string,
+                    params: Static<any>,
+                    _signal?: AbortSignal,
+                    _onUpdate?: AgentToolUpdateCallback<any>,
+                ) => {
+                    const result = await mcp.callTool(name, params)
+                    return {
+                        content: result.content,
+                        details: void 0,
+                    }
+                },
+            }) as AgentTool<any>
+
+        await Promise.all(
+            this.mcps
+                .filter(({ name }) => this.activeMcpNames.has(name))
+                .map(async (it) => {
+                    try {
+                        await it.connect()
+                        if (!it.isConnected) {
+                            return
+                        }
+                        const v = (await it.tools())
+                            .filter(({ name }) => !flatTools.has(name))
+                            .map((t) => {
+                                const tool = toolConvert(it, t)
+                                flatTools.set(t.name, tool)
+                                // console.log(flatTools.values())
+                                return tool
+                            })
+                        if (v.length > 0) {
+                            groups.push({
+                                id: `mcp:${it.name}@${it.version}`,
+                                name: it.name,
+                                type: 'mcp',
+                                tools: v.map(({ name, description }) => ({
+                                    name,
+                                    description,
+                                })),
+                            })
+                        }
+                    } catch {}
+                }),
+        )
+    }
+
     /** 构建当前活跃的 AgentTool 列表（用于注入 Agent） */
     async buildActiveTools(): Promise<AgentTool<any>[]> {
-        const flatTools = new Map<string, AgentTool<any>>()
+        const flatTools = new Map<string, AgentTool<any, any>>()
         const groups: ToolGroup[] = []
-
         // MCP 工具
-        for (const mcp of this.mcps) {
-            if (!this.activeMcpNames.has(mcp.name)) continue
-            try {
-                await mcp.connect()
-                if (!mcp.isConnected) continue
-                const mcpTools = await mcp.tools()
-                if (mcpTools.length > 0) {
-                    groups.push({
-                        id: `mcp:${mcp.name}@${mcp.version}`,
-                        name: mcp.name,
-                        type: 'mcp',
-                        tools: mcpTools.map((t) => ({
-                            name: t.def.function.name,
-                            description: t.def.function.description ?? '',
-                        })),
-                    })
-                }
-                for (const mt of mcpTools) {
-                    const name = mt.def.function.name
-                    if (flatTools.has(name)) continue
-                    flatTools.set(name, {
-                        name,
-                        description: mt.def.function.description ?? '',
-                        parameters: mt.def.function.parameters as Record<
-                            string,
-                            unknown
-                        >,
-                        execute: async (
-                            _toolCallId: string,
-                            params: Static<any>,
-                            _signal?: AbortSignal,
-                            _onUpdate?: AgentToolUpdateCallback<any>,
-                        ) => {
-                            const result = await mcp.callTool(name, params)
-                            return {
-                                content: result.content,
-                                details: void 0,
-                            }
-                        },
-                    } as unknown as AgentTool<any>)
-                }
-            } catch {
-                // MCP 连接失败，跳过
-            }
-        }
+        await this.buildMCPTools(flatTools, groups)
 
         // 自定义工具
         const customGroupMap = new Map<string, ToolGroup>()

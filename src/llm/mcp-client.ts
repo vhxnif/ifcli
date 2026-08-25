@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+import type { Tool } from '@earendil-works/pi-ai'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import {
     SSEClientTransport,
@@ -15,20 +17,6 @@ import {
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js'
 import { println } from '../util/common-utils'
-
-// ponytail: ToolDef 原在 tool.ts，现内联定义
-type ToolDef = {
-    def: {
-        type: string
-        function: {
-            name: string
-            description: string
-            parameters: Record<string, unknown>
-        }
-    }
-    group: string
-    call: (args: unknown) => Promise<unknown>
-}
 
 export type MCPConnectType = 'http' | 'sse' | 'stdio'
 
@@ -83,23 +71,28 @@ export default class MCPClient {
             },
         )
         if (config.type === 'stdio') {
-            const stdioConfig = config as StdioConfig
-            const stderr = this.getStderrConfig(stdioConfig.logMode)
+            const { logMode, params } = config as StdioConfig
+            const stderr = this.getStderrConfig(logMode)
             this.transport = new StdioClientTransport({
-                ...stdioConfig.params,
+                ...params,
                 stderr,
             })
             return
         }
-        const { url, opts } = config as SSEConfig
         if (config.type === 'http') {
+            const { url, opts } = config as HttpConfig
             this.transport = new StreamableHTTPClientTransport(
                 new URL(url),
                 opts,
             )
             return
         }
-        this.transport = new SSEClientTransport(new URL(url), opts)
+        if (config.type === 'sse') {
+            const { url, opts } = config as SSEConfig
+            this.transport = new SSEClientTransport(new URL(url), opts)
+            return
+        }
+        throw new Error(`The ${config.type} MCP transport not supported`)
     }
 
     private getStderrConfig(
@@ -150,21 +143,12 @@ export default class MCPClient {
         return await this.listTools().then((res) =>
             res.tools.map((t) => {
                 return {
-                    def: {
-                        type: 'function',
-                        function: {
-                            name: `${t.name}`,
-                            description: t.description,
-                            parameters: {
-                                ...t.inputSchema,
-                            },
-                        },
+                    name: `${t.name}`,
+                    description: t.description,
+                    parameters: {
+                        ...t.inputSchema,
                     },
-                    group: `${this.name}_${this.version}`,
-                    call: async (args: any) => {
-                        return await this.callTool(t.name, args)
-                    },
-                } as ToolDef
+                } as Tool
             }),
         )
     }
