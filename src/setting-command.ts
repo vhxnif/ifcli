@@ -114,10 +114,8 @@ program
             }
             return
         }
-        // 默认：显示配置建议
-        println(chalk.bold('MCP Configuration:'))
-        println('  Edit settings JSON to configure MCP servers.')
-        println('  Use: ist cf -m to open editor.')
+        println('Edit settings JSON to configure MCP servers.')
+        println('Use: ist cf -m to open editor.')
     })
 
 // ── tools ──
@@ -142,9 +140,8 @@ program
             }
             return
         }
-        println(chalk.bold('Custom Tools:'))
-        println('  Edit settings JSON to configure custom tools.')
-        println('  Use: ist cf -m to open editor.')
+        println('Edit settings JSON to configure custom tools.')
+        println('Use: ist cf -m to open editor.')
     })
 
 program.parseAsync().catch((e: unknown) => {
