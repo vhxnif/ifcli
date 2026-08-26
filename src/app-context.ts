@@ -20,7 +20,10 @@ import { AgentManager } from './store/agent-manager'
 // ── 初始化 ──
 
 await initAppSetting()
+
 const setting = await appSetting()
+const { mcpServers, customTools, generalSetting } = setting
+const { theme, toolDiscoveryThreshold } = generalSetting
 
 // Pi 模型发现
 const models: Models = builtinModels()
@@ -33,7 +36,7 @@ const availableModels = await models.getAvailable().catch(() => [])
 const db = new Database(dataPath.database, { strict: true })
 
 // MCP 客户端
-const mcps: MCPClient[] = (setting.mcpServers ?? [])
+const mcps: MCPClient[] = (mcpServers ?? [])
     .filter((s) => s.enable)
     .map((s) => {
         try {
@@ -46,15 +49,13 @@ const mcps: MCPClient[] = (setting.mcpServers ?? [])
 
 // 核心服务
 const agentManager = new AgentManager(db)
+
 const toolRegistry = new ToolRegistry({
     mcps,
-    customTools: setting.customTools ?? [],
+    customTools: customTools ?? [],
     skillsDir: dataPath.skills,
-    toolDiscoveryThreshold: setting.generalSetting.toolDiscoveryThreshold,
+    toolDiscoveryThreshold: toolDiscoveryThreshold,
 })
-
-// 主题
-const { theme } = setting.generalSetting
 
 const themeScheme = colorScheme(theme)
 
