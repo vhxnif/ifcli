@@ -9,10 +9,7 @@
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
-import type {
-    AgentTool,
-    AgentToolUpdateCallback,
-} from '@earendil-works/pi-agent-core'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 import type { Static, Tool, TSchema } from '@earendil-works/pi-ai'
 import type MCPClient from '../llm/mcp-client'
 import type { CustomToolDef } from './pi-types'
@@ -52,7 +49,7 @@ export class ToolRegistry {
     private customTools: CustomToolDef[]
     private skills: Skill[] = []
     private activeMcpNames: Set<string> = new Set()
-    private activeCustomNames: Set<string> = new Set()
+    private activeCustomTags: Set<string> = new Set()
     private activeSkillNames: Set<string> = new Set()
     private toolDiscoveryThreshold: number
 
@@ -72,7 +69,7 @@ export class ToolRegistry {
 
     /** 设置活跃的自定义工具 */
     setActiveCustomTools(tags: string[]): void {
-        this.activeCustomNames = new Set(tags)
+        this.activeCustomTags = new Set(tags)
     }
 
     /** 设置活跃的 skill 名称 */
@@ -116,7 +113,7 @@ export class ToolRegistry {
     }
 
     private async buildMCPTools(
-        flatTools: Map<string, AgentTool<any, any>>,
+        flatTools: Map<string, AgentTool<any>>,
         groups: ToolGroup[],
     ): Promise<void> {
         const toolConvert = (
@@ -127,12 +124,7 @@ export class ToolRegistry {
                 name,
                 description,
                 parameters,
-                execute: async (
-                    _toolCallId: string,
-                    params: Static<any>,
-                    _signal?: AbortSignal,
-                    _onUpdate?: AgentToolUpdateCallback<any>,
-                ) => {
+                execute: async (_toolCallId: string, params: Static<any>) => {
                     const result = await mcp.callTool(name, params)
                     return {
                         content: result.content,
@@ -155,7 +147,6 @@ export class ToolRegistry {
                             .map((t) => {
                                 const tool = toolConvert(it, t)
                                 flatTools.set(t.name, tool)
-                                // console.log(flatTools.values())
                                 return tool
                             })
                         if (v.length > 0) {
@@ -174,102 +165,88 @@ export class ToolRegistry {
         )
     }
 
-    /** 构建当前活跃的 AgentTool 列表（用于注入 Agent） */
-    async buildActiveTools(): Promise<AgentTool<any>[]> {
-        const flatTools = new Map<string, AgentTool<any, any>>()
-        const groups: ToolGroup[] = []
-        // MCP 工具
-        await this.buildMCPTools(flatTools, groups)
-
-        // 自定义工具
+    private buildCustomTools(
+        flatTools: Map<string, AgentTool<any>>,
+        groups: ToolGroup[],
+    ): void {
         const customGroupMap = new Map<string, ToolGroup>()
-        for (const ct of this.customTools) {
-            const activeTags = (ct.tags ?? []).filter((t) =>
-                this.activeCustomNames.has(t),
+        for (const { tags, def, command } of this.customTools) {
+            const activeTags = (tags ?? []).filter((t) =>
+                this.activeCustomTags.has(t),
             )
-            if (activeTags.length === 0) continue
-
-            const name = ct.def.function.name
-            if (!flatTools.has(name)) {
-                flatTools.set(name, {
-                    name,
-                    description: ct.def.function.description,
-                    parameters: ct.def.function.parameters as Record<
-                        string,
-                        unknown
-                    >,
-                    execute: async (
-                        _toolCallId: string,
-                        params: Static<any>,
-                        _signal?: AbortSignal,
-                        _onUpdate?: AgentToolUpdateCallback<any>,
-                    ) => {
-                        const cmd = ct.command
-                            .map((part) => {
-                                const m = part.match(/^\$\{([^}]+)\}$/)
-                                if (m && params && typeof params === 'object') {
-                                    return String(
-                                        (params as Record<string, unknown>)[
-                                            m[1]
-                                        ] ?? '',
-                                    )
-                                }
-                                return part
-                            })
-                            .join(' ')
-
-                        const proc = Bun.spawn(['sh', '-c', cmd], {
-                            stdout: 'pipe',
-                            stderr: 'pipe',
-                        })
-                        const output = await new Response(proc.stdout).text()
-                        const exitCode = await proc.exited
-                        if (exitCode !== 0) {
-                            const errText = await new Response(
-                                proc.stderr,
-                            ).text()
-                            return this.toolResult(
-                                `Error (exit ${exitCode}): ${errText || output}`,
-                            )
-                        }
-                        return this.toolResult(output)
-                    },
-                } as unknown as AgentTool<any>)
+            if (activeTags.length === 0) {
+                continue
             }
-
+            const { name, description, parameters } = def.function
             for (const tag of activeTags) {
-                let group = customGroupMap.get(tag)
-                if (!group) {
-                    group = {
-                        id: `custom:${tag}`,
-                        name: tag,
-                        type: 'custom',
-                        tools: [],
-                    }
-                    customGroupMap.set(tag, group)
-                    groups.push(group)
+                const group = customGroupMap.get(tag) ?? {
+                    id: `custom:${tag}`,
+                    name: tag,
+                    type: 'custom',
+                    tools: [],
                 }
                 group.tools.push({
-                    name: ct.def.function.name,
-                    description: ct.def.function.description,
+                    name,
+                    description,
                 })
+                customGroupMap.set(tag, group)
+                groups.push(group)
             }
-        }
+            if (flatTools.has(name)) {
+                continue
+            }
+            flatTools.set(name, {
+                name,
+                description,
+                parameters,
+                execute: async (_toolCallId: string, params: Static<any>) => {
+                    const cmd = command
+                        .map((part) => {
+                            const m = part.match(/^\$\{([^}]+)\}$/)
+                            if (m && params && typeof params === 'object') {
+                                return String(
+                                    (params as Record<string, unknown>)[m[1]] ??
+                                        '',
+                                )
+                            }
+                            return part
+                        })
+                        .join(' ')
 
-        // Skill 工具：把启用的 skill 注册为统一的 Skill 调用入口
+                    const proc = Bun.spawn(['sh', '-c', cmd], {
+                        stdout: 'pipe',
+                        stderr: 'pipe',
+                    })
+                    const output = await new Response(proc.stdout).text()
+                    const exitCode = await proc.exited
+                    if (exitCode !== 0) {
+                        const errText = await new Response(proc.stderr).text()
+                        return this.toolResult(
+                            `Error (exit ${exitCode}): ${errText || output}`,
+                        )
+                    }
+                    return this.toolResult(output)
+                },
+            } as AgentTool<any>)
+        }
+    }
+
+    private buildSkillsTool(flatTools: Map<string, AgentTool<any>>): void {
         const activeSkills = this.skills.filter((s) =>
             this.activeSkillNames.has(s.name),
         )
-        if (activeSkills.length > 0) {
-            const skillsXml = activeSkills
-                .map(
-                    (s) =>
-                        `<skill>\n  <name>${s.name}</name>\n  <description>${s.description}</description>\n  <basePath>${s.basePath}</basePath>\n</skill>`,
-                )
-                .join('\n')
-            flatTools.set('Skill', {
-                name: 'Skill',
-                description: `Execute a skill within the main conversation.
+        if (activeSkills.length === 0) {
+            return
+        }
+        const skillsXml = activeSkills
+            .map(
+                (s) =>
+                    `<skill>\n  <name>${s.name}</name>\n  <description>${s.description}</description>\n  <basePath>${s.basePath}</basePath>\n</skill>`,
+            )
+            .join('\n')
+        flatTools.set('Skill', {
+            name: 'Skill',
+            description: `Execute a skill within the main conversation.
 
 <skills_instructions>
 When users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively. Skills provide specialized capabilities and domain knowledge.
@@ -284,60 +261,66 @@ How to use skills:
 <available_skills>
 ${skillsXml}
 </available_skills>`,
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        command: {
-                            type: 'string',
-                            description:
-                                'Skill name (e.g. "readlink") or "<skill-name>:<relative-file-path>" to read a file inside the skill',
-                        },
+            parameters: {
+                type: 'object',
+                properties: {
+                    command: {
+                        type: 'string',
+                        description:
+                            'Skill name (e.g. "readlink") or "<skill-name>:<relative-file-path>" to read a file inside the skill',
                     },
-                    required: ['command'],
                 },
-                execute: async (
-                    _toolCallId: string,
-                    { command }: { command: string },
-                    _signal?: AbortSignal,
-                    _onUpdate?: AgentToolUpdateCallback<any>,
-                ) => {
-                    const colonIdx = command.indexOf(':')
+                required: ['command'],
+            },
+            execute: async (
+                _toolCallId: string,
+                { command }: { command: string },
+            ) => {
+                const colonIdx = command.indexOf(':')
 
-                    // 读取 skill 内指定文件: <skill-name>:<relative-path>
-                    if (colonIdx > 0) {
-                        const skillName = command.slice(0, colonIdx)
-                        const filePath = command.slice(colonIdx + 1)
-                        const skill = activeSkills.find(
-                            (s) => s.name === skillName,
+                // 读取 skill 内指定文件: <skill-name>:<relative-path>
+                if (colonIdx > 0) {
+                    const skillName = command.slice(0, colonIdx)
+                    const filePath = command.slice(colonIdx + 1)
+                    const skill = activeSkills.find((s) => s.name === skillName)
+                    if (!skill) return `Skill not found: ${skillName}`
+                    const fullPath = path.join(skill.basePath, filePath)
+                    try {
+                        const content = readFileSync(fullPath, 'utf-8')
+                        return this.toolResult(
+                            `File: ${filePath}\n\n${content}`,
                         )
-                        if (!skill) return `Skill not found: ${skillName}`
-                        const fullPath = path.join(skill.basePath, filePath)
-                        try {
-                            const content = readFileSync(fullPath, 'utf-8')
-                            return this.toolResult(
-                                `File: ${filePath}\n\n${content}`,
-                            )
-                        } catch {
-                            return this.toolResult(
-                                `File not found in skill ${skillName}: ${filePath}`,
-                            )
-                        }
+                    } catch {
+                        return this.toolResult(
+                            `File not found in skill ${skillName}: ${filePath}`,
+                        )
                     }
+                }
 
-                    // 返回 skill 信息 + SKILL.md 内容
-                    const skill = activeSkills.find((s) => s.name === command)
-                    if (!skill) return `Skill not found: ${command}`
-                    const filesList =
-                        skill.files.length > 0
-                            ? skill.files.map((f) => `  - ${f}`).join('\n')
-                            : '  (no additional files)'
-                    return this.toolResult(
-                        `Base directory for this skill: ${skill.basePath}\n\nFiles in this skill:\n${filesList}\n\n${skill.content}`,
-                    )
-                },
-            } as unknown as AgentTool<any>)
-        }
+                // 返回 skill 信息 + SKILL.md 内容
+                const skill = activeSkills.find((s) => s.name === command)
+                if (!skill) return `Skill not found: ${command}`
+                const filesList =
+                    skill.files.length > 0
+                        ? skill.files.map((f) => `  - ${f}`).join('\n')
+                        : '  (no additional files)'
+                return this.toolResult(
+                    `Base directory for this skill: ${skill.basePath}\n\nFiles in this skill:\n${filesList}\n\n${skill.content}`,
+                )
+            },
+        } as AgentTool<any>)
+    }
 
+    /** 构建当前活跃的 AgentTool 列表（用于注入 Agent） */
+    async buildActiveTools(): Promise<AgentTool<any>[]> {
+        const flatTools = new Map<string, AgentTool<any>>()
+        const groups: ToolGroup[] = []
+        // MCP 工具
+        await this.buildMCPTools(flatTools, groups)
+        // 自定义工具
+        this.buildCustomTools(flatTools, groups)
+        // Skill 工具：把启用的 skill 注册为统一的 Skill 调用入口
+        this.buildSkillsTool(flatTools)
         if (flatTools.size > this.toolDiscoveryThreshold) {
             return this.buildDiscoveryTools(groups)
         }
@@ -472,19 +455,14 @@ ${skillsXml}
                 description:
                     '列出所有可用的工具分类（MCP 服务器和自定义工具标签）',
                 parameters: { type: 'object', properties: {} },
-                execute: async (
-                    _toolCallId: string,
-                    _params: any,
-                    _signal?: AbortSignal,
-                    _onUpdate?: AgentToolUpdateCallback<any>,
-                ) => {
+                execute: async (_toolCallId: string, _params: any) => {
                     const res =
                         groups.length > 0
                             ? groups.map((g) => g.id)
                             : ['(no active tools)']
                     return this.toolResult(JSON.stringify(res))
                 },
-            } as unknown as AgentTool<any>,
+            } as AgentTool<any>,
 
             {
                 name: 'list_available_tools',
@@ -500,15 +478,18 @@ ${skillsXml}
                     },
                     required: ['group_name'],
                 },
-                execute: async (args: any) => {
-                    const groupName: string = args.group_name
+                execute: async (
+                    _toolCallId: string,
+                    { group_name }: { group_name: string },
+                ) => {
+                    const groupName: string = group_name
                     const group = groups.find((g) => g.id === groupName)
                     if (!group)
                         return this.toolResult(`Unknown group: ${groupName}`)
 
                     return this.toolResult(JSON.stringify(group.tools))
                 },
-            } as unknown as AgentTool<any>,
+            } as AgentTool<any>,
         ]
     }
 }
