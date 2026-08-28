@@ -31,7 +31,13 @@ import {
     println,
     stdin,
 } from './util/common-utils'
-import { checkbox, checkboxThemeStyle, select } from './util/inquirer-utils'
+import {
+    checkbox,
+    checkboxThemeStyle,
+    search,
+    searchThemeStyle,
+    select,
+} from './util/inquirer-utils'
 
 const { red, green, yellow } = themeScheme.chalkColor
 
@@ -344,7 +350,7 @@ program
         }
 
         if (model) {
-            // 从 Pi 模型发现结果中选择
+            // 从 Pi 模型发现结果中搜索（匹配 provider/modelId 全串，搜索框直接定位）
             if (availableModels.length === 0) {
                 println(
                     yellow(
@@ -353,13 +359,22 @@ program
                 )
                 return
             }
-            const choices = availableModels.map((m) => ({
-                name: `${m.provider}/${m.id}`,
-                value: `${m.provider}/${m.id}`,
-            }))
-            const modelStr = await select({
-                message: 'Select model (provider/modelId):',
-                choices,
+            const modelStr = await search({
+                message: 'Search model (provider/modelId):',
+                source: async (term) =>
+                    availableModels
+                        .filter(
+                            (m) =>
+                                !term ||
+                                `${m.provider}/${m.id}`
+                                    .toLowerCase()
+                                    .includes(term.toLowerCase()),
+                        )
+                        .map((m) => ({
+                            name: `${m.provider}/${m.id}`,
+                            value: `${m.provider}/${m.id}`,
+                        })),
+                theme: searchThemeStyle(themeScheme.chalkColor),
             })
             await handle.update({ model: modelStr })
             println(green(`Model set to: ${modelStr}`))

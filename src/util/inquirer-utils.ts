@@ -1,5 +1,13 @@
+/**
+ * [INPUT]: 依赖 @inquirer/checkbox|input|search|select 四个 prompt 组件，依赖 ../component/theme/theme-type 的 ChalkTerminalColor
+ * [OUTPUT]: 对外 re-export checkbox/input/search/select，并提供 selectThemeStyle/checkboxThemeStyle/inputThemeStyle/searchThemeStyle 四个主题工厂，Choice<V> 类型
+ * [POS]: src/util/ 的交互组件封装层，被 chat-command.ts / setting-command.ts 消费，统一 inquirer 主题到 ifcli 色板
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
 import checkbox from '@inquirer/checkbox'
 import input from '@inquirer/input'
+import search from '@inquirer/search'
 import select from '@inquirer/select'
 import type { ChalkTerminalColor } from '../component/theme/theme-type'
 
@@ -142,11 +150,49 @@ const inputThemeStyle = (color: ChalkTerminalColor): InputThemeStyle => {
     }
 }
 
+type SearchThemeStyle = {
+    prefix: { idle: string; done: string }
+    style: {
+        answer: (str: string) => string
+        message: (text: string, status: 'idle' | 'done' | 'loading') => string
+        error: (str: string) => string
+        searchTerm: (str: string) => string
+        description: (str: string) => string
+        keysHelpTip: (
+            keys: [key: string, action: string][],
+        ) => string | undefined
+    }
+    icon: {
+        cursor: string
+    }
+}
+
+const searchThemeStyle = (color: ChalkTerminalColor): SearchThemeStyle => {
+    const { answer, message, error } = style(color)
+    const { magenta, cyan } = color
+    return {
+        prefix: prefix(color),
+        style: {
+            answer,
+            message,
+            error,
+            searchTerm: (text: string) => cyan.italic(text),
+            description: (text: string) => magenta(text),
+            keysHelpTip: () => undefined,
+        },
+        icon: {
+            cursor: cursor(color),
+        },
+    }
+}
+
 export {
     checkbox,
     checkboxThemeStyle,
     input,
     inputThemeStyle,
+    search,
+    searchThemeStyle,
     select,
     selectThemeStyle,
 }
