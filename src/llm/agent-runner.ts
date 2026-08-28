@@ -117,6 +117,13 @@ export class AgentRunner {
                 // 最终消息完成 — 检查 usage
                 if (event.message.role === 'assistant') {
                     const am = event.message as AssistantMessage
+                    if (am.errorMessage) {
+                        this.displayCallback({
+                            type: 'error',
+                            error: am.errorMessage,
+                        })
+                        break
+                    }
                     if (am.usage) {
                         this.displayCallback({
                             type: 'done',
