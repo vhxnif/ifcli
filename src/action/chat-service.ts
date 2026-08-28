@@ -25,6 +25,15 @@ import type {
     SessionHandle,
 } from '../store/agent-manager'
 
+// ── 工具 ──
+
+/** 拆分 "provider/modelId"，modelId 本身可含斜杠（如 openrouter/z-ai/glm-5.2:free） */
+function splitModelStr(modelStr: string): [string, string] {
+    const sep = modelStr.indexOf('/')
+    if (sep === -1) return ['', modelStr]
+    return [modelStr.slice(0, sep), modelStr.slice(sep + 1)]
+}
+
 // ── 类型 ──
 
 export interface ChatServiceConfig {
@@ -223,8 +232,9 @@ export class ChatService {
                     if (!this.currentSetting?.session.autoName.model) {
                         return ''
                     }
-                    const [provider, id] =
-                        this.currentSetting.session.autoName.model.split('/')
+                    const [provider, id] = splitModelStr(
+                        this.currentSetting.session.autoName.model,
+                    )
                     return await generate(_content, provider, id)
                 })
             }
@@ -246,7 +256,7 @@ export class ChatService {
 
     /** 从 modelStr ("provider/modelId") 解析 Pi Model 对象 */
     private resolveModel(modelStr: string): Model<any> {
-        const [provider, id] = modelStr.split('/')
+        const [provider, id] = splitModelStr(modelStr)
         if (provider && id) {
             const found = this.models.getModel(provider, id)
             if (found) return found

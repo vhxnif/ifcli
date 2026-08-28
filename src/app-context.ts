@@ -1,5 +1,6 @@
 /**
  * [INPUT]: 依赖 ./config/app-setting 的 initAppSetting/appSetting，依赖 @earendil-works/pi-ai/providers/all 的 builtinModels，
+ *          依赖 @earendil-works/pi-ai/api/bedrock-converse-stream.lazy 的 setBedrockProviderModule 与 @earendil-works/pi-ai/bedrock-provider 的 bedrockProviderModule（单文件 bundle 静态注册），
  *          依赖 ./store/agent-manager 的 AgentManager，依赖 ./llm/tool-registry 的 ToolRegistry，依赖 ./component/theme/color-scheme 的主题
  * [OUTPUT]: 组装后的 chatService / terminalColor / theme / db / models / availableModels / toolRegistry 等全局实例，初始化时传入 skills 目录
  * [POS]: src/ 的应用组装入口，被 chat-command.ts / setting-command.ts 消费
@@ -8,6 +9,8 @@
 
 import Database from 'bun:sqlite'
 import type { Models } from '@earendil-works/pi-ai'
+import { setBedrockProviderModule } from '@earendil-works/pi-ai/api/bedrock-converse-stream.lazy'
+import { bedrockProviderModule } from '@earendil-works/pi-ai/bedrock-provider'
 import { builtinModels } from '@earendil-works/pi-ai/providers/all'
 import { ChatService } from './action/chat-service'
 import { colorScheme } from './component/theme/color-scheme'
@@ -25,7 +28,9 @@ const setting = await appSetting()
 const { mcpServers, customTools, generalSetting } = setting
 const { theme, toolDiscoveryThreshold } = generalSetting
 
-// Pi 模型发现
+// Pi 模型发现：Bedrock 的 AWS SDK 依赖运行时动态 import，单文件 bundle 无法跟随，
+// 显式注册静态实现（pi-ai README 推荐的 standalone bundle 用法）
+setBedrockProviderModule(bedrockProviderModule)
 const models: Models = builtinModels()
 await models.refresh({ allowNetwork: true }).catch(() => {
     // 网络刷新失败不影响静态模型列表
