@@ -1,10 +1,4 @@
-import type {
-    ChatBoxTheme,
-    ColorScheme,
-    SpinnerName,
-    TerminalColorName,
-    ThemeSemanticColors,
-} from './theme-type'
+import type { ColorScheme, SpinnerName, TerminalColorName } from './theme-type'
 
 //  https://github.com/folke/tokyonight.nvim/tree/main/extras/helix
 type TokyoNightType =
@@ -31,6 +25,7 @@ const scheme: Record<TokyoNightType, Color> = {
         red: '#f7768e',
         redBright: '#ff899d',
         white: '#a9b1d6',
+        gray: '#888',
         whiteBright: '#c0caf5',
         yellow: '#e0af68',
         yellowBright: '#faba4a',
@@ -53,6 +48,7 @@ const scheme: Record<TokyoNightType, Color> = {
         red: '#f52a65',
         redBright: '#ff4774',
         white: '#6172b0',
+        gray: '#888',
         whiteBright: '#3760bf',
         yellow: '#8c6c3e',
         yellowBright: '#a27629',
@@ -75,6 +71,7 @@ const scheme: Record<TokyoNightType, Color> = {
         red: '#ff757f',
         redBright: '#ff8d94',
         white: '#828bb8',
+        gray: '#888',
         whiteBright: '#c8d3f5',
         yellow: '#ffc777',
         yellowBright: '#ffd8ab',
@@ -97,6 +94,7 @@ const scheme: Record<TokyoNightType, Color> = {
         red: '#f7768e',
         redBright: '#ff899d',
         white: '#a9b1d6',
+        gray: '#888',
         whiteBright: '#c0caf5',
         yellow: '#e0af68',
         yellowBright: '#faba4a',
@@ -113,39 +111,6 @@ const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
     }
 }
 
-const generateTheme = (s: Color): ChatBoxTheme => {
-    const { blue, orange, purple, comment, whiteBright, blackBright } = s
-    return {
-        reasoner: {
-            title: blue,
-            bolder: blackBright,
-            content: comment,
-        },
-        tools: {
-            title: orange,
-            bolder: blackBright,
-            content: comment,
-        },
-        assisant: {
-            title: purple,
-            bolder: purple,
-            content: whiteBright,
-        },
-    }
-}
-
-const generateSemanticColors = (): ThemeSemanticColors => {
-    return {
-        waiting: 'cyan',
-        analyzing: 'yellow',
-        thinking: 'magenta',
-        rendering: 'blue',
-        error: 'red',
-        completed: 'green',
-        toolCalling: 'yellow',
-    }
-}
-
 const tokyoNight = scheme['Tokyo Night']
 const tokyoNightDay = scheme['Tokyo Night Day']
 const tokyoNightMoon = scheme['Tokyo Night Moon']
@@ -155,30 +120,22 @@ const colorScheme: ColorScheme[] = [
     {
         name: 'Tokyo Night',
         color: generateTerminalColor(tokyoNight),
-        theme: generateTheme(tokyoNight),
-        semantic: generateSemanticColors(),
-        spinner: 'helix' as SpinnerName,
+        spinner: 'rain' as SpinnerName,
     },
     {
         name: 'Tokyo Night Day',
         color: generateTerminalColor(tokyoNightDay),
-        theme: generateTheme(tokyoNightDay),
-        semantic: generateSemanticColors(),
-        spinner: 'helix' as SpinnerName,
+        spinner: 'rain' as SpinnerName,
     },
     {
         name: 'Tokyo Night Moon',
         color: generateTerminalColor(tokyoNightMoon),
-        theme: generateTheme(tokyoNightMoon),
-        semantic: generateSemanticColors(),
-        spinner: 'helix' as SpinnerName,
+        spinner: 'rain' as SpinnerName,
     },
     {
         name: 'Tokyo Night Storm',
         color: generateTerminalColor(tokyoNightStorm),
-        theme: generateTheme(tokyoNightStorm),
-        semantic: generateSemanticColors(),
-        spinner: 'helix' as SpinnerName,
+        spinner: 'rain' as SpinnerName,
     },
 ]
 

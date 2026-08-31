@@ -1,96 +1,133 @@
+/**
+ * [INPUT]: 依赖 ./data-config 的 dataPath，依赖 ./settings-schema.json 的 schema 内容，
+ *          依赖 ../llm/mcp-client 的 MCPConfig
+ * [OUTPUT]: Setting / CustomToolDef 类型，initAppSetting / appSetting / appSettingCover 读写函数
+ * [POS]: src/config/ 的配置读写核心，被 ../app-context 消费
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
 import { version } from '../../package.json'
 import type { MCPConfig } from '../llm/mcp-client'
-import type { CustomTool } from '../llm/tool'
 import { dataPath } from './data-config'
-import customToolsSchemaContent from './ifcli-custom-tools-schema.json'
-import schemaContent from './ifcli-settings-schema.json'
+import settingsSchemaContent from './settings-schema.json'
 
-export type LLMSetting = {
-    name: string
-    baseUrl: string
-    apiKey: string
-    models: string[]
-    topicModel?: string
-}
+// ── 精简后的功能配置类型 ──
 
 export type GeneralSetting = {
     theme: string
+    /** 工具数量超过此阈值时使用发现工具，否则直接注入原始 tool schema */
+    toolDiscoveryThreshold: number
+}
+
+export type AutoNameConfig = {
+    enabled: boolean
+    /** provider/modelId 格式，如 "openai/gpt-4o-mini" */
+    model: string
+}
+
+export type SessionConfig = {
+    autoName: AutoNameConfig
+}
+
+export type CompactionConfig = {
+    enabled: boolean
+    /** 当 estimatedTokens >= model.contextWindow * triggerRatio 时触发 */
+    triggerRatio: number
+    /** 保留最近 model.contextWindow * keepRecentRatio 的原文 */
+    keepRecentRatio: number
+}
+
+/** 自定义工具：group 改为 tags（数组，支持多个标签） */
+export type CustomToolDef = {
+    def: {
+        type: 'function'
+        function: {
+            name: string
+            description: string
+            parameters: Record<string, unknown>
+        }
+    }
+    tags: string[]
+    command: string[]
 }
 
 export type Setting = {
     generalSetting: GeneralSetting
+    session: SessionConfig
+    compaction: CompactionConfig
     mcpServers: MCPConfig[]
-    llmSettings: LLMSetting[]
+    customTools?: CustomToolDef[]
 }
+
+// ── 默认配置 ──
 
 export const APP_VERSION = version
 
 const defaultGeneralSetting: GeneralSetting = {
     theme: 'Tokyo Night',
+    toolDiscoveryThreshold: 8,
 }
 
-export const defaultLLMSettings: LLMSetting[] = [
-    {
-        name: 'deepseek',
-        baseUrl: 'https://api.deepseek.com',
-        apiKey: '',
-        models: ['deepseek-chat', 'deepseek-reasoner'],
-        topicModel: 'deepseek-chat',
+const defaultSessionConfig: SessionConfig = {
+    autoName: {
+        enabled: true,
+        model: 'openai/gpt-4o-mini',
     },
-    {
-        name: 'ollama',
-        baseUrl: 'http://localhost:11434/v1/',
-        apiKey: '',
-        models: [],
-    },
-    {
-        name: 'openai',
-        baseUrl: 'https://api.openai.com/v1',
-        apiKey: '',
-        models: ['gpt-4o'],
-        topicModel: 'gpt-4o-mini',
-    },
-]
+}
+
+const defaultCompaction: CompactionConfig = {
+    enabled: true,
+    triggerRatio: 0.8,
+    keepRecentRatio: 0.3,
+}
+
+const defaultSetting: Setting = {
+    generalSetting: defaultGeneralSetting,
+    session: defaultSessionConfig,
+    compaction: defaultCompaction,
+    mcpServers: [],
+    customTools: [],
+}
+
+const mergeWithDefaults = (partial: Partial<Setting>): Setting => ({
+    generalSetting: partial.generalSetting ?? defaultGeneralSetting,
+    session: partial.session ?? defaultSessionConfig,
+    compaction: partial.compaction ?? defaultCompaction,
+    mcpServers: partial.mcpServers ?? [],
+    customTools: partial.customTools ?? [],
+})
+
+// ── 初始化 & 读写 ──
 
 export const initAppSetting = async (): Promise<void> => {
-    const f = Bun.file(dataPath.setting)
-    const ext = await f.exists()
-    if (!ext) {
-        const defSetting = {
-            $schema: './ifcli-settings-schema.json',
-            generalSetting: defaultGeneralSetting,
-            llmSettings: defaultLLMSettings,
-            mcpServers: [],
-        }
-        f.write(JSON.stringify(defSetting, null, 2))
+    const settingsFile = Bun.file(dataPath.settings)
+    const settingsExists = await settingsFile.exists()
+
+    const setting = settingsExists
+        ? mergeWithDefaults(
+              JSON.parse(await settingsFile.text()) as Partial<Setting>,
+          )
+        : { ...defaultSetting }
+
+    // 写 settings.json（确保 schema 引用正确）
+    const toWrite = {
+        ...setting,
+        $schema: './settings-schema.json',
     }
-    const sf = Bun.file(dataPath.schema)
-    const schemaExt = await sf.exists()
-    if (!schemaExt) {
-        await sf.write(JSON.stringify(schemaContent, null, 2))
-    }
-    const ctsf = Bun.file(dataPath.customToolsSchema)
-    const ctSchemaExt = await ctsf.exists()
-    if (!ctSchemaExt) {
-        await ctsf.write(JSON.stringify(customToolsSchemaContent, null, 2))
-    }
+    await Bun.write(dataPath.settings, JSON.stringify(toWrite, null, 2))
+
+    // 写 schema 文件（供 IDE 补全）
+    await Bun.write(
+        dataPath.settingsSchema,
+        JSON.stringify(settingsSchemaContent, null, 2),
+    )
 }
 
 export const appSetting = async (): Promise<Setting> => {
-    const json = await Bun.file(dataPath.setting).text()
+    const json = await Bun.file(dataPath.settings).text()
     return JSON.parse(json) as Setting
 }
 
 export const appSettingCover = async (json: string): Promise<void> => {
-    await Bun.file(dataPath.setting).write(json)
-}
-
-export const customTools = async () => {
-    const f = Bun.file(dataPath.customTools)
-    if (!(await f.exists())) {
-        return []
-    }
-    const toolsdef = await f.text()
-    const parsed = JSON.parse(toolsdef)
-    return ((parsed as { tools: CustomTool[] }).tools ?? parsed) as CustomTool[]
+    await Bun.file(dataPath.settings).write(json)
 }

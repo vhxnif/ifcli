@@ -1,6 +1,25 @@
 #!/usr/bin/env bun
+/**
+ * [INPUT]: 依赖 ./app-context 的 chatService/terminalColor/availableModels，依赖 ./config/app-setting 的 APP_VERSION，
+ *          依赖 @earendil-works/pi-ai 的 Message 类型，
+ *          依赖 ./component/theme/color-scheme 的 commanderHelpConfiguration，依赖 ./util/* 的 CLI 工具
+ * [OUTPUT]: ifchat/ict CLI 命令（默认聊天、new/remove/switch/config/history），读写 active agent 状态，管理 agent skills，history 按角色友好渲染
+ * [POS]: src/ 的 CLI 入口之一，被 package.json bin 指向
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
 import { Command } from '@commander-js/extra-typings'
-import { act, terminalColor } from './app-context'
+import type { ThinkingLevel } from '@earendil-works/pi-agent-core'
+import type { Message } from '@earendil-works/pi-ai'
+import chalk from 'chalk'
+import {
+    availableModels,
+    chatService,
+    themeScheme,
+    toolRegistry,
+} from './app-context'
+import { show as historyShow } from './component/agent-history-show'
+import { chatConfigShow } from './component/properties-show'
 import { commanderHelpConfiguration } from './component/theme/color-scheme'
 import { APP_VERSION } from './config/app-setting'
 import {
@@ -9,220 +28,566 @@ import {
     matchRun,
     parseIntNumber,
     print,
+    println,
     stdin,
 } from './util/common-utils'
+import {
+    checkbox,
+    checkboxThemeStyle,
+    search,
+    searchThemeStyle,
+    select,
+} from './util/inquirer-utils'
+
+const { red, green, yellow } = themeScheme.chalkColor
+
+const getCurrentAgentId = (): string | undefined => {
+    const activeId = chatService.getActiveAgentId()
+    const agents = chatService.listAgents()
+    if (activeId && agents.some((a) => a.id === activeId)) {
+        return activeId
+    }
+    return agents[0]?.id
+}
+
+const resolveAgentId = (
+    force: string | undefined,
+    opts: { allowMissing?: boolean; fallback?: boolean } = {},
+): string | undefined => {
+    const { allowMissing = false, fallback = true } = opts
+    if (!force) {
+        return fallback ? getCurrentAgentId() : undefined
+    }
+    const agents = chatService.listAgents()
+    const match =
+        agents.find((a) => a.id === force) ||
+        agents.find((a) => a.name === force)
+    if (!match) {
+        if (!allowMissing) {
+            println(
+                red(
+                    `Agent not found: ${force}. Use "ict switch" to list agents.`,
+                ),
+            )
+        }
+        return undefined
+    }
+    return match.id
+}
+
+const getGlobalForce = (cmd: any): string | undefined => {
+    return (
+        cmd.parent?.opts()?.force ??
+        (cmd as any).optsWithGlobals?.()?.force ??
+        undefined
+    )
+}
+
+const getCurrentSessionId = (agentId: string): string | undefined => {
+    const sessions = chatService.listSessions(agentId)
+    return sessions[0]?.id
+}
+
+const switchSession = (sessionId: string): void => {
+    chatService.switchSession(sessionId)
+}
+
+const getOrCreateCurrentSession = async (
+    agentId: string,
+    contentHint: string,
+): Promise<string> => {
+    const sessions = chatService.listSessions(agentId)
+    if (sessions.length > 0) return sessions[0].id
+    return chatService.createSession({
+        agentId,
+        name:
+            contentHint.slice(0, 50) ||
+            `Session ${new Date().toLocaleString()}`,
+    })
+}
+
+const defaultModelStr = (): string => {
+    if (availableModels.length > 0) {
+        const m = availableModels[0]
+        return `${m.provider}/${m.id}`
+    }
+    return 'deepseek/deepseek-chat'
+}
 
 const program = new Command()
-    .configureHelp(commanderHelpConfiguration(terminalColor))
+    .configureHelp(commanderHelpConfiguration(themeScheme.color))
     .enablePositionalOptions()
 
 program
     .name('ifchat')
     .alias('ict')
     .version(`${APP_VERSION}`)
-    .description('Interactive AI chat interface')
-    .option('-f, --force <name>', 'use specified chat session')
+    .description('Interactive AI chat interface (powered by Pi)')
+    .option('-f, --force <id-or-name>', 'use specified agent by id or name')
     .option('-s, --sync-call', 'use synchronous (non-streaming) mode')
     .option('-e, --edit', 'open editor for input')
-    .option('-t, --new-topic', 'start a new conversation topic')
-    .option('-r, --retry', 'retry the last question')
+    .option(
+        '-t, --new-session',
+        'create a new session under current agent for this message',
+    )
     .option('-a, --attachment <file>', 'attach text file content to message')
+    .option('-c, --clean', 'run without context message')
     .argument(
         '[string...]',
-        'chat message content (multiple arguments will be joined into a single string)',
+        'chat message content (multiple arguments will be joined)',
     )
     .action(async (content, option) => {
-        const { edit, syncCall, newTopic, force, retry, attachment } = option
-        const { run, reRun } = act.chat.ask
+        const { edit, syncCall, newSession, force, attachment, clean } = option
+
         const withAttachment = async (ct: string) => {
-            if (!attachment) {
-                return ct
-            }
+            if (!attachment) return ct
             const fileContent = await Bun.file(attachment).text()
             return `# User\n\n${ct}\n\n# Attachment \n\n${fileContent}`
         }
+
+        const getOrCreateAgent = async (): Promise<string | undefined> => {
+            if (force) {
+                const agents = chatService.listAgents()
+                const match =
+                    agents.find((a) => a.id === force) ||
+                    agents.find((a) => a.name === force)
+                if (!match) {
+                    println(
+                        red(
+                            `Agent not found: ${force}. Use "ict switch" to list agents.`,
+                        ),
+                    )
+                    return undefined
+                }
+                return match.id
+            }
+            const activeId = getCurrentAgentId()
+            if (activeId) return activeId
+            const agents = chatService.listAgents()
+            if (agents.length === 0) {
+                return chatService.createAgent({
+                    name:
+                        content.join(' ').slice(0, 50) ||
+                        `Agent ${new Date().toLocaleString()}`,
+                    modelStr: defaultModelStr(),
+                })
+            }
+            return agents[0].id
+        }
+
         const ask = async (ct: string) => {
-            await run({
+            const agentId = await getOrCreateAgent()
+            if (!agentId) return
+            const sessionId = newSession
+                ? chatService.createSession({
+                      agentId,
+                      name: `Session ${new Date().toLocaleString()}`,
+                  })
+                : await getOrCreateCurrentSession(agentId, content.join(' '))
+            await chatService.runChat({
                 content: await withAttachment(ct),
-                chatName: force,
+                agentId,
+                sessionId,
                 noStream: !!syncCall,
-                newTopic,
+                clean: !!clean,
             })
         }
+
         const getContentAndAsk = async (
             f: () => Promise<string | undefined>,
         ) => {
             const text = await f()
-            if (text) {
-                await ask(text)
-            }
+            if (text) await ask(text)
         }
+
         const contentRun = async () => await ask(content.join(' ')!)
         const editRun = async () =>
             await getContentAndAsk(async () => await editor(''))
         const stdinRun = async () => await getContentAndAsk(stdin)
+
         await matchRun([
-            [retry, async () => await reRun(force)],
             [!isEmpty(content), contentRun],
             [edit, editRun],
             [true, stdinRun],
         ])
     })
 
-program
-    .command('new')
-    .description('create a new chat session')
-    .argument('<name>', 'name for the new chat session')
-    .action(async (content) => await act.chat.new(content))
+// ── new ──
 
 program
-    .command('history')
-    .alias('hs')
-    .description('view chat conversation history')
-    .option(
-        '-l, --limit <number>',
-        'maximum number of messages to display',
-        '100',
-    )
-    .action(async ({ limit }, cmd) => {
-        const force = cmd.parent?.opts()?.force as string
-        await act.chat.msgHistory(parseIntNumber(limit, 100), force)
+    .command('new')
+    .description('create a new agent (chat)')
+    .argument('<name>', 'name for the new agent')
+    .option('-m, --model <str>', 'model as provider/modelId', defaultModelStr())
+    .action(async (name, { model }) => {
+        try {
+            const agentId = chatService.createAgent({ name, modelStr: model })
+            chatService.createSession({
+                agentId,
+                name: `Default Session ${new Date().toLocaleString()}`,
+            })
+            println(green(`Agent "${name}" created with model ${model}`))
+        } catch (e: unknown) {
+            println(red(e instanceof Error ? e.message : String(e)))
+        }
     })
+
+// ── remove ──
 
 program
     .command('remove')
     .alias('rm')
-    .description('delete a chat session')
-    .action(async () => await act.chat.remove())
+    .description('delete an agent (chat) and all its sessions')
+    .action(async (_, cmd) => {
+        const force = getGlobalForce(cmd)
+        if (force) {
+            const agentId = resolveAgentId(force)
+            if (!agentId) return
+            chatService.deleteAgent(agentId)
+            println(green(`Agent deleted.`))
+            return
+        }
+        const agents = chatService.listAgents()
+        if (agents.length === 0) {
+            println(yellow('No agents to remove.'))
+            return
+        }
+        const choice = await select({
+            message: 'Select agent to remove:',
+            choices: agents.map((a) => ({ name: a.name, value: a.id })),
+        })
+        chatService.deleteAgent(choice)
+        println(green(`Agent deleted.`))
+    })
+
+// ── switch ──
 
 program
     .command('switch')
     .alias('st')
-    .description('switch between chat sessions or topics')
-    .option('-t, --topic', 'switch to a different topic')
-    .argument('[name]', 'target chat session name')
-    .action(async (name, { topic }, cmd) => {
-        const { chat, topic: cgTopic } = act.chat.switch
-        if (topic) {
-            const force = cmd.parent?.opts()?.force as string
-            await cgTopic(force)
+    .description('switch between agents (chats)')
+    .action(async (_, cmd) => {
+        const force = getGlobalForce(cmd)
+        const agents = chatService.listAgents()
+        const activeId = resolveAgentId(force) ?? getCurrentAgentId()
+        if (agents.length === 0) {
+            println(yellow('No agents available.'))
             return
         }
-        await chat(name)
+        if (agents.length === 1) {
+            const a = agents[0]
+            const isActive = a.id === activeId
+            println(
+                yellow(
+                    `No other agent to switch to. Current: ${a.name}${isActive ? ' (active)' : ''}`,
+                ),
+            )
+            return
+        }
+        const choice = await select({
+            message: 'Select agent to switch to:',
+            choices: agents.map((a) => ({
+                name: a.id === activeId ? `${a.name} (active)` : a.name,
+                value: a.id,
+                disabled: a.id === activeId ? 'current agent' : false,
+            })),
+        })
+        chatService.setActiveAgentId(choice)
+        const targetName = agents.find((a) => a.id === choice)?.name ?? choice
+        println(green(`Switched to agent: ${targetName}`))
+        println(chalk.gray(`Use: ict -f ${targetName} <message>`))
     })
 
-program
-    .command('prompt')
-    .alias('pt')
-    .description('manage system prompts')
-    .option('-q, --query <name>', 'search and set prompt for current chat')
-    .option('-m, --modify', 'edit the current chat prompt')
-    .option('-c, --cover [prompt]', 'replace the current chat prompt')
-    .option('-p, --publish', 'publish prompt to shared library')
-    .action(async ({ query, modify, cover, publish }, cmd) => {
-        const name = cmd.parent?.opts().force as string
-        const { list, get, set, show, publish: ps } = act.chat.prompt
-        const modifyRun = async () => {
-            await editor(get(name)).then((text) => {
-                if (text) {
-                    set(text, name)
-                }
-            })
-        }
-        const coverStdinRun = async () => {
-            const str = await stdin()
-            if (typeof str === 'string') {
-                set(str.trim(), name)
-            }
-        }
-        const coverRun = () => set((cover as string)!, name)
-        await matchRun(
-            [
-                [query, async () => await list(query!, name)],
-                [modify, modifyRun],
-                [typeof cover === 'boolean', coverStdinRun],
-                [typeof cover === 'string', coverRun],
-                [publish, async () => await ps(name)],
-            ],
-            () => show(name),
-        )
-    })
-
-program
-    .command('preset')
-    .alias('ps')
-    .description('manage preset message templates')
-    .option('-e, --edit', 'edit preset messages')
-    .option('-c, --clear', 'clear all preset messages')
-    .action(async (options, cmd) => {
-        const { edit, clear } = options
-        const name = cmd.parent?.opts().force as string
-        const pt = act.chat.preset
-        await matchRun(
-            [
-                [edit, async () => await pt.edit(name)],
-                [clear, () => pt.clear(name)],
-            ],
-            () => pt.show(name),
-        )
-    })
+// ── config ──
 
 program
     .command('config')
     .alias('cf')
-    .description('configure chat settings')
+    .description('configure current agent (chat) settings')
     .option('-m, --model', 'switch AI model')
-    .option('-c, --context', 'enable/disable context memory', false)
-    .option('-z, --context-size <number>', 'set context window size')
-    .option('-p, --mcp', 'enable/disable MCP tools', false)
-    .option('-t, --tools', 'enable/disable custom tools', false)
-    .option('-s, --scenario', 'select conversation scenario')
-    .action(
-        async ({ contextSize, model, context, mcp, tools, scenario }, cmd) => {
-            const name = cmd.parent?.opts().force as string
-            const cf = act.chat.config
-            await matchRun(
-                [
-                    [
-                        contextSize,
-                        () =>
-                            cf.contextSize(
-                                parseIntNumber(contextSize, 10),
-                                name,
-                            ),
-                    ],
-                    [model, () => cf.model(name)],
-                    [context, () => cf.context(name)],
-                    [mcp, () => cf.mcp(name)],
-                    [tools, () => cf.tools(name)],
-                    [scenario, () => cf.scenario(name)],
-                ],
-                () => cf.show(name),
-            )
-        },
+    .option(
+        '-r, --reasoning <level>',
+        'set reasoning level (off/minimal/low/medium/high/xhigh/max)',
     )
+    .option('-t, --tools', 'enable/disable tools for this agent')
+    .option('-s, --system-prompt [prompt]', 'set or edit system prompt')
+    .option('-k, --skills', 'enable/disable skills for this agent')
+    .action(async ({ model, reasoning, tools, systemPrompt, skills }, cmd) => {
+        const agentId = resolveAgentId(getGlobalForce(cmd))
+        if (!agentId) {
+            println(
+                yellow(
+                    'No agents available. Use -f <agent-name> or start a chat first.',
+                ),
+            )
+            return
+        }
+        const handle = chatService.getAgent(agentId)
+        const meta = await handle.info
+
+        if (reasoning) {
+            const validLevels = [
+                'off',
+                'minimal',
+                'low',
+                'medium',
+                'high',
+                'xhigh',
+                'max',
+            ]
+            if (!validLevels.includes(reasoning)) {
+                println(
+                    red(
+                        `Invalid reasoning level: ${reasoning}. Valid: ${validLevels.join(', ')}`,
+                    ),
+                )
+                return
+            }
+            await handle.update({
+                thinkingLevel: reasoning as ThinkingLevel,
+            })
+            println(green(`Reasoning level set to: ${reasoning}`))
+        }
+
+        if (model) {
+            // 从 Pi 模型发现结果中搜索（匹配 provider/modelId 全串，搜索框直接定位）
+            if (availableModels.length === 0) {
+                println(
+                    yellow(
+                        'No models available. Check Pi environment variables.',
+                    ),
+                )
+                return
+            }
+            const modelStr = await search({
+                message: 'Search model (provider/modelId):',
+                source: async (term) =>
+                    availableModels
+                        .filter(
+                            (m) =>
+                                !term ||
+                                `${m.provider}/${m.id}`
+                                    .toLowerCase()
+                                    .includes(term.toLowerCase()),
+                        )
+                        .map((m) => ({
+                            name: `${m.provider}/${m.id}`,
+                            value: `${m.provider}/${m.id}`,
+                        })),
+                theme: searchThemeStyle(themeScheme.chalkColor),
+            })
+            await handle.update({ model: modelStr })
+            println(green(`Model set to: ${modelStr}`))
+        }
+
+        if (tools) {
+            const groups = toolRegistry.availableGroups()
+            if (groups.length === 0) {
+                println(
+                    yellow(
+                        'No tools available. Configure mcpServers/customTools in settings first.',
+                    ),
+                )
+                return
+            }
+            const active = new Set([
+                ...meta.activeMcps.map((n) => `mcp:${n}`),
+                ...meta.activeCustomTags.map((t) => `custom:${t}`),
+            ])
+            const choices = groups.map((g) => ({
+                name: `${g.type}: ${g.name}`,
+                value: g.id,
+                checked: active.has(g.id),
+            }))
+            const selected = await checkbox({
+                message: 'Select active tools for this agent:',
+                choices,
+                theme: checkboxThemeStyle(themeScheme.chalkColor),
+            })
+            const activeMcps = selected
+                .filter((id) => id.startsWith('mcp:'))
+                .map((id) => id.slice(4))
+            const activeCustomTags = selected
+                .filter((id) => id.startsWith('custom:'))
+                .map((id) => id.slice(7))
+            await handle.update({ activeMcps, activeCustomTags })
+            println(green('Active tools updated.'))
+        }
+
+        if (systemPrompt) {
+            const newPrompt =
+                typeof systemPrompt === 'string'
+                    ? systemPrompt
+                    : await editor(meta.systemPrompt ?? '')
+            await handle.update({ systemPrompt: newPrompt })
+            println(green('System prompt updated.'))
+        }
+
+        if (skills) {
+            const available = toolRegistry.availableSkills()
+            if (available.length === 0) {
+                println(
+                    yellow(
+                        'No skills available. Add SKILL.md files to the skills directory first.',
+                    ),
+                )
+                return
+            }
+            const active = new Set(meta.skills)
+            const choices = available.map((s) => ({
+                name: s.name,
+                value: s.name,
+                checked: active.has(s.name),
+            }))
+            const selected = await checkbox({
+                message: 'Select active skills for this agent:',
+                choices,
+                theme: checkboxThemeStyle(themeScheme.chalkColor),
+            })
+            await handle.update({ skills: selected })
+            println(green('Active skills updated.'))
+        }
+
+        if (!reasoning && !model && !tools && !systemPrompt && !skills) {
+            // 显示当前配置
+            println(chatConfigShow(themeScheme.chalkColor, meta))
+        }
+    })
+
+// ── history ──
 
 program
-    .command('export')
-    .alias('exp')
-    .argument('[path]', 'export directory (default: $HOME)')
-    .description('export chat conversations')
-    .option('-a, --all', 'export all chat sessions')
-    .option('-c, --chat', 'export all topics from selected chat')
-    .option('-t, --topic', 'export specific topic from selected chat')
-    .action(async (path, { all, chat, topic }) => {
-        const exp = act.chat.export
-        const f = (pf: (p?: string) => Promise<void>) => {
-            return async () => await pf(path)
+    .command('history')
+    .alias('hs')
+    .description('view current session (topic) conversation history')
+    .option('-l, --limit <number>', 'max messages to display', '50')
+    .action(async ({ limit }, cmd) => {
+        const agentId = resolveAgentId(getGlobalForce(cmd))
+        if (!agentId) {
+            println(
+                yellow(
+                    'No agents available. Use -f <agent-name> or start a chat first.',
+                ),
+            )
+            return
         }
-        await matchRun([
-            [all, f(exp.all)],
-            [chat, f(exp.chat)],
-            [topic, f(exp.chatTopic)],
-            [true, f(exp.topic)],
-        ])
+        const sessionId = getCurrentSessionId(agentId)
+        if (!sessionId) {
+            println(yellow('No sessions available for this agent.'))
+            return
+        }
+        const handle = chatService.getSession(sessionId)
+        const entries = await handle.storage.getEntries()
+        const msgEntries = entries
+            .filter((e) => e.entryType === 'message')
+            .slice(-parseIntNumber(limit, 50))
+        const toolCallMap = new Map()
+        for (const [_, entry] of msgEntries.entries()) {
+            try {
+                println(
+                    historyShow(
+                        themeScheme.chalkColor,
+                        JSON.parse(entry.content) as Message,
+                        toolCallMap,
+                    ),
+                )
+            } catch {
+                // skip malformed
+            }
+        }
+
+        // 显示 compaction 标记
+        const compactions = entries.filter((e) => e.entryType === 'compaction')
+        if (compactions.length > 0) {
+            println(yellow(`[${compactions.length} compaction(s) in history]`))
+        }
+    })
+
+// ── session ──
+
+const sessionCmd = program
+    .command('session')
+    .alias('ss')
+    .description('manage sessions (topics) under current agent')
+
+sessionCmd
+    .command('new')
+    .description('create a new session under current agent')
+    .argument('<name>', 'name for the new session')
+    .action(async (name, cmd) => {
+        const agentId = resolveAgentId(getGlobalForce(cmd))
+        if (!agentId) {
+            println(
+                yellow(
+                    'No agents available. Use -f <agent-name> or start a chat first.',
+                ),
+            )
+            return
+        }
+        const sessionId = chatService.createSession({ agentId, name })
+        println(green(`Session "${name}" created.`))
+        println(
+            chalk.gray(`Use: ict -f ${agentId.slice(0, 8)}... -t <message>`),
+        )
+        println(chalk.gray(`Session id: ${sessionId.slice(0, 8)}...`))
+    })
+
+sessionCmd
+    .command('switch')
+    .alias('sw')
+    .description('switch session under current agent')
+    .action(async (_, cmd) => {
+        const agentId = resolveAgentId(getGlobalForce(cmd))
+        if (!agentId) {
+            println(
+                yellow(
+                    'No agents available. Use -f <agent-name> or start a chat first.',
+                ),
+            )
+            return
+        }
+        const sessions = chatService.listSessions(agentId)
+        if (sessions.length === 0) {
+            println(yellow('No sessions available.'))
+            return
+        }
+        const choice = await select({
+            message: 'Select session to switch to:',
+            choices: sessions.map((s) => ({
+                name: s.name,
+                value: s.id,
+            })),
+        })
+        switchSession(choice)
+    })
+
+sessionCmd
+    .command('remove')
+    .alias('rm')
+    .description('remove a session under current agent')
+    .action(async (_, cmd) => {
+        const agentId = resolveAgentId(getGlobalForce(cmd))
+        if (!agentId) {
+            println(
+                yellow(
+                    'No agents available. Use -f <agent-name> or start a chat first.',
+                ),
+            )
+            return
+        }
+        const sessions = chatService.listSessions(agentId)
+        if (sessions.length === 0) {
+            println(yellow('No sessions to remove.'))
+            return
+        }
+        const choice = await select({
+            message: 'Select session to remove:',
+            choices: sessions.map((s) => ({ name: s.name, value: s.id })),
+        })
+        chatService.deleteSession(choice)
+        println(green(`Session deleted.`))
     })
 
 program.parseAsync().catch((e: unknown) => {
-    print(terminalColor.red(e))
+    print(red(e instanceof Error ? e.message : String(e)))
 })

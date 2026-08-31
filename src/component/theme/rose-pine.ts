@@ -1,10 +1,4 @@
-import type {
-    ChatBoxTheme,
-    ColorScheme,
-    SpinnerName,
-    TerminalColorName,
-    ThemeSemanticColors,
-} from './theme-type'
+import type { ColorScheme, SpinnerName, TerminalColorName } from './theme-type'
 
 type RosePineType = 'Rose Pine' | 'Rose Pine Moon' | 'Rose Pine Dawn'
 type ColorName =
@@ -79,27 +73,6 @@ const scheme: Record<RosePineType, Color> = {
     },
 }
 
-const generateTheme = (s: Color): ChatBoxTheme => {
-    const { pine, gold, love, highlightMed, subtle, muted, text } = s
-    return {
-        reasoner: {
-            title: pine,
-            bolder: highlightMed,
-            content: subtle,
-        },
-        tools: {
-            title: gold,
-            bolder: highlightMed,
-            content: muted,
-        },
-        assisant: {
-            title: love,
-            bolder: love,
-            content: text,
-        },
-    }
-}
-
 const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
     const { base, text, love, pine, foam, iris, rose, gold, muted } = s
     return {
@@ -119,18 +92,7 @@ const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
         magentaBright: iris,
         cyanBright: rose,
         whiteBright: base,
-    }
-}
-
-const generateSemanticColors = (): ThemeSemanticColors => {
-    return {
-        waiting: 'cyan',
-        analyzing: 'yellow',
-        thinking: 'magenta',
-        rendering: 'blue',
-        error: 'red',
-        completed: 'green',
-        toolCalling: 'yellow',
+        gray: '#888888',
     }
 }
 
@@ -142,18 +104,14 @@ const colorScheme: ColorScheme[] = [
     {
         name: 'Rose Pine',
         color: generateTerminalColor(rosePine),
-        theme: generateTheme(rosePine),
-        semantic: generateSemanticColors(),
-        spinner: 'cascade' as SpinnerName,
+        spinner: 'braille' as SpinnerName,
     },
     {
         name: 'Rose Pine Moon',
         color: {
             ...generateTerminalColor(rosePineMoon),
         },
-        theme: generateTheme(rosePineMoon),
-        semantic: generateSemanticColors(),
-        spinner: 'cascade' as SpinnerName,
+        spinner: 'braille' as SpinnerName,
     },
     {
         name: 'Rose Pine Dawn',
@@ -162,9 +120,7 @@ const colorScheme: ColorScheme[] = [
             black: rosePineDawn.text,
             white: rosePineDawn.base,
         },
-        theme: generateTheme(rosePineDawn),
-        semantic: generateSemanticColors(),
-        spinner: 'cascade' as SpinnerName,
+        spinner: 'braille' as SpinnerName,
     },
 ]
 

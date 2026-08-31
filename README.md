@@ -30,7 +30,7 @@ bun install && bun run build && bun link
 
 ## Configuration
 
-Configure application settings using the `ist cf -m` command. **Please configure your LLM settings before first use.**
+Models and providers are discovered automatically by [Pi](https://github.com/earendil-works/pi) via environment variables. Configure application settings (theme, MCP servers, custom tools, compaction) using `ist cf -m` or by editing `settings.json` directly.
 
 To use MCP Servers, configure the relevant settings and enable MCP functionality for your chat session with `ict cf -p`.
 
@@ -83,6 +83,7 @@ Options:
   -t, --new-topic              start a new conversation topic
   -r, --retry                  retry the last question
   -a, --attachment <file>      attach text file content to message
+  -c, --clean                  run without context message 
   -h, --help                   display help for command
 
   Commands:
@@ -103,8 +104,20 @@ Options:
 
 ```json
 {
+    "$schema": "./settings-schema.json",
     "generalSetting": {
-        "theme": "ethereal_glow"
+        "theme": "Tokyo Night"
+    },
+    "session": {
+        "autoName": {
+            "enabled": true,
+            "model": "openai/gpt-4o-mini"
+        }
+    },
+    "compaction": {
+        "enabled": true,
+        "triggerRatio": 0.8,
+        "keepRecentRatio": 0.3
     },
     "mcpServers": [
         {
@@ -113,77 +126,27 @@ Options:
             "enable": true,
             "type": "sse",
             "url": "http://localhost:3000/sse"
-        },
-        {
-            "name": "sequential-thingking",
-            "version": "v1",
-            "enable": true,
-            "type": "stdio",
-            "params": {
-                "command": "npx",
-                "args": [
-                    "-y",
-                    "@modelcontextprotocol/server-sequential-thinking"
-                ]
-            }
-        },
-        {
-            "name": "context7",
-            "version": "v1",
-            "enable": true,
-            "type": "http",
-            "url": "https://mcp.context7.com/mcp",
-            "headers": {
-                "CONTEXT7_API_KEY": "<your api key>"
-            }
         }
     ],
-    "llmSettings": [
-        {
-            "name": "deepseek",
-            "baseUrl": "https://api.deepseek.com",
-            "apiKey": "<your deepseek api key>",
-            "models": ["deepseek-chat", "deepseek-reasoner"]
-        },
-        {
-            "name": "ollama",
-            "baseUrl": "http://localhost:11434/v1/",
-            "apiKey": "",
-            "models": ["gemma3:latest"]
-        },
-        {
-            "name": "openai",
-            "baseUrl": "https://api.openai.com/v1",
-            "apiKey": "<your openai key>",
-            "models": ["gpt-4o"]
-        },
-        {
-            "name": "openrouter",
-            "baseUrl": "https://openrouter.ai/api/v1",
-            "apiKey": "<your openrouter key>",
-            "models": [
-                "deepseek/deepseek-chat-v3-0324:free",
-                "deepseek/deepseek-r1-0528:free",
-                "deepseek/deepseek-r1:free",
-                "qwen/qwen3-coder:free"
-            ]
-        }
-    ]
+    "customTools": []
 }
 ```
 
-Application settings support both direct configuration and environment variable placeholders using the `$env.` prefix.
-This allows you to securely store sensitive information like API keys in environment variables while maintaining backward compatibility.
+### Model Providers
 
-#### Usage Example
+Providers and models are discovered automatically by Pi via environment variables. Common variables:
 
-```json
-{
-    "name": "deepseek",
-    "baseUrl": "$env.DEEPSEEK_BASE_URL",
-    "apiKey": "$env.DEEPSEEK_API_KEY",
-    "models": ["deepseek-chat", "deepseek-reasoner"]
-}
+| Provider   | Environment Variables                              |
+| :--------- | :------------------------------------------------- |
+| DeepSeek   | `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`            |
+| OpenAI     | `OPENAI_API_KEY`, `OPENAI_BASE_URL`                |
+| Anthropic  | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`          |
+| OpenRouter | `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`        |
+
+Select a per-session model with:
+
+```bash
+ict cf -m
 ```
 
 ### General Settings
@@ -192,14 +155,20 @@ This allows you to securely store sensitive information like API keys in environ
 | :---- | :----- | :------- |
 | theme | string | true     |
 
-### LLM Settings
+### Session Settings
 
-| Field   | Type     | Required |
-| :------ | :------- | :------- |
-| name    | string   | true     |
-| baseUrl | string   | true     |
-| apiKey  | string   | false    |
-| models  | string[] | true     |
+| Field            | Type    | Required |
+| :--------------- | :------ | :------- |
+| autoName.enabled | boolean | true     |
+| autoName.model   | string  | true     |
+
+### Compaction Settings
+
+| Field           | Type    | Required |
+| :-------------- | :------ | :------- |
+| enabled         | boolean | true     |
+| triggerRatio    | number  | true     |
+| keepRecentRatio | number  | true     |
 
 ### MCP Server (http)
 
@@ -241,14 +210,18 @@ This allows you to securely store sensitive information like API keys in environ
 
 ## Custom Tools
 
-Custom tools allow you to define CLI commands as callable AI tools. Tools are defined in `ifcli-custom-tools.json` in the data directory and can be selected per chat session.
+Custom tools allow you to define CLI commands as callable AI tools. They are configured in `settings.json` under the `customTools` array, alongside the rest of the application configuration.
 
 ### Tool Definition Format
 
 ```json
 {
-    "$schema": "./ifcli-custom-tools-schema.json",
-    "tools": [
+    "$schema": "./settings-schema.json",
+    "generalSetting": { "theme": "Tokyo Night" },
+    "session": { "autoName": { "enabled": true, "model": "openai/gpt-4o-mini" } },
+    "compaction": { "enabled": true, "triggerRatio": 0.8, "keepRecentRatio": 0.3 },
+    "mcpServers": [],
+    "customTools": [
         {
             "def": {
                 "type": "function",
@@ -267,7 +240,7 @@ Custom tools allow you to define CLI commands as callable AI tools. Tools are de
                     }
                 }
             },
-            "group": "weather",
+            "tags": ["weather"],
             "command": ["curl", "wttr.in/${city}?format=3"]
         },
         {
@@ -288,7 +261,7 @@ Custom tools allow you to define CLI commands as callable AI tools. Tools are de
                     }
                 }
             },
-            "group": "math",
+            "tags": ["math"],
             "command": ["bash", "-c", "echo $((${expr}))"]
         }
     ]
@@ -298,20 +271,20 @@ Custom tools allow you to define CLI commands as callable AI tools. Tools are de
 | Field   | Type     | Required | Description |
 | :------ | :------- | :------- | :---------- |
 | def     | object   | true     | OpenAI function tool definition (name, description, parameters) |
-| group   | string   | true     | Tool category group for organization and selection |
+| tags    | string[] | true     | Tool categories for organization and selection (replaces old `group`) |
 | command | string[] | true     | CLI command array; use `${paramName}` for argument interpolation |
 
 ### Usage
 
 ```bash
-# Edit custom tools configuration (with schema validation in IDE)
-ist tools -m
+# Edit settings (including custom tools) with schema validation in IDE
+ist cf -m
 
-# Select custom tools for the current chat session
-ict cf -t
+# List configured custom tools
+ist tools -l
 ```
 
-The AI model first discovers available tool groups, then inspects individual tools, and finally invokes them — a three-step discovery process managed automatically by the built-in `list_available_tool_groups`, `list_available_tools`, and `call_group_tool` functions.
+The AI model first discovers available tool groups, then inspects individual tools, and finally invokes them — a three-step discovery process managed automatically by the built-in `list_available_tool_groups` and `list_available_tools` functions.
 
 ## Usage Tips
 

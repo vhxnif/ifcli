@@ -1,9 +1,15 @@
+/**
+ * [INPUT]: 依赖 node:fs 的 accessSync/mkdirSync，依赖 node:path，依赖 ../util/platform-utils 的平台信息
+ * [OUTPUT]: DataPathConfig 类（settings/settingsSchema/database/skills/legacy 路径）
+ * [POS]: src/config/ 的路径解析器，被 app-setting.ts 消费
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { accessSync, constants, mkdirSync } from 'node:fs'
+import { accessSync, constants, existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { env, platform } from '../util/platform-utils'
-import { APP_VERSION } from './app-setting'
 
 export class DataPathConfig {
     private get appName(): string {
@@ -39,32 +45,23 @@ export class DataPathConfig {
         return env('APPDATA')!.split(path.sep)!.join(path.posix.sep)
     }
     get database(): string {
-        return path.join(
-            this.configPath!,
-            `${this.appName}_${APP_VERSION}.sqlite`,
-        )
+        return path.join(this.configPath!, 'data.sqlite')
     }
 
-    get setting(): string {
-        return path.join(this.configPath!, `${this.appName}.json`)
+    get settings(): string {
+        return path.join(this.configPath!, 'settings.json')
     }
 
-    get schema(): string {
-        return path.join(
-            this.configPath!,
-            `${this.appName}-settings-schema.json`,
-        )
+    get settingsSchema(): string {
+        return path.join(this.configPath!, 'settings-schema.json')
     }
 
-    get customTools(): string {
-        return path.join(this.configPath!, `${this.appName}-custom-tools.json`)
-    }
-
-    get customToolsSchema(): string {
-        return path.join(
-            this.configPath!,
-            `${this.appName}-custom-tools-schema.json`,
-        )
+    get skills(): string {
+        const dir = path.join(this.configPath!, 'skills')
+        if (!existsSync(dir)) {
+            mkdirSync(dir, { recursive: true })
+        }
+        return dir
     }
 }
 

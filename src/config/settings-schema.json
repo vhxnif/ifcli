@@ -1,0 +1,208 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "ifcli Settings",
+    "description": "ifcli 配置文件 Schema — 模型由 Pi 环境变量自动发现，此处仅配置功能项",
+    "type": "object",
+    "properties": {
+        "$schema": {
+            "type": "string",
+            "description": "JSON Schema 文件路径"
+        },
+        "generalSetting": {
+            "type": "object",
+            "properties": {
+                "theme": {
+                    "type": "string",
+                    "enum": [
+                        "Tokyo Night",
+                        "Tokyo Night Day",
+                        "Tokyo Night Moon",
+                        "Tokyo Night Storm",
+                        "Rose Pine",
+                        "Rose Pine Moon",
+                        "Rose Pine Dawn",
+                        "Catppuccin Latte",
+                        "Catppuccin Frappe",
+                        "Catppuccin Macchiato",
+                        "Catppuccin Mocha"
+                    ],
+                    "default": "Tokyo Night"
+                },
+                "toolDiscoveryThreshold": {
+                    "type": "number",
+                    "minimum": 1,
+                    "default": 8,
+                    "description": "当前 session 启用的工具数超过此阈值时，只注入 list_available_tool_groups / list_available_tools 两个发现工具；否则直接注入所有工具 schema"
+                }
+            },
+            "required": ["theme"],
+            "additionalProperties": false
+        },
+        "session": {
+            "type": "object",
+            "properties": {
+                "autoName": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": { "type": "boolean", "default": true },
+                        "model": {
+                            "type": "string",
+                            "description": "provider/modelId 格式，建议使用便宜模型",
+                            "default": "openai/gpt-4o-mini"
+                        }
+                    },
+                    "required": ["enabled", "model"],
+                    "additionalProperties": false
+                }
+            },
+            "required": ["autoName"],
+            "additionalProperties": false
+        },
+        "compaction": {
+            "type": "object",
+            "properties": {
+                "enabled": { "type": "boolean", "default": true },
+                "triggerRatio": {
+                    "type": "number",
+                    "minimum": 0.1,
+                    "maximum": 1.0,
+                    "default": 0.8,
+                    "description": "estimatedTokens / model.contextWindow >= triggerRatio 时触发 compaction"
+                },
+                "keepRecentRatio": {
+                    "type": "number",
+                    "minimum": 0.05,
+                    "maximum": 0.9,
+                    "default": 0.3,
+                    "description": "保留最近 keepRecentRatio × model.contextWindow 原文"
+                }
+            },
+            "required": ["enabled", "triggerRatio", "keepRecentRatio"],
+            "additionalProperties": false
+        },
+        "mcpServers": {
+            "type": "array",
+            "items": {
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "name": { "type": "string" },
+                            "version": { "type": "string" },
+                            "enable": { "type": "boolean", "default": true },
+                            "type": { "type": "string", "const": "sse" },
+                            "url": { "type": "string", "format": "uri" },
+                            "opts": { "type": "object" }
+                        },
+                        "required": [
+                            "name",
+                            "version",
+                            "enable",
+                            "type",
+                            "url"
+                        ],
+                        "additionalProperties": false
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "name": { "type": "string" },
+                            "version": { "type": "string" },
+                            "enable": { "type": "boolean", "default": true },
+                            "type": { "type": "string", "const": "stdio" },
+                            "params": {
+                                "type": "object",
+                                "properties": {
+                                    "command": { "type": "string" },
+                                    "args": {
+                                        "type": "array",
+                                        "items": { "type": "string" }
+                                    },
+                                    "env": {
+                                        "type": "object",
+                                        "additionalProperties": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": ["command"],
+                                "additionalProperties": false
+                            },
+                            "logMode": {
+                                "type": "string",
+                                "enum": ["ignore", "inherit", "file"],
+                                "default": "file"
+                            },
+                            "logFile": { "type": "string" }
+                        },
+                        "required": [
+                            "name",
+                            "version",
+                            "enable",
+                            "type",
+                            "params"
+                        ],
+                        "additionalProperties": false
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "name": { "type": "string" },
+                            "version": { "type": "string" },
+                            "enable": { "type": "boolean", "default": true },
+                            "type": { "type": "string", "const": "http" },
+                            "url": { "type": "string", "format": "uri" },
+                            "opts": { "type": "object" }
+                        },
+                        "required": [
+                            "name",
+                            "version",
+                            "enable",
+                            "type",
+                            "url"
+                        ],
+                        "additionalProperties": false
+                    }
+                ]
+            }
+        },
+        "customTools": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "def": {
+                        "type": "object",
+                        "properties": {
+                            "type": { "type": "string", "const": "function" },
+                            "function": {
+                                "type": "object",
+                                "properties": {
+                                    "name": { "type": "string" },
+                                    "description": { "type": "string" },
+                                    "parameters": { "type": "object" }
+                                },
+                                "required": ["name", "description"]
+                            }
+                        },
+                        "required": ["type", "function"]
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "工具标签，一个工具可属于多个类别"
+                    },
+                    "command": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "CLI 命令，${paramName} 引用参数"
+                    }
+                },
+                "required": ["def", "tags", "command"],
+                "additionalProperties": false
+            }
+        }
+    },
+    "required": ["generalSetting", "session", "compaction"],
+    "additionalProperties": false
+}

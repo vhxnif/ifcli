@@ -1,170 +1,76 @@
-# AGENTS.md
+# ifcli — Pi 驱动的 CLI 聊天工具
 
-This file provides guidance to AI coding assistants when working with code in this repository.
+> L1 | 技术栈: Bun + TypeScript + @earendil-works/pi-ai + @earendil-works/pi-agent-core + SQLite + Commander
 
-## Project Overview
+基于 [Pi agent harness](https://github.com/earendil-works/pi) 重新构建的交互式 AI 聊天 CLI。模型由 Pi 环境变量自动发现，会话以 Pi Session 树形结构存储在 SQLite 中，上下文通过 compaction 自动管理。
 
-ifcli is a TypeScript-based CLI application for chatting with AI models through the command line. It supports multiple AI providers (OpenAI, DeepSeek, Ollama, OpenRouter) and includes MCP (Model Context Protocol) server integration.
+## 技术栈
 
-## Development Commands
+| 层 | 技术 | 用途 |
+|----|------|------|
+| 运行时 | Bun ≥1.2.6 | 打包、运行、SQLite |
+| 语言 | TypeScript 5.9 | 类型安全 |
+| LLM | @earendil-works/pi-ai ^0.80 | 多供应商统一 API（pi-messages / OpenAI / Anthropic） |
+| Agent | @earendil-works/pi-agent-core ^0.80 | Agent 运行时、SessionStorage 接口 |
+| 存储 | bun:sqlite | 树形 session 存储 |
+| CLI | commander ^13 | 命令解析 |
+| UI | chalk ^5 / ora ^8 / inquirer ^4 | 终端颜色、spinner、交互选择 |
+| MCP | @modelcontextprotocol/sdk ^1.11 | Model Context Protocol 工具 |
 
-### Building
+## 目录
 
-```bash
-bun run build
+```
+src/
+├── chat-command.ts        — CLI 入口: ict (ifchat)
+├── setting-command.ts     — CLI 入口: ist (ifsetting)
+├── app-context.ts         — 应用组装入口，连线所有服务
+├── llm/                   — LLM 层 (5 文件)
+│   ├── pi-types.ts        — 核心类型定义（重导出 Pi 类型 + 自定义类型）
+│   ├── agent-runner.ts    — Pi Agent 封装（替代 ask-flow）
+│   ├── pi-display-handler.ts — Pi 事件 → 终端渲染（替代 simplified-display）
+│   ├── tool-registry.ts   — MCP + Custom → AgentTool 注册（替代 tool.ts）
+│   └── mcp-client.ts      — MCP 协议客户端（保留自旧架构）
+├── store/                 — 存储层 (3 文件)
+│   ├── schema.ts          — SQLite 数据库结构定义
+│   ├── session-storage.ts — SQLite 实现 Pi SessionStorage 接口（树形）
+│   └── agent-manager.ts — agent/session 两层生命周期管理
+├── action/                — 服务层 (1 文件)
+│   └── chat-service.ts    — 聊天编排服务（Session + Agent + Display + Tool）
+├── config/                — 配置层 (4 文件)
+│   ├── app-setting.ts     — 功能配置类型与读写
+│   ├── data-config.ts     — 数据路径解析
+│   ├── setting-validator.ts — JSON Schema 校验
+│   └── prompt-message.ts  — 提示文案常量
+├── component/             — UI 组件 (6 文件)
+│   ├── ora-show.ts        — Ora spinner 封装
+│   └── theme/             — 主题色板 (5 文件)
+└── util/                  — 工具函数 (5 文件)
 ```
 
-Builds the TypeScript source files into the `build/` directory using Bun's native bundler.
+## 配置
 
-### Code Quality
-
-```bash
-# Check and lint code (Biome)
-bun run lint
-
-# Fix linting issues
-bun run lint:fix
-
-# Format code
-bun run format
+```json
+{
+  "generalSetting": { "theme": "Tokyo Night" },
+  "session": { "autoName": { "enabled": true, "model": "openai/gpt-4o-mini" } },
+  "compaction": { "enabled": true, "triggerRatio": 0.8, "keepRecentRatio": 0.3 },
+  "mcpServers": [...],
+  "customTools": [...]
+}
 ```
 
-## Architecture
+模型供应商由 Pi 环境变量自动发现，不写入配置文件。
 
-### Core Structure
+## 架构
 
--   **Commands**: Two main CLI commands in `src/`:
-    -   `chat-command.ts` - Main chat interface (`ifchat`/`ict`)
-    -   `setting-command.ts` - Configuration management (`ifsetting`/`ist`)
--   **Actions**: Business logic in `src/action/`:
-    -   `chat-action.ts` - Chat session management and AI interactions
-    -   `setting-action.ts` - Application settings management
--   **LLM Integration**: AI provider clients in `src/llm/`:
-    -   `open-ai-client.ts` - OpenAI-compatible API client
-    -   `mcp-client.ts` - Model Context Protocol client
-    -   `ask-flow.ts` - Main AI interaction orchestration
--   **Storage**: SQLite database management in `src/store/`:
-    -   `store.ts` - High-level data operations
-    -   `db-client.ts` - Low-level SQLite operations
--   **Configuration**: App settings and types in `src/config/`
--   **UI Components**: Terminal display components in `src/component/`
--   **Utilities**: Helper functions in `src/util/`
-
-### Key Design Patterns
-
-1. **Command Pattern**: CLI commands use Commander.js with clear separation between command definition and action execution
-2. **Repository Pattern**: Store layer abstracts database operations from business logic
-3. **Strategy Pattern**: Multiple LLM providers supported through common interface
-4. **Dependency Injection**: App context provides shared dependencies (store, actions, color themes)
-
-### Data Storage
-
--   SQLite database with version-specific naming (`ifcli_<version>.sqlite`)
--   Platform-specific data directories:
-    -   Windows: `%APPDATA%\ifcli`
-    -   macOS/Linux: `$HOME/.config/ifcli`
--   Stores chat sessions, topics, messages, prompts, and application settings
-
-### Configuration System
-
--   JSON-based configuration with schema validation
--   Supports multiple LLM providers with API keys and model lists
--   MCP server configuration for SSE, stdio, and http transports
--   Theme system with Catppuccin color schemes
-
-## Development Guidelines
-
-### Code Quality Checks
-
-#### Biome Validation
-
-After making code changes, always run Biome to ensure code style consistency:
-
-```bash
-# Check all source files
-bun run lint
-
-# Check specific file
-bunx biome check src/path/to/file.ts
-
-# Auto-fix fixable issues
-bun run lint:fix
-
-# Format code
-bun run format
+```
+CLI (chat-command / setting-command)
+  └─ AppContext (连线)
+       ├─ ChatService (编排) → AgentManager, AgentRunner, ToolRegistry, PiDisplayHandler
+       ├─ Config (功能配置)
+       └─ Pi Models (环境变量发现供应商)
 ```
 
-#### IDE Configuration
+Skill 扩展: 将 SKILL.md 放入 `~/.config/ifcli/skills/<skill>/` 目录，然后在 `ict config -k` 中为 agent 启用，即可通过 `Skill` tool 调用。
 
-Ensure your IDE is configured with the following settings:
-
--   **TypeScript**: Enable strict mode and type checking
--   **Biome**: Enable automatic linting and formatting on save
--   **EditorConfig**: Use4-space indentation
-
-#### Pre-Change Validation Checklist
-
-Before committing changes, verify:
-
-1. ✅ Biome linter passes without errors (`bun run lint`)
-2. ✅ TypeScript compilation succeeds (`bun run build`)
-3. ✅ Code follows project style guidelines
-4. ✅ No console warnings in development mode
-
-### Code Style
-
--   **Semicolons**: Disabled (Biome formatter: `semicolons: "none"`)
--   **Quotes**: Single quotes preferred (Biome formatter: `quoteStyle: "single"`)
--   **Indentation**: 4 spaces (Biome formatter: `indentStyle: "space"`, `indentWidth: 4`)
--   **TypeScript**: Strict mode enabled with comprehensive type definitions
-
-### Adding New Features
-
-1. **New Commands**: Add to existing command files or create new ones following the Commander.js pattern
-2. **LLM Providers**: Implement `ILLMClient` interface in `src/llm/`
-3. **Database Changes**: Update schema in `src/store/table-def.ts` and add operations in `db-client.ts`
-4. **UI Components**: Extend existing display components in `src/component/`
-
-### Testing Considerations
-
--   No test framework currently configured
--   Manual testing through CLI commands recommended
--   Focus on chat session management and AI provider integration
-
-### Dependencies
-
--   **Runtime**: Bun.js (>=1.2.6), OpenAI SDK, MCP SDK
--   **CLI**: Commander.js, Inquirer for interactive prompts
--   **UI**: Chalk for colors, Ora for spinners, Table for formatted output
--   **Build**: Bun's native TypeScript compilation
-
-## Common Development Tasks
-
-### Adding a New LLM Provider
-
-1. Add provider configuration to `AppSetting` type in `src/config/app-setting.ts`
-2. Implement `ILLMClient` interface in `src/llm/`
-3. Update provider selection logic in `chat-action.ts`
-
-### Creating New Chat Commands
-
-1. Add command definition to `chat-command.ts`
-2. Implement corresponding method in `ChatAction` class
-3. Add any necessary store operations in `store.ts`
-
-### Database Schema Changes
-
-1. Update table definitions in `src/store/table-def.ts`
-2. Add SQL operations in `src/store/db-client.ts`
-3. Update TypeScript interfaces in `src/store/store-types.ts`
-4. Add store layer methods in `src/store/store.ts`
-
-## Configuration Management
-
-The application uses a hierarchical configuration system:
-
--   **Application Settings**: Global settings (themes, LLM providers, MCP servers)
--   **Chat Configuration**: Per-chat settings (model, context size, system prompts)
--   **Chat Extensions**: Extended configuration (MCP server selections)
-
-Configuration is managed through the `ifsetting` command and stored in the SQLite database.
+扩展点: SessionStorage 接口、StreamFn、transformContext hook、AgentTool<any>、PiDisplayHandler。

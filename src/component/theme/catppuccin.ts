@@ -1,10 +1,4 @@
-import type {
-    ChatBoxTheme,
-    ColorScheme,
-    SpinnerName,
-    TerminalColorName,
-    ThemeSemanticColors,
-} from './theme-type'
+import type { ColorScheme, SpinnerName, TerminalColorName } from './theme-type'
 
 type CatppuccinType =
     | 'Catppuccin Latte'
@@ -157,27 +151,6 @@ const scheme: Record<CatppuccinType, Color> = {
     },
 }
 
-const generateTheme = (s: Color): ChatBoxTheme => {
-    const { lavender, yellow, pink, text, surface1, overlay0, overlay1 } = s
-    return {
-        reasoner: {
-            title: lavender,
-            bolder: surface1,
-            content: overlay0,
-        },
-        tools: {
-            title: yellow,
-            bolder: surface1,
-            content: overlay1,
-        },
-        assisant: {
-            title: pink,
-            bolder: pink,
-            content: text,
-        },
-    }
-}
-
 const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
     const { mantle, red, green, yellow, blue, sky, text, mauve, overlay0 } = s
     return {
@@ -197,20 +170,10 @@ const generateTerminalColor = (s: Color): Record<TerminalColorName, string> => {
         magentaBright: mauve,
         cyanBright: sky,
         whiteBright: text,
+        gray: '#888888',
     }
 }
 
-const generateSemanticColors = (): ThemeSemanticColors => {
-    return {
-        waiting: 'cyan',
-        analyzing: 'yellow',
-        thinking: 'magenta',
-        rendering: 'blue',
-        error: 'red',
-        completed: 'green',
-        toolCalling: 'magentaBright',
-    }
-}
 const latte = scheme['Catppuccin Latte']
 const frappe = scheme['Catppuccin Frappe']
 const macchiato = scheme['Catppuccin Macchiato']
@@ -223,33 +186,26 @@ const colorScheme: ColorScheme[] = [
             ...generateTerminalColor(latte),
             white: latte.base,
             whiteBright: latte.base,
+            gray: '#888888',
             black: latte.text,
             blackBright: latte.overlay2,
         },
-        theme: generateTheme(latte),
-        semantic: generateSemanticColors(),
         spinner: 'orbit' as SpinnerName,
     },
     {
         name: 'Catppuccin Frappe',
         color: generateTerminalColor(frappe),
-        theme: generateTheme(frappe),
-        semantic: generateSemanticColors(),
         spinner: 'orbit' as SpinnerName,
     },
 
     {
         name: 'Catppuccin Macchiato',
         color: generateTerminalColor(macchiato),
-        theme: generateTheme(macchiato),
-        semantic: generateSemanticColors(),
         spinner: 'orbit' as SpinnerName,
     },
     {
         name: 'Catppuccin Mocha',
         color: generateTerminalColor(mocha),
-        theme: generateTheme(mocha),
-        semantic: generateSemanticColors(),
         spinner: 'orbit' as SpinnerName,
     },
 ]

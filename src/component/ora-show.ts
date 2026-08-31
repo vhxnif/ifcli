@@ -1,23 +1,24 @@
 import { sleep } from 'bun'
-import type { Color, Ora } from 'ora'
+import type { ChalkInstance } from 'chalk'
+import type { Ora } from 'ora'
 import ora from 'ora'
 import spinners from 'unicode-animations'
-import type { SpinnerName } from './theme/theme-type'
+import type { SpinnerName, TerminalColorName } from './theme/theme-type'
 
 export class OraShow {
     private spinner: Ora
     private isStop: boolean = true
-
+    private chalkColor: Record<TerminalColorName, ChalkInstance>
     constructor(
         initMessage: string,
         spinnerName: SpinnerName = 'helix',
-        color: Color = 'magenta',
+        chalkColor: Record<TerminalColorName, ChalkInstance>,
     ) {
+        this.chalkColor = chalkColor
         const { frames, interval } = spinners[spinnerName]
         this.spinner = ora({
-            text: initMessage,
+            text: this.chalkColor.magenta(initMessage),
             spinner: { frames: frames.slice(), interval },
-            color,
             indent: 1,
         })
     }
@@ -42,19 +43,13 @@ export class OraShow {
 
     show(text: string): void {
         this.inProgressRun(() => {
-            this.spinner.text = text
-        })
-    }
-
-    setColor(color: Color): void {
-        this.inProgressRun(() => {
-            this.spinner.color = color
+            this.spinner.text = this.chalkColor.magenta(text)
         })
     }
 
     fail(msg: string): void {
         this.inProgressRun(() => {
-            this.spinner.fail(msg)
+            this.spinner.fail(this.chalkColor.red(msg))
             this.isStop = true
         })
     }

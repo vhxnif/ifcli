@@ -5,10 +5,8 @@
     "keywords": [
         "ai",
         "cli",
-        "openrouter",
-        "deepseek",
-        "ollama",
-        "openai",
+        "pi",
+        "pi-agent",
         "reasoning",
         "MCP Client",
         "MCP-sse",
@@ -44,29 +42,30 @@
         "test:watch": "bun test --watch",
         "lint": "biome check .",
         "lint:fix": "biome check --write .",
-        "format": "biome format --write ."
+        "format": "biome format --write .",
+        "check": "tsc --noEmit"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.4.10",
-        "@commander-js/extra-typings": "^13.1.0",
+        "@commander-js/extra-typings": "^15.0.0",
         "@types/bun": "^1.2.7",
         "bun-types": "^1.2.7"
     },
     "peerDependencies": {
-        "typescript": "^5.6.2"
+        "typescript": "^7.0.2"
     },
     "dependencies": {
-        "@inquirer/checkbox": "^4.2.2",
-        "@inquirer/core": "^10.1.9",
-        "@inquirer/input": "^4.1.8",
-        "@inquirer/select": "^4.1.0",
+        "@earendil-works/pi-agent-core": "^0.84.3",
+        "@earendil-works/pi-ai": "^0.84.3",
+        "@inquirer/checkbox": "^5.2.2",
+        "@inquirer/core": "^12.0.0",
+        "@inquirer/input": "^5.1.3",
+        "@inquirer/search": "^4.3.1",
+        "@inquirer/select": "^5.2.2",
         "@modelcontextprotocol/sdk": "^1.11.4",
-        "chalk": "^5.4.1",
-        "commander": "^13.1.0",
-        "openai": "^5.12.2",
-        "ora": "^8.2.0",
-        "pocketflow": "^1.0.4",
-        "unicode-animations": "^1.0.3",
-        "write-excel-file": "^2.3.4"
+        "chalk": "^6.0.0",
+        "commander": "^15.0.0",
+        "ora": "^9.4.1",
+        "unicode-animations": "^1.0.3"
     }
 }
