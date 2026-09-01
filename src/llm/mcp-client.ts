@@ -39,7 +39,6 @@ export interface StdioConfig extends MCPConfig {
     type: 'stdio'
     params: StdioServerParameters
     logMode?: MCPLogMode
-    logFile?: string
 }
 
 export interface HttpConfig extends MCPConfig {

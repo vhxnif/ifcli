@@ -132,8 +132,7 @@
                                 "type": "string",
                                 "enum": ["ignore", "inherit", "file"],
                                 "default": "file"
-                            },
-                            "logFile": { "type": "string" }
+                            }
                         },
                         "required": [
                             "name",
