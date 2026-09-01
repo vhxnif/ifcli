@@ -4,13 +4,16 @@ Chat with AI via Command Line Interface.
 
 **Features:**
 
--   System prompt configuration and management
--   Preset message support
--   Chat history management and viewing
--   MCP (Model Context Protocol) tools support
+-   Agent / session two-level conversation management (agent = chat, session = topic)
+-   Automatic session name generation
+-   Per-agent system prompts, models, tools and skills
+-   Reasoning level control (`off` / `minimal` / `low` / `medium` / `high` / `xhigh` / `max`)
+-   MCP (Model Context Protocol) tools support (HTTP / SSE / Stdio)
 -   Custom tools — define CLI commands as callable AI tools
+-   Skill extension — drop a `SKILL.md` into the skills directory and enable per agent
+-   Context compaction for long conversations
+-   Searchable model selection
 -   Flexible usage patterns with `alias` commands
--   Environment variable support for secure configuration (backward compatible with direct configuration)
 
 ## Installation
 
@@ -32,8 +35,6 @@ bun install && bun run build && bun link
 
 Models and providers are discovered automatically by [Pi](https://github.com/earendil-works/pi) via environment variables. Configure application settings (theme, MCP servers, custom tools, compaction) using `ist cf -m` or by editing `settings.json` directly.
 
-To use MCP Servers, configure the relevant settings and enable MCP functionality for your chat session with `ict cf -p`.
-
 The `EDITOR` environment variable must be set to enable configuration editing and system functions. If not configured, `vim` is used as the default editor.
 
 ### Data Directory
@@ -42,7 +43,23 @@ The `EDITOR` environment variable must be set to enable configuration editing an
 
 **macOS/Linux:** Data is located in `$HOME/.config/ifcli`
 
-Each release includes a version-specific SQLite database file (`ifcli_<version>.sqlite`). Data migration between versions must be handled manually.
+Sessions and agents are stored in `data.sqlite` inside the data directory.
+
+## Quick Start
+
+```bash
+# Create an agent (chat) with a model
+ict new translator -m openai/gpt-4o-mini
+
+# Chat with it (or without -f to use the current agent)
+ict -f translator "translate this sentence"
+
+# Switch the model / system prompt / tools / skills of an agent
+ict cf -m
+ict cf -s
+ict cf -t
+ict cf -k
+```
 
 ## Commands
 
@@ -59,10 +76,20 @@ Options:
 
 Commands:
   config|cf [options]  manage application configuration
-  mcp [options]        manage MCP (Model Context Protocol) servers
-  tools [options]      manage custom tools configuration
-  prompt|pt [options]  manage system prompts library
+  mcp [options]        manage MCP servers
+  tools|ts [options]   manage custom tools
   help [command]       display help for command
+```
+
+`ist cf` sub-options:
+
+```bash
+Usage: ifsetting config|cf [options]
+
+Options:
+  -m, --modify                  edit application settings JSON
+  -t, --theme                   change color theme
+  -s, --thinking-level <level>  validate a thinking level; set it per agent with `ict cf -r`
 ```
 
 ### Chat Commands
@@ -70,32 +97,53 @@ Commands:
 ```bash
 Usage: ifchat|ict [options] [command] [string...]
 
-Interactive AI chat interface
+Interactive AI chat interface (powered by Pi)
 
 Arguments:
-  string                       chat message content (multiple arguments will be joined into a single string)
+  string                    chat message content (multiple arguments will be joined)
 
 Options:
-  -V, --version                output the version number
-  -f, --force <name>           use specified chat session
-  -s, --sync-call              use synchronous (non-streaming) mode
-  -e, --edit                   open editor for input
-  -t, --new-topic              start a new conversation topic
-  -r, --retry                  retry the last question
-  -a, --attachment <file>      attach text file content to message
-  -c, --clean                  run without context message 
-  -h, --help                   display help for command
+  -V, --version             output the version number
+  -f, --force <id-or-name>  use specified agent by id or name
+  -s, --sync-call           use synchronous (non-streaming) mode
+  -e, --edit                open editor for input
+  -t, --new-session         create a new session under current agent for this message
+  -a, --attachment <file>   attach text file content to message
+  -c, --clean               run without context message
+  -h, --help                display help for command
 
-  Commands:
-    new <string>                 create a new chat session
-    history|hs [options]         view chat conversation history
-    remove|rm                    delete a chat session
-    switch|st [options] [name]   switch between chat sessions or topics
-    prompt|pt [options]          manage system prompts
-    preset|ps [options]          manage preset message templates
-    config|cf [options]          configure chat settings
-      -t, --tools                enable/disable custom tools
-    export|exp [options] [path]  export chat conversations
+Commands:
+  new [options] <name>      create a new agent (chat)
+  remove|rm                 delete an agent (chat) and all its sessions
+  switch|st                 switch between agents (chats)
+  config|cf [options]       configure current agent (chat) settings
+  history|hs [options]      view current session (topic) conversation history
+  session|ss                manage sessions (topics) under current agent
+```
+
+`ict cf` sub-options:
+
+```bash
+Usage: ifchat config|cf [options]
+
+Options:
+  -m, --model                   switch AI model
+  -r, --reasoning <level>       set reasoning level
+                                (off/minimal/low/medium/high/xhigh/max)
+  -t, --tools                   enable/disable tools for this agent
+  -s, --system-prompt [prompt]  set or edit system prompt
+  -k, --skills                  enable/disable skills for this agent
+```
+
+`ict session` sub-commands:
+
+```bash
+Usage: ifchat session|ss [options] [command]
+
+Commands:
+  new <name>      create a new session under current agent
+  switch|sw       switch session under current agent
+  remove|rm       remove a session under current agent
 ```
 
 ## Application Settings
@@ -106,7 +154,8 @@ Options:
 {
     "$schema": "./settings-schema.json",
     "generalSetting": {
-        "theme": "Tokyo Night"
+        "theme": "Tokyo Night",
+        "toolDiscoveryThreshold": 8
     },
     "session": {
         "autoName": {
@@ -143,7 +192,7 @@ Providers and models are discovered automatically by Pi via environment variable
 | Anthropic  | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`          |
 | OpenRouter | `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`        |
 
-Select a per-session model with:
+Select a per-agent model with:
 
 ```bash
 ict cf -m
@@ -151,9 +200,14 @@ ict cf -m
 
 ### General Settings
 
-| Field | Type   | Required |
-| :---- | :----- | :------- |
-| theme | string | true     |
+| Field                   | Type   | Required | Description |
+| :---------------------- | :----- | :------- | :---------- |
+| theme                   | string | true     | Color theme (see below) |
+| toolDiscoveryThreshold | number | false    | When the number of enabled tools for a session exceeds this threshold, only the two discovery tools (`list_available_tool_groups` / `list_available_tools`) are injected; otherwise all tool schemas are injected directly (default: 8) |
+
+Available themes (via `ist cf -t`):
+
+`Tokyo Night` · `Tokyo Night Day` · `Tokyo Night Moon` · `Tokyo Night Storm` · `Rose Pine` · `Rose Pine Moon` · `Rose Pine Dawn` · `Catppuccin Latte` · `Catppuccin Frappe` · `Catppuccin Macchiato` · `Catppuccin Mocha`
 
 ### Session Settings
 
@@ -286,13 +340,22 @@ ist tools -l
 
 The AI model first discovers available tool groups, then inspects individual tools, and finally invokes them — a three-step discovery process managed automatically by the built-in `list_available_tool_groups` and `list_available_tools` functions.
 
-## Usage Tips
+## Skills
 
-### Chat Session Management
+Skills are Pi-style instruction packs. Drop a `SKILL.md` into `~/.config/ifcli/skills/<skill>/` (macOS/Linux) or `%APPDATA%\ifcli\skills\<skill>\` (Windows), then enable it for an agent:
 
 ```bash
-# Use specific chat sessions without switching context
-# 'ts' is a chat session for translation purposes
+ict cf -k
+```
+
+Enabled skills are exposed to the model via the built-in `Skill` tool.
+
+## Usage Tips
+
+### Agent-based Chat Management
+
+```bash
+# 'ts' is an agent for translation purposes
 alias ts='ict -f ts'
 ```
 
@@ -309,22 +372,22 @@ cat system_prompt.md | sts | tee system_prompt.txt
 
 ### Edit System Prompts
 
-Using pipes:
+Per-agent system prompt, using the editor:
 
 ```bash
-cat system_prompt.md | ict pt -c
+ict cf -s
 ```
 
-Using editor:
+Or pass a prompt directly:
 
 ```bash
-ict pt -m
+ict cf -s "You are a helpful translator."
 ```
 
-### Retry Last Question
+### New Session Per Message
 
-If a response fails for any reason, use the `-r` or `--retry` flag to retry the most recent question without losing context:
+Start a fresh topic without switching agents:
 
 ```bash
-ict -r
+ict -t "start a new topic with this message"
 ```

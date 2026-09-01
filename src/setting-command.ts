@@ -84,12 +84,8 @@ program
                 return
             }
             println(green(`Thinking level: ${thinkingLevel}`))
-            // 注意：thinking level 是 per-session 设置，不是全局设置
-            println(
-                chalk.gray(
-                    'Use: ict cf -f <session-id> -t <level> to set per session',
-                ),
-            )
+            // 注意：thinking level 是 per-agent 设置，用 ict cf -r 设置
+            println(chalk.gray('Use: ict cf -r <level> to set per agent'))
             return
         }
         println(settingConfigShow(themeScheme.chalkColor, setting))

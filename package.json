@@ -24,7 +24,7 @@
     },
     "files": [
         "build",
-        "README.adoc"
+        "README.md"
     ],
     "engines": {
         "bun": ">=1.2.6"
