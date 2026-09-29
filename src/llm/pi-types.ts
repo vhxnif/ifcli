@@ -1,6 +1,5 @@
 /**
- * [INPUT]: 依赖 @earendil-works/pi-ai 的 Message/Model/Context/Tool/AssistantMessage 类型,
- *          依赖 @earendil-works/pi-agent-core 的 AgentMessage/AgentTool/ThinkingLevel 类型
+ * [INPUT]: 依赖 ./base 集中提供的 Pi 消息、模型、上下文、工具与 Agent 类型
  * [OUTPUT]: 重导出 Pi 类型，定义 SessionEntry/SessionStorage/SessionMeta/ChatConfig/CustomToolDef/AgentMeta/PiDisplayEvent（含 usage 缓存字段）
  * [POS]: src/llm/ 的类型基石，被 agent-runner/pi-display-handler/tool-registry/session-storage/agent-manager/chat-service 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -12,17 +11,15 @@
 import type {
     AgentMessage,
     AgentTool,
-    ThinkingLevel,
-} from '@earendil-works/pi-agent-core'
-import type {
     Api,
     AssistantMessage,
     Context,
     Message,
     Model,
     SimpleStreamOptions,
+    ThinkingLevel,
     Tool,
-} from '@earendil-works/pi-ai'
+} from './base'
 
 // ── 重导出 Pi 类型（方便其他模块使用） ──
 

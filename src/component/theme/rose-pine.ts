@@ -1,3 +1,10 @@
+/**
+ * [INPUT]: 依赖 ./theme-type 的统一色板与 spinner 契约
+ * [OUTPUT]: Rosé Pine 三套终端 ColorScheme
+ * [POS]: src/component/theme/ 的静态色板数据源，由 color-scheme 聚合
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
 import type { ColorScheme, SpinnerName, TerminalColorName } from './theme-type'
 
 type RosePineType = 'Rose Pine' | 'Rose Pine Moon' | 'Rose Pine Dawn'

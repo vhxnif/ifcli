@@ -1,3 +1,10 @@
+/**
+ * [INPUT]: 依赖 ./theme-type 的统一色板与 spinner 契约
+ * [OUTPUT]: Tokyo Night 四套终端 ColorScheme
+ * [POS]: src/component/theme/ 的静态色板数据源与默认主题来源，由 color-scheme 聚合
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
 import type { ColorScheme, SpinnerName, TerminalColorName } from './theme-type'
 
 //  https://github.com/folke/tokyonight.nvim/tree/main/extras/helix

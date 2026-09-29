@@ -1,6 +1,12 @@
+/**
+ * [INPUT]: 依赖 MCP SDK 的客户端、传输与结果 schema，依赖 ./base 集中提供的 Pi Tool 类型
+ * [OUTPUT]: MCPClient 及 stdio/SSE/HTTP 连接配置类型，把 MCP 工具适配为 Pi 工具描述
+ * [POS]: src/llm/ 的外部工具协议适配器，被 ToolRegistry 创建并管理连接生命周期
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { Tool } from '@earendil-works/pi-ai'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import {
     SSEClientTransport,
@@ -17,6 +23,7 @@ import {
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js'
 import { println } from '../util/common-utils'
+import type { Tool } from './base'
 
 export type MCPConnectType = 'http' | 'sse' | 'stdio'
 

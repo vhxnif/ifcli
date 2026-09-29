@@ -1,3 +1,10 @@
+/**
+ * [INPUT]: 依赖 Bun sleep、ora 与 unicode-animations，依赖主题类型约束 spinner 和色板
+ * [OUTPUT]: OraShow 终端运行状态组件
+ * [POS]: src/component/ 的 spinner 适配器，为调用方隐藏 Ora 生命周期与主题映射
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
 import { sleep } from 'bun'
 import type { ChalkInstance } from 'chalk'
 import type { Ora } from 'ora'

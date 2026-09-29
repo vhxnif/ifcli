@@ -1,7 +1,5 @@
 /**
- * [INPUT]: 依赖 @earendil-works/pi-ai 的 Message/Model/Models，
- *          依赖 @earendil-works/pi-agent-core 的 ThinkingLevel，
- *          依赖 ../llm/agent-runner 的 AgentRunner，
+ * [INPUT]: 依赖 ../llm/base 集中提供的 Pi Message/Model/Models/ThinkingLevel，依赖 ../llm/agent-runner 的 AgentRunner，
  *          依赖 ../llm/pi-display-handler 的 PiDisplayHandler/PiThemeColors，
  *          依赖 ../llm/tool-registry 的 ToolRegistry，
  *          依赖 ../store/agent-manager 的 AgentManager/AgentHandle/SessionHandle，
@@ -11,11 +9,10 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
-import type { ThinkingLevel } from '@earendil-works/pi-agent-core'
-import type { Message, Model, Models } from '@earendil-works/pi-ai'
 import type { ThemeScheme } from '../component/theme/theme-type'
 import type { Setting } from '../config/app-setting'
 import { AgentRunner } from '../llm/agent-runner'
+import type { Message, Model, Models, ThinkingLevel } from '../llm/base'
 import { generate } from '../llm/generate-session-name'
 import { PiDisplayHandler } from '../llm/pi-display-handler'
 import type { ToolRegistry } from '../llm/tool-registry'
@@ -257,27 +254,10 @@ export class ChatService {
     /** 从 modelStr ("provider/modelId") 解析 Pi Model 对象 */
     private resolveModel(modelStr: string): Model<any> {
         const [provider, id] = splitModelStr(modelStr)
-        if (provider && id) {
-            const found = this.models.getModel(provider, id)
-            if (found) return found
-        }
-        // 指定的模型不在 Pi 注册表中：回退到第一个已知模型，避免使用伪造对象导致 agent 挂起
-        const allModels = this.models.getModels()
-        if (allModels.length > 0) {
-            return allModels[0]
-        }
-        // 最后回退：构建最小 Model 对象
-        return {
-            id: id ?? modelStr,
-            name: id ?? modelStr,
-            api: 'openai-completions',
-            provider: provider ?? '',
-            baseUrl: '',
-            reasoning: false,
-            input: ['text'],
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-            contextWindow: 128000,
-            maxTokens: 8192,
-        } as Model<any>
+        const model = provider && id ? this.models.getModel(provider, id) : null
+        if (model) return model
+        throw new Error(
+            `Model unavailable: ${modelStr}. Select a current model with "ict -f <agent> config -m".`,
+        )
     }
 }

@@ -1,5 +1,12 @@
-import type { Context } from '@earendil-works/pi-ai'
-import { builtinModels } from '@earendil-works/pi-ai/providers/all'
+/**
+ * [INPUT]: 依赖 ./base 集中提供的 builtinModels 与 Context，使用指定模型压缩首轮用户意图
+ * [OUTPUT]: generate 会话短名称生成函数
+ * [POS]: src/llm/ 的轻量模型调用，被 ChatService 自动命名流程消费
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
+import type { Context } from './base'
+import { builtinModels } from './base'
 
 export async function generate(content: string, provider: string, id: string) {
     // A Models collection with every built-in provider registered

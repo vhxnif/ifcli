@@ -1,7 +1,5 @@
 /**
- * [INPUT]: 依赖 @earendil-works/pi-ai 的 streamSimple/Model/Message，
- *          依赖 @earendil-works/pi-agent-core 的 Agent/AgentEvent/AgentMessage/AgentTool/ThinkingLevel，
- *          依赖 ../llm/pi-types 的 PiDisplayEvent
+ * [INPUT]: 依赖 ./base 集中提供的 Pi Agent 运行时、流函数与消息类型，依赖 ./pi-types 的 PiDisplayEvent
  * [OUTPUT]: AgentRunner 类（run 使用 Agent.prompt + waitForIdle，abort/onDisplay，customToolToAgentTool 辅助）
  * [POS]: src/llm/ 的 agent 封装层，替代旧 ask-flow.ts + open-ai-helper.ts，被 chat-service 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -11,11 +9,13 @@ import type {
     AgentEvent,
     AgentMessage,
     AgentTool,
+    AssistantMessage,
+    AssistantMessageEvent,
+    Message,
+    Model,
     ThinkingLevel,
-} from '@earendil-works/pi-agent-core'
-import { Agent } from '@earendil-works/pi-agent-core'
-import type { AssistantMessage, Message, Model } from '@earendil-works/pi-ai'
-import { streamSimple } from '@earendil-works/pi-ai/compat'
+} from './base'
+import { Agent, streamSimple } from './base'
 import type { PiDisplayEvent } from './pi-types'
 
 // ── 配置 ──
@@ -156,9 +156,7 @@ export class AgentRunner {
     }
 
     /** 处理 AssistantMessageEvent（SSE 级别事件） */
-    private handleAssistantMessageEvent(
-        event: import('@earendil-works/pi-ai').AssistantMessageEvent,
-    ): void {
+    private handleAssistantMessageEvent(event: AssistantMessageEvent): void {
         if (!this.displayCallback) return
 
         switch (event.type) {

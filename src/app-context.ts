@@ -1,6 +1,5 @@
 /**
- * [INPUT]: 依赖 ./config/app-setting 的 initAppSetting/appSetting，依赖 @earendil-works/pi-ai/providers/all 的 builtinModels，
- *          依赖 @earendil-works/pi-ai/api/bedrock-converse-stream.lazy 的 setBedrockProviderModule 与 @earendil-works/pi-ai/bedrock-provider 的 bedrockProviderModule（单文件 bundle 静态注册），
+ * [INPUT]: 依赖 ./config/app-setting 的 initAppSetting/appSetting，依赖 ./llm/base 集中提供的 builtinModels 与 Bedrock 静态注册能力，
  *          依赖 ./store/agent-manager 的 AgentManager，依赖 ./llm/tool-registry 的 ToolRegistry，依赖 ./component/theme/color-scheme 的主题
  * [OUTPUT]: 组装后的 chatService / terminalColor / theme / db / models / availableModels / toolRegistry 等全局实例，初始化时传入 skills 目录
  * [POS]: src/ 的应用组装入口，被 chat-command.ts / setting-command.ts 消费
@@ -8,14 +7,16 @@
  */
 
 import Database from 'bun:sqlite'
-import type { Models } from '@earendil-works/pi-ai'
-import { setBedrockProviderModule } from '@earendil-works/pi-ai/api/bedrock-converse-stream.lazy'
-import { bedrockProviderModule } from '@earendil-works/pi-ai/bedrock-provider'
-import { builtinModels } from '@earendil-works/pi-ai/providers/all'
 import { ChatService } from './action/chat-service'
 import { colorScheme } from './component/theme/color-scheme'
 import { appSetting, initAppSetting } from './config/app-setting'
 import { dataPath } from './config/data-config'
+import type { Models } from './llm/base'
+import {
+    bedrockProviderModule,
+    builtinModels,
+    setBedrockProviderModule,
+} from './llm/base'
 import MCPClient from './llm/mcp-client'
 import { ToolRegistry } from './llm/tool-registry'
 import { AgentManager } from './store/agent-manager'
