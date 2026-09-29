@@ -1,16 +1,13 @@
 #!/usr/bin/env bun
 /**
  * [INPUT]: 依赖 ./app-context 的 chatService/terminalColor/availableModels，依赖 ./config/app-setting 的 APP_VERSION，
- *          依赖 @earendil-works/pi-ai 的 Message 类型，
- *          依赖 ./component/theme/color-scheme 的 commanderHelpConfiguration，依赖 ./util/* 的 CLI 工具
+ *          依赖 ./llm/base 集中提供的 Message/ThinkingLevel 类型，依赖 ./component/theme/color-scheme 的 commanderHelpConfiguration，依赖 ./util/* 的 CLI 工具
  * [OUTPUT]: ifchat/ict CLI 命令（默认聊天、new/remove/switch/config/history），读写 active agent 状态，管理 agent skills，history 按角色友好渲染
  * [POS]: src/ 的 CLI 入口之一，被 package.json bin 指向
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
 import { Command } from '@commander-js/extra-typings'
-import type { ThinkingLevel } from '@earendil-works/pi-agent-core'
-import type { Message } from '@earendil-works/pi-ai'
 import chalk from 'chalk'
 import {
     availableModels,
@@ -22,6 +19,7 @@ import { show as historyShow } from './component/agent-history-show'
 import { chatConfigShow } from './component/properties-show'
 import { commanderHelpConfiguration } from './component/theme/color-scheme'
 import { APP_VERSION } from './config/app-setting'
+import type { Message, ThinkingLevel } from './llm/base'
 import {
     editor,
     isEmpty,

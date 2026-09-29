@@ -1,3 +1,10 @@
+/**
+ * [INPUT]: 依赖应用 Setting、AgentInfo 与主题色板类型
+ * [OUTPUT]: chatConfigShow 与 settingConfigShow 配置文本格式化函数
+ * [POS]: src/component/ 的只读配置视图，被聊天与设置命令复用
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
 import type { ChalkInstance } from 'chalk'
 import type { Setting } from '../config/app-setting'
 import type { AgentInfo } from '../store/agent-manager'

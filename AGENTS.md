@@ -10,8 +10,8 @@
 |----|------|------|
 | 运行时 | Bun ≥1.2.6 | 打包、运行、SQLite |
 | 语言 | TypeScript 5.9 | 类型安全 |
-| LLM | @earendil-works/pi-ai ^0.80 | 多供应商统一 API（pi-messages / OpenAI / Anthropic） |
-| Agent | @earendil-works/pi-agent-core ^0.80 | Agent 运行时、SessionStorage 接口 |
+| LLM | @earendil-works/pi-ai ^0.87.1 | 多供应商统一 API（pi-messages / OpenAI / Anthropic） |
+| Agent | @earendil-works/pi-agent-core ^0.87.1 | Agent 运行时、SessionStorage 接口 |
 | 存储 | bun:sqlite | 树形 session 存储 |
 | CLI | commander ^13 | 命令解析 |
 | UI | chalk ^5 / ora ^8 / inquirer ^4 | 终端颜色、spinner、交互选择 |
@@ -24,9 +24,11 @@ src/
 ├── chat-command.ts        — CLI 入口: ict (ifchat)
 ├── setting-command.ts     — CLI 入口: ist (ifsetting)
 ├── app-context.ts         — 应用组装入口，连线所有服务
-├── llm/                   — LLM 层 (5 文件)
-│   ├── pi-types.ts        — 核心类型定义（重导出 Pi 类型 + 自定义类型）
+├── llm/                   — LLM 层 (7 文件)
+│   ├── base.ts            — Pi SDK 唯一导入边界
+│   ├── pi-types.ts        — 领域类型定义（Pi 类型 + 自定义类型）
 │   ├── agent-runner.ts    — Pi Agent 封装（替代 ask-flow）
+│   ├── generate-session-name.ts — 会话自动命名
 │   ├── pi-display-handler.ts — Pi 事件 → 终端渲染（替代 simplified-display）
 │   ├── tool-registry.ts   — MCP + Custom → AgentTool 注册（替代 tool.ts）
 │   └── mcp-client.ts      — MCP 协议客户端（保留自旧架构）
@@ -41,8 +43,11 @@ src/
 │   ├── data-config.ts     — 数据路径解析
 │   ├── setting-validator.ts — JSON Schema 校验
 │   └── prompt-message.ts  — 提示文案常量
-├── component/             — UI 组件 (6 文件)
+├── component/             — UI 组件 (4 业务文件 + theme/)
+│   ├── agent-history-show.ts — Pi 消息历史渲染
+│   ├── chat-history.ts    — 紧凑聊天历史渲染
 │   ├── ora-show.ts        — Ora spinner 封装
+│   ├── properties-show.ts — 配置属性渲染
 │   └── theme/             — 主题色板 (5 文件)
 └── util/                  — 工具函数 (5 文件)
 ```

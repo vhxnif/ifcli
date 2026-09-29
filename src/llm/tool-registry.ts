@@ -1,7 +1,5 @@
 /**
- * [INPUT]: 依赖 @earendil-works/pi-agent-core 的 AgentTool,
- *          依赖 ../llm/mcp-client 的 MCPClient,
- *          依赖 ../llm/pi-types 的 CustomToolDef
+ * [INPUT]: 依赖 ./base 集中提供的 Pi AgentTool/Tool/TypeBox 类型，依赖 ./mcp-client 的 MCPClient，依赖 ./pi-types 的 CustomToolDef
  * [OUTPUT]: ToolRegistry 类（buildActiveTools/listTools/closeAll/availableSkills），含 MCP/custom/skill 三类工具；skill 支持返回目录文件列表及读取 skill 内文件
  * [POS]: src/llm/ 的工具注册层，替代旧 tool.ts，被 chat-service 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -9,9 +7,8 @@
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
-import type { AgentTool } from '@earendil-works/pi-agent-core'
-import type { Static, Tool, TSchema } from '@earendil-works/pi-ai'
-import type MCPClient from '../llm/mcp-client'
+import type { AgentTool, Static, Tool, TSchema } from './base'
+import type MCPClient from './mcp-client'
 import type { CustomToolDef } from './pi-types'
 
 // ── 类型 ──

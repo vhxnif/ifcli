@@ -1,11 +1,18 @@
+/**
+ * [INPUT]: 依赖 ../llm/base 集中提供的 Pi 消息类型，依赖 ./theme/theme-type 的终端色板契约
+ * [OUTPUT]: show 单条聊天历史格式化函数
+ * [POS]: src/component/ 的通用历史渲染器，保留紧凑换行策略供终端视图消费
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
+import type { ChalkInstance } from 'chalk'
 import type {
     AssistantMessage,
     Message,
     ToolCall,
     ToolResultMessage,
     UserMessage,
-} from '@earendil-works/pi-ai'
-import type { ChalkInstance } from 'chalk'
+} from '../llm/base'
 import type { TerminalColorName } from './theme/theme-type'
 
 const userContent = (
@@ -76,11 +83,19 @@ const show = (
     const { role, content, timestamp } = message
     const ts = timestamp ? new Date(timestamp).toLocaleString() : ''
     const prefix = {
+        system: gray.bold('System'),
         user: blue.bold('You'),
         toolResult: void 0,
         assistant: yellow.bold('Assistant'),
     }
     const title = `${prefix[role]} ${gray.underline(`[${ts}]`)}`
+    if (role === 'system') {
+        const text =
+            typeof content === 'string'
+                ? content
+                : content.map((block) => block.text).join('\n\n')
+        return `${title}\n${gray(text)}`
+    }
     if (role === 'user') {
         return `${title}\n${userContent(content, color)}`
     }

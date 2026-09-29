@@ -1,3 +1,10 @@
+/**
+ * [INPUT]: 依赖内置主题色板、Chalk 与 Commander help 样式契约
+ * [OUTPUT]: colorScheme 主题解析器、commanderHelpConfiguration 与 schemes 清单
+ * [POS]: src/component/theme/ 的唯一主题装配入口，把静态色值转换为终端渲染能力
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
 import type { HelpConfiguration } from '@commander-js/extra-typings'
 import type { ChalkInstance } from 'chalk'
 import chalk from 'chalk'

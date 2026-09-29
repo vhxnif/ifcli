@@ -1,6 +1,5 @@
 /**
- * [INPUT]: 依赖 bun:sqlite 的 Database，依赖 @earendil-works/pi-ai 的 Context/Message，
- *          依赖 @earendil-works/pi-agent-core 的 uuidv7/ThinkingLevel，
+ * [INPUT]: 依赖 bun:sqlite 的 Database，依赖 ../llm/base 集中提供的 Context/Message/uuidv7/ThinkingLevel，
  *          依赖 ../llm/pi-types 的 AgentMeta/SessionMeta，依赖 ./session-storage 的 SqliteSessionStorage
  * [OUTPUT]: AgentManager 类（create/list/get/delete agent、session 管理、active agent/skills 持久化）+ AgentHandle/SessionHandle 类型
  * [POS]: src/store/ 的 agent/session 两层管理入口，被 chat-service 消费
@@ -8,9 +7,8 @@
  */
 
 import type Database from 'bun:sqlite'
-import type { ThinkingLevel } from '@earendil-works/pi-agent-core'
-import { uuidv7 } from '@earendil-works/pi-agent-core'
-import type { Context, Message } from '@earendil-works/pi-ai'
+import type { Context, Message, ThinkingLevel } from '../llm/base'
+import { uuidv7 } from '../llm/base'
 import type { AgentMeta, SessionMeta } from '../llm/pi-types'
 import { ensureStorageSchema, SqliteSessionStorage } from './session-storage'
 
