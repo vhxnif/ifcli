@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 ./base 集中提供的 Pi Agent 运行时、流函数与消息类型，依赖 ./pi-types 的 PiDisplayEvent
- * [OUTPUT]: AgentRunner 类（run 使用 Agent.prompt + waitForIdle，abort/onDisplay，customToolToAgentTool 辅助）
+ * [INPUT]: 依赖 ./base 集中提供的 Pi Agent 运行时、StreamFn 类型与消息类型，依赖 ./pi-types 的 PiDisplayEvent
+ * [OUTPUT]: AgentRunner 类（run 使用 Agent.prompt + waitForIdle，abort/onDisplay，customToolToAgentTool 辅助）；streamFn 由外部注入以便复用 Models 实例鉴权
  * [POS]: src/llm/ 的 agent 封装层，替代旧 ask-flow.ts + open-ai-helper.ts，被 chat-service 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -13,9 +13,10 @@ import type {
     AssistantMessageEvent,
     Message,
     Model,
+    StreamFn,
     ThinkingLevel,
 } from './base'
-import { Agent, streamSimple } from './base'
+import { Agent } from './base'
 import type { PiDisplayEvent } from './pi-types'
 
 // ── 配置 ──
@@ -25,6 +26,8 @@ export interface AgentRunnerConfig {
     tools: AgentTool<any>[]
     systemPrompt: string
     thinkingLevel: ThinkingLevel
+    /** 流函数：由 ChatService 注入 models.streamSimple，走 Models 实例鉴权（兼容自定义 provider） */
+    streamFn: StreamFn
     /** Context 变换（compaction 等），返回处理后的 AgentMessage 列表 */
     transformContext?: (
         messages: AgentMessage[],
@@ -54,8 +57,14 @@ export class AgentRunner {
         userContent: string,
         contextMessages: Message[],
     ): Promise<Message[]> {
-        const { model, tools, systemPrompt, thinkingLevel, transformContext } =
-            this.config
+        const {
+            model,
+            tools,
+            systemPrompt,
+            thinkingLevel,
+            transformContext,
+            streamFn,
+        } = this.config
 
         // 记录原始上下文长度，用于只返回本轮新增消息
         const originalLength = contextMessages.length
@@ -69,7 +78,7 @@ export class AgentRunner {
                 messages: contextMessages as AgentMessage[],
             },
             transformContext,
-            streamFn: streamSimple,
+            streamFn,
         })
 
         this.agent = agent

@@ -10,6 +10,7 @@ import {
 } from './component/theme/color-scheme'
 import { APP_VERSION, appSettingCover } from './config/app-setting'
 import { dataPath } from './config/data-config'
+import { validateSetting } from './config/setting-validator'
 import { editor, print, println } from './util/common-utils'
 import { select } from './util/inquirer-utils'
 
@@ -46,6 +47,14 @@ program
             if (newJson && newJson !== currentJson) {
                 const parsed = JSON.parse(newJson) as Record<string, unknown>
                 parsed.$schema = './settings-schema.json'
+                const validation = validateSetting(parsed)
+                if (!validation.valid) {
+                    println(red('Invalid settings, not saved:'))
+                    for (const err of validation.errors) {
+                        println(red(`  - ${err}`))
+                    }
+                    return
+                }
                 await appSettingCover(JSON.stringify(parsed, null, 2))
                 println(green('Settings updated. Restart to apply.'))
             }

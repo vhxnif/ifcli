@@ -41,6 +41,12 @@ const mcpRequiredByType: Record<string, string[]> = (
     {} as Record<string, string[]>,
 )
 
+const providerApis: string[] = (
+    schemaContent.properties!.providers as {
+        items: { properties: { api: { enum: string[] } } }
+    }
+).items.properties.api.enum
+
 type ValidationResult = {
     valid: boolean
     errors: string[]
@@ -138,6 +144,44 @@ const validateSetting = (obj: Record<string, unknown>): ValidationResult => {
     // customTools (optional)
     if (obj.customTools !== undefined && !Array.isArray(obj.customTools)) {
         errors.push('customTools 必须是数组')
+    }
+
+    // providers (optional)
+    if (obj.providers !== undefined) {
+        if (!Array.isArray(obj.providers)) {
+            errors.push('providers 必须是数组')
+        } else {
+            for (const [i, p] of (
+                obj.providers as Record<string, unknown>[]
+            ).entries()) {
+                if (typeof p.id !== 'string' || p.id === '') {
+                    errors.push(`providers[${i}].id 必须是非空字符串`)
+                }
+                if (typeof p.baseUrl !== 'string' || p.baseUrl === '') {
+                    errors.push(`providers[${i}].baseUrl 必须是非空字符串`)
+                }
+                if (
+                    typeof p.api !== 'string' ||
+                    !providerApis.includes(p.api)
+                ) {
+                    errors.push(
+                        `providers[${i}].api 无效，可选值: ${providerApis.join(', ')}`,
+                    )
+                }
+                if (
+                    !Array.isArray(p.apiKeyEnv) ||
+                    p.apiKeyEnv.length === 0 ||
+                    p.apiKeyEnv.some((v) => typeof v !== 'string' || v === '')
+                ) {
+                    errors.push(
+                        `providers[${i}].apiKeyEnv 必须是非空字符串数组`,
+                    )
+                }
+                if (!Array.isArray(p.models) || p.models.length === 0) {
+                    errors.push(`providers[${i}].models 必须是非空数组`)
+                }
+            }
+        }
     }
 
     return { valid: errors.length === 0, errors }

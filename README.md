@@ -9,6 +9,7 @@ Chat with AI via Command Line Interface.
 -   Per-agent system prompts, models, tools and skills
 -   Reasoning level control (`off` / `minimal` / `low` / `medium` / `high` / `xhigh` / `max`)
 -   MCP (Model Context Protocol) tools support (HTTP / SSE / Stdio)
+-   Custom model providers — register any OpenAI / Anthropic-compatible gateway in `settings.json`
 -   Custom tools — define CLI commands as callable AI tools
 -   Skill extension — drop a `SKILL.md` into the skills directory and enable per agent
 -   Context compaction for long conversations
@@ -33,7 +34,7 @@ bun install && bun run build && bun link
 
 ## Configuration
 
-Models and providers are discovered automatically by [Pi](https://github.com/earendil-works/pi) via environment variables. Configure application settings (theme, MCP servers, custom tools, compaction) using `ist cf -m` or by editing `settings.json` directly.
+Models and providers are discovered automatically by [Pi](https://github.com/earendil-works/pi) via environment variables, and you can register additional OpenAI / Anthropic-compatible gateways under the `providers` array. Configure application settings (theme, MCP servers, custom tools, providers, compaction) using `ist cf -m` or by editing `settings.json` directly.
 
 The `EDITOR` environment variable must be set to enable configuration editing and system functions. If not configured, `vim` is used as the default editor.
 
@@ -177,7 +178,8 @@ Commands:
             "url": "http://localhost:3000/sse"
         }
     ],
-    "customTools": []
+    "customTools": [],
+    "providers": []
 }
 ```
 
@@ -197,6 +199,63 @@ Select a per-agent model with:
 ```bash
 ict cf -m
 ```
+
+### Custom Providers
+
+Built-in providers cover the common cases. For anything else — a self-hosted gateway, a proxy, or an endpoint Pi does not ship — add an entry to the `providers` array. The gateway must speak one of the protocols Pi already implements; API keys are referenced by environment variable name and never stored in `settings.json`.
+
+```json
+{
+    "providers": [
+        {
+            "id": "my-gateway",
+            "name": "My Gateway",
+            "baseUrl": "https://gateway.example.com/v1",
+            "api": "openai-completions",
+            "apiKeyEnv": ["MY_GATEWAY_API_KEY"],
+            "models": [
+                {
+                    "id": "deepseek-v4-flash",
+                    "contextWindow": 65536,
+                    "maxTokens": 4096,
+                    "reasoning": true,
+                    "thinkingLevelMap": { "minimal": null, "low": "low", "medium": null, "high": "high", "max": "max" },
+                    "compat": { "requiresReasoningContentOnAssistantMessages": true }
+                }
+            ]
+        }
+    ]
+}
+```
+
+Once registered, the gateway's models appear in `ict cf -m` as `my-gateway/<model-id>` and can be selected per agent just like built-in models.
+
+Provider fields:
+
+| Field     | Type     | Required | Description |
+| :-------- | :------- | :------- | :---------- |
+| id        | string   | true     | Unique provider id; becomes the `provider` prefix of model strings |
+| name      | string   | false    | Display name (default: `id`) |
+| baseUrl   | string   | true     | Gateway base URL |
+| api       | string   | true     | Protocol: `openai-completions`, `openai-responses`, `anthropic-messages`, `google-generative-ai`, `google-vertex`, `mistral-conversations`, `azure-openai-responses`, `bedrock-converse-stream`, `openai-codex-responses`, `pi-messages` |
+| apiKeyEnv | string[] | true     | Environment variable names to try, in order; the first one set wins |
+| headers   | object   | false    | Extra request headers |
+| models    | object[] | true     | Model declarations (see below) |
+
+Model fields:
+
+| Field           | Type                  | Required | Description |
+| :-------------- | :-------------------- | :------- | :---------- |
+| id              | string                | true     | Model id sent to the gateway |
+| name            | string                | false    | Display name (default: `id`) |
+| contextWindow   | number                | false    | Context window in tokens (default: 128000) |
+| maxTokens       | number                | false    | Max output tokens (default: 8192) |
+| reasoning       | boolean               | false    | Mark as a reasoning model (default: false) |
+| input           | ('text' \| 'image')[] | false    | Supported input modalities (default: `["text"]`) |
+| thinkingLevelMap | object               | false    | Maps Pi thinking levels to gateway-specific values; `null` marks a level unsupported |
+| compat          | object                | false    | OpenAI-compatible protocol overrides (e.g. `thinkingFormat`) |
+
+**Reasoning control:** set `reasoning: true` and a `thinkingLevelMap` so `ict cf -r` maps to the gateway's own values. Pi sends the mapped `reasoning_effort`; `off` simply omits it. Some gateways pick the thinking depth themselves and do not support disabling it, so a `reasoning` model on such a gateway may still return reasoning content at level `off`.
 
 ### General Settings
 

@@ -177,6 +177,8 @@ export class ChatService {
             tools,
             systemPrompt: agentMeta.systemPrompt || '',
             thinkingLevel,
+            // 经 Models 实例鉴权，自定义 provider 的 envApiKeyAuth 才会生效
+            streamFn: (m, c, o) => this.models.streamSimple(m, c, o),
         })
 
         // 桥接 PiDisplayEvent → PiDisplayHandler
@@ -232,7 +234,7 @@ export class ChatService {
                     const [provider, id] = splitModelStr(
                         this.currentSetting.session.autoName.model,
                     )
-                    return await generate(_content, provider, id)
+                    return await generate(_content, provider, id, this.models)
                 })
             }
         } catch (e: unknown) {

@@ -1,12 +1,13 @@
 /**
  * [INPUT]: 依赖 ./data-config 的 dataPath，依赖 ./settings-schema.json 的 schema 内容，
  *          依赖 ../llm/mcp-client 的 MCPConfig
- * [OUTPUT]: Setting / CustomToolDef 类型，initAppSetting / appSetting / appSettingCover 读写函数
+ * [OUTPUT]: Setting / CustomToolDef / CustomProviderDef / CustomProviderApi / CustomProviderModel 类型，initAppSetting / appSetting / appSettingCover 读写函数
  * [POS]: src/config/ 的配置读写核心，被 ../app-context 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
 import { version } from '../../package.json'
+import type { OpenAICompletionsCompat, ThinkingLevelMap } from '../llm/base'
 import type { MCPConfig } from '../llm/mcp-client'
 import { dataPath } from './data-config'
 import settingsSchemaContent from './settings-schema.json'
@@ -51,12 +52,52 @@ export type CustomToolDef = {
     command: string[]
 }
 
+/** 自定义 provider 可复用的 pi-ai 协议实现 */
+export type CustomProviderApi =
+    | 'anthropic-messages'
+    | 'azure-openai-responses'
+    | 'bedrock-converse-stream'
+    | 'google-generative-ai'
+    | 'google-vertex'
+    | 'mistral-conversations'
+    | 'openai-codex-responses'
+    | 'openai-completions'
+    | 'openai-responses'
+    | 'pi-messages'
+
+/** 自定义 provider 暴露的模型声明，缺省字段由注册器补默认值 */
+export type CustomProviderModel = {
+    id: string
+    name?: string
+    contextWindow?: number
+    maxTokens?: number
+    reasoning?: boolean
+    input?: ('text' | 'image')[]
+    /** 思考等级 → provider 专有值映射；null 表示该等级不支持 */
+    thinkingLevelMap?: ThinkingLevelMap
+    /** OpenAI 兼容协议高级开关，如 { thinkingFormat: "deepseek" } 使 off 时下发 thinking:{type:"disabled"} */
+    compat?: OpenAICompletionsCompat
+}
+
+/** 自定义 provider：复用 pi-ai 协议实现对接任意兼容网关 */
+export type CustomProviderDef = {
+    id: string
+    name?: string
+    baseUrl: string
+    api: CustomProviderApi
+    /** 依次尝试的环境变量名，用于解析 API key */
+    apiKeyEnv: string[]
+    headers?: Record<string, string>
+    models: CustomProviderModel[]
+}
+
 export type Setting = {
     generalSetting: GeneralSetting
     session: SessionConfig
     compaction: CompactionConfig
     mcpServers: MCPConfig[]
     customTools?: CustomToolDef[]
+    providers?: CustomProviderDef[]
 }
 
 // ── 默认配置 ──
@@ -87,6 +128,7 @@ const defaultSetting: Setting = {
     compaction: defaultCompaction,
     mcpServers: [],
     customTools: [],
+    providers: [],
 }
 
 const mergeWithDefaults = (partial: Partial<Setting>): Setting => ({
@@ -95,6 +137,7 @@ const mergeWithDefaults = (partial: Partial<Setting>): Setting => ({
     compaction: partial.compaction ?? defaultCompaction,
     mcpServers: partial.mcpServers ?? [],
     customTools: partial.customTools ?? [],
+    providers: partial.providers ?? [],
 })
 
 // ── 初始化 & 读写 ──
