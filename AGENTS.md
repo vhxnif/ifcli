@@ -10,8 +10,8 @@
 |----|------|------|
 | 运行时 | Bun ≥1.2.6 | 打包、运行、SQLite |
 | 语言 | TypeScript 5.9 | 类型安全 |
-| LLM | @earendil-works/pi-ai ^0.87.1 | 多供应商统一 API（pi-messages / OpenAI / Anthropic） |
-| Agent | @earendil-works/pi-agent-core ^0.87.1 | Agent 运行时、SessionStorage 接口 |
+| LLM | @earendil-works/pi-ai ^1.1.0 | 多供应商统一 API（pi-messages / OpenAI / Anthropic） |
+| Agent | @earendil-works/pi-agent-core ^1.1.0 | Agent 运行时、SessionStorage 接口 |
 | 存储 | bun:sqlite | 树形 session 存储 |
 | CLI | commander ^13 | 命令解析 |
 | UI | chalk ^5 / ora ^8 / inquirer ^4 | 终端颜色、spinner、交互选择 |

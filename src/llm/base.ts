@@ -11,7 +11,7 @@ export type {
     AgentTool,
     ThinkingLevel,
 } from '@earendil-works/pi-agent-core'
-export { Agent, uuidv7 } from '@earendil-works/pi-agent-core'
+export { Agent } from '@earendil-works/pi-agent-core'
 export type {
     Api,
     AssistantMessage,
@@ -28,6 +28,7 @@ export type {
     TSchema,
     UserMessage,
 } from '@earendil-works/pi-ai'
+export { uuidv7 } from '@earendil-works/pi-ai'
 export { setBedrockProviderModule } from '@earendil-works/pi-ai/api/bedrock-converse-stream.lazy'
 export { bedrockProviderModule } from '@earendil-works/pi-ai/bedrock-provider'
 export { streamSimple } from '@earendil-works/pi-ai/compat'
