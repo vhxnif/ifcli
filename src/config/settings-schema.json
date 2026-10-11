@@ -165,6 +165,92 @@
                 ]
             }
         },
+        "providers": {
+            "type": "array",
+            "description": "自定义 provider，复用 pi-ai 协议实现对接任意兼容网关",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "provider 唯一标识，如 alias"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "显示名，缺省为 id"
+                    },
+                    "baseUrl": { "type": "string", "format": "uri" },
+                    "api": {
+                        "type": "string",
+                        "enum": [
+                            "anthropic-messages",
+                            "azure-openai-responses",
+                            "bedrock-converse-stream",
+                            "google-generative-ai",
+                            "google-vertex",
+                            "mistral-conversations",
+                            "openai-codex-responses",
+                            "openai-completions",
+                            "openai-responses",
+                            "pi-messages"
+                        ]
+                    },
+                    "apiKeyEnv": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "minItems": 1,
+                        "description": "依次尝试的环境变量名，用于解析 API key"
+                    },
+                    "headers": {
+                        "type": "object",
+                        "additionalProperties": { "type": "string" }
+                    },
+                    "models": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": { "type": "string" },
+                                "name": { "type": "string" },
+                                "contextWindow": {
+                                    "type": "number",
+                                    "minimum": 1
+                                },
+                                "maxTokens": { "type": "number", "minimum": 1 },
+                                "reasoning": {
+                                    "type": "boolean",
+                                    "default": false
+                                },
+                                "input": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "enum": ["text", "image"]
+                                    },
+                                    "default": ["text"]
+                                },
+                                "thinkingLevelMap": {
+                                    "type": "object",
+                                    "description": "思考等级 → provider 专有值；null 表示不支持该等级",
+                                    "additionalProperties": {
+                                        "type": ["string", "null"]
+                                    }
+                                },
+                                "compat": {
+                                    "type": "object",
+                                    "description": "OpenAI 兼容协议高级开关，如 { thinkingFormat: deepseek }"
+                                }
+                            },
+                            "required": ["id"],
+                            "additionalProperties": false
+                        }
+                    }
+                },
+                "required": ["id", "baseUrl", "api", "apiKeyEnv", "models"],
+                "additionalProperties": false
+            }
+        },
         "customTools": {
             "type": "array",
             "items": {
